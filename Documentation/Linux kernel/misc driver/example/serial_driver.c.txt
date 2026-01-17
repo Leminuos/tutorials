@@ -1,0 +1,55 @@
+#include <linux/module.h>
+#include <linux/fs.h>
+#include <linux/tty.h>
+#include <linux/tty_driver.h>
+
+#define DRIVER_NAME "myserial"
+#define TTY_MINORS 1
+
+static struct tty_driver *my_tty_driver;
+
+static int my_open(struct tty_struct *tty, struct file *filp) {
+    pr_info("myserial: open\n");
+    return 0;
+}
+
+static void my_close(struct tty_struct *tty, struct file *filp) {
+    pr_info("myserial: close\n");
+}
+
+static int my_write(struct tty_struct *tty, const unsigned char *buf, int count) {
+    pr_info("myserial: write %d bytes\n", count);
+    // Normally: push to UART hardware
+    return count;
+}
+
+static const struct tty_operations my_tty_ops = {
+    .open  = my_open,
+    .close = my_close,
+    .write = my_write,
+};
+
+static int __init myserial_init(void) {
+    my_tty_driver = tty_alloc_driver(TTY_MINORS, TTY_DRIVER_REAL_RAW);
+    if (IS_ERR(my_tty_driver))
+        return PTR_ERR(my_tty_driver);
+
+    my_tty_driver->driver_name = DRIVER_NAME;
+    my_tty_driver->name        = "ttyMY";
+    my_tty_driver->major       = 0; // dynamic
+    my_tty_driver->type        = TTY_DRIVER_TYPE_SERIAL;
+    my_tty_driver->subtype     = SERIAL_TYPE_NORMAL;
+    my_tty_driver->init_termios = tty_std_termios;
+    tty_set_operations(my_tty_driver, &my_tty_ops);
+
+    return tty_register_driver(my_tty_driver);
+}
+
+static void __exit myserial_exit(void) {
+    tty_unregister_driver(my_tty_driver);
+    put_tty_driver(my_tty_driver);
+}
+
+module_init(myserial_init);
+module_exit(myserial_exit);
+MODULE_LICENSE("GPL");

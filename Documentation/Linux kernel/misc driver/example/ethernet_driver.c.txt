@@ -1,0 +1,50 @@
+#include <linux/module.h>
+#include <linux/netdevice.h>
+
+static int mynet_open(struct net_device *dev) {
+    netif_start_queue(dev);
+    pr_info("mynet: device opened\n");
+    return 0;
+}
+
+static int mynet_stop(struct net_device *dev) {
+    netif_stop_queue(dev);
+    pr_info("mynet: device stopped\n");
+    return 0;
+}
+
+static netdev_tx_t mynet_xmit(struct sk_buff *skb, struct net_device *dev) {
+    // Normally: push skb to hardware TX
+    dev_kfree_skb(skb);
+    pr_info("mynet: packet transmitted (dummy)\n");
+    return NETDEV_TX_OK;
+}
+
+static const struct net_device_ops mynet_ops = {
+    .ndo_open       = mynet_open,
+    .ndo_stop       = mynet_stop,
+    .ndo_start_xmit = mynet_xmit,
+};
+
+static void mynet_setup(struct net_device *dev) {
+    dev->netdev_ops = &mynet_ops;
+    // set MAC, mtu, flags...
+}
+
+static struct net_device *mynet_dev;
+
+static int __init mynet_init(void) {
+    mynet_dev = alloc_netdev(0, "mynet%d", NET_NAME_UNKNOWN, mynet_setup);
+    if (!mynet_dev)
+        return -ENOMEM;
+    return register_netdev(mynet_dev);
+}
+
+static void __exit mynet_exit(void) {
+    unregister_netdev(mynet_dev);
+    free_netdev(mynet_dev);
+}
+
+module_init(mynet_init);
+module_exit(mynet_exit);
+MODULE_LICENSE("GPL");

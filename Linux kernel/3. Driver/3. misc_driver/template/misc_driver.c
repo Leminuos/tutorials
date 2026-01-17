@@ -1,0 +1,67 @@
+#include <linux/fs.h>
+#include <linux/init.h>
+#include <linux/miscdevice.h>
+#include <linux/module.h>
+#include <linux/uaccess.h>
+#include <linux/io.h>
+
+int misc_open(struct inode *node, struct file *filep)
+{
+    pr_info("%s, %d\n", __func__, __LINE__);
+    return 0;
+}
+
+int misc_release(struct inode *node, struct file *filep)
+{
+    pr_info("%s, %d\n", __func__, __LINE__);
+    return 0;
+}
+
+static ssize_t misc_read(struct file *filp, char __user *buf, size_t count,
+                         loff_t *f_pos)
+{
+    pr_info("%s, %d\n", __func__, __LINE__);
+    return 0;
+}
+
+static ssize_t misc_write(struct file *filp, const char __user *buf,
+                          size_t count, loff_t *f_pos)
+{
+    pr_info("%s, %d\n", __func__, __LINE__);
+    return count;
+}
+
+struct file_operations misc_fops = {
+    .owner = THIS_MODULE,
+    .open = misc_open, //Enable hardware
+    .release = misc_release, //disable hardware, synchronize data xuong hardware
+    .read = misc_read, //Doc du lieu tu hardware, luu vao buffer cua kernel
+    .write = misc_write, //Ghi du lieu tu buffer cua kernel xuong hardware
+};
+
+static struct miscdevice misc_example = {
+    .minor = MISC_DYNAMIC_MINOR,
+    .name = "misc_example",
+    .fops = &misc_fops,
+};
+
+static int misc_init(void)
+{
+    pr_info("misc module init\n");
+    misc_register(&misc_example);
+
+    return 0;
+}
+
+static void misc_exit(void)
+{
+    pr_info("misc module exit\n");
+    misc_deregister(&misc_example);
+}
+
+module_init(misc_init);
+module_exit(misc_exit);
+
+MODULE_AUTHOR("Phu Luu An");
+MODULE_DESCRIPTION("Example misc driver.");
+MODULE_LICENSE("GPL");

@@ -1,0 +1,17 @@
+﻿{
+  "0. overview": {
+    "title": "Tổng quan ESP32",
+    "date": "02-10-2023",
+    "author": "Nguyen Ran",
+    "description": "Tổng quan về kiến trúc hệ thống của ESP32...",
+    "image": "img/chip-boot-flow.png",
+    "tags": ["Boot", "System"]
+  },
+  "1. lvgl": {
+    "title": "LVGL Graphics Library",
+    "date": "05-10-2023",
+    "author": "Nguyen Ran",
+    "description": "Hướng dẫn sử dụng thư viện đồ họa LVGL trên ESP32",
+    "image": "img/lvgl_demo.png"
+  }
+}

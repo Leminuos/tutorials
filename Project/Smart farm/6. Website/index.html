@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <title>Dashboard Giám Sát Môi Trường</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.1.0/paho-mqtt.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #0f172a;
+            color: #e5e7eb;
+        }
+
+        .dashboard {
+            width: 100%;
+            max-width: 900px;
+            padding: 24px;
+            border-radius: 18px;
+            background: radial-gradient(circle at top left, #1d4ed8 0, #020617 45%);
+            box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .header-title {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .header-subtitle {
+            font-size: 13px;
+            color: #9ca3af;
+            margin-top: 4px;
+        }
+
+        .status-pill {
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(74, 222, 128, 0.3);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 2fr 1.2fr;
+            gap: 16px;
+        }
+
+        /* Card chung */
+        .card {
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 16px;
+            padding: 16px 18px;
+            border: 1px solid rgba(148, 163, 184, 0.18);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .card-subtitle {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        /* 3 sensor tiles */
+        .sensors {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .sensor-tile {
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 12px;
+            padding: 10px 12px;
+            border: 1px solid rgba(55, 65, 81, 0.8);
+        }
+
+        .sensor-label {
+            font-size: 12px;
+            color: #9ca3af;
+            margin-bottom: 4px;
+        }
+
+        .sensor-value {
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        .sensor-unit {
+            font-size: 13px;
+            color: #9ca3af;
+            margin-left: 4px;
+        }
+
+        .sensor-footer {
+            margin-top: 4px;
+            font-size: 11px;
+            color: #6b7280;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid rgba(55, 65, 81, 0.8);
+        }
+
+        .control-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .control-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .control-status {
+            font-size: 12px;
+            color: #9ca3af;
+        }
+
+        .control-status.on {
+            color: #22c55e;
+        }
+
+        .control-status.off {
+            color: #f97316;
+        }
+
+        .btn-toggle {
+            position: relative;
+            width: 70px;
+            height: 30px;
+            border-radius: 999px;
+            border: none;
+            cursor: pointer;
+            padding: 3px;
+            display: flex;
+            align-items: center;
+            transition: background 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .btn-toggle-inner {
+            position: absolute;
+            inset: 2px;
+            border-radius: 999px;
+        }
+
+        .btn-toggle-knob {
+            position: relative;
+            height: 24px;
+            width: 24px;
+            border-radius: 999px;
+            background: #e5e7eb;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+            transform: translateX(0);
+            transition: transform 0.2s ease;
+        }
+
+        .btn-toggle.on {
+            background: rgba(34, 197, 94, 0.2);
+        }
+
+        .btn-toggle.on .btn-toggle-inner {
+            background: linear-gradient(90deg, #22c55e, #4ade80);
+        }
+
+        .btn-toggle.off {
+            background: rgba(148, 163, 184, 0.3);
+        }
+
+        .btn-toggle.off .btn-toggle-inner {
+            background: linear-gradient(90deg, #6b7280, #4b5563);
+        }
+
+        .btn-toggle.on .btn-toggle-knob {
+            transform: translateX(38px);
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 16px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #9ca3af;
+        }
+
+        .footer span.key {
+            color: #e5e7eb;
+            font-weight: 500;
+        }
+
+        /* Responsive */
+        @media (max-width: 720px) {
+            .dashboard {
+                margin: 12px;
+            }
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard">
+    <div class="header">
+        <div>
+            <div class="header-title">Giám sát môi trường</div>
+            <div class="header-subtitle">
+                Nhiệt độ · Độ ẩm · Ánh sáng · Điều khiển LED &amp; Pump
+            </div>
+        </div>
+        <div class="status-pill" id="connectionStatus">Đang kết nối MQTT</div>
+    </div>
+
+    <div class="grid">
+        <!-- CARD SENSOR -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Thông số cảm biến</div>
+                    <div class="card-subtitle">Cập nhật theo thời gian thực</div>
+                </div>
+                <!-- Có thể add icon hoặc dropdown sau -->
+            </div>
+            <div class="sensors">
+                <!-- Temperature -->
+                <div class="sensor-tile">
+                    <div class="sensor-label">Nhiệt độ</div>
+                    <div>
+                        <span class="sensor-value" id="tempValue">--</span>
+                        <span class="sensor-unit">°C</span>
+                    </div>
+                    <div class="sensor-footer" id="tempStatus">Đang khởi tạo...</div>
+                </div>
+                <!-- Humidity -->
+                <div class="sensor-tile">
+                    <div class="sensor-label">Độ ẩm</div>
+                    <div>
+                        <span class="sensor-value" id="humValue">--</span>
+                        <span class="sensor-unit">%</span>
+                    </div>
+                    <div class="sensor-footer" id="humStatus">Đang khởi tạo...</div>
+                </div>
+                <!-- Light -->
+                <div class="sensor-tile">
+                    <div class="sensor-label">Ánh sáng</div>
+                    <div>
+                        <span class="sensor-value" id="lightValue">--</span>
+                        <span class="sensor-unit">lux</span>
+                    </div>
+                    <div class="sensor-footer" id="lightStatus">Đang khởi tạo...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CARD CONTROL -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Điều khiển</div>
+                    <div class="card-subtitle">LED &amp; Pump</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <!-- LED -->
+                <div class="control-row">
+                    <div class="control-info">
+                        <div class="control-name">LED</div>
+                        <div class="control-status off" id="ledStatusText">
+                            Trạng thái: OFF
+                        </div>
+                    </div>
+                    <button class="btn-toggle off" id="btnLed">
+                        <div class="btn-toggle-inner"></div>
+                        <div class="btn-toggle-knob"></div>
+                    </button>
+                </div>
+
+                <!-- PUMP -->
+                <div class="control-row">
+                    <div class="control-info">
+                        <div class="control-name">Pump</div>
+                        <div class="control-status off" id="pumpStatusText">
+                            Trạng thái: OFF
+                        </div>
+                    </div>
+                    <button class="btn-toggle off" id="btnPump">
+                        <div class="btn-toggle-inner"></div>
+                        <div class="btn-toggle-knob"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div id="lastUpdate">Chưa có cập nhật dữ liệu.</div>
+    </div>
+</div>
+
+<script>
+    let sensorData = {
+        temperature: null,
+        humidity: null,
+        light: null,
+    };
+
+    let ledOn = false;
+    let pumpOn = false;
+    let mqttClient = null;
+
+    function updateSensorUI() {
+        const tempEl = document.getElementById("tempValue");
+        const humEl = document.getElementById("humValue");
+        const lightEl = document.getElementById("lightValue");
+
+        const tempStatus = document.getElementById("tempStatus");
+        const humStatus = document.getElementById("humStatus");
+        const lightStatus = document.getElementById("lightStatus");
+        const lastUpdateEl = document.getElementById("lastUpdate");
+
+        const { temperature, humidity, light } = sensorData;
+
+        if (temperature !== null) {
+            tempEl.textContent = temperature.toFixed(1);
+            if (temperature < 18) {
+                tempStatus.textContent = "Khá lạnh";
+            } else if (temperature <= 30) {
+                tempStatus.textContent = "Nhiệt độ bình thường";
+            } else {
+                tempStatus.textContent = "Nhiệt độ cao";
+            }
+        }
+
+        if (humidity !== null) {
+            humEl.textContent = humidity.toFixed(0);
+            if (humidity < 30) {
+                humStatus.textContent = "Không khí khô";
+            } else if (humidity <= 70) {
+                humStatus.textContent = "Độ ẩm ổn";
+            } else {
+                humStatus.textContent = "Độ ẩm cao";
+            }
+        }
+
+        if (light !== null) {
+            lightEl.textContent = light.toFixed(0);
+            if (light < 150) {
+                lightStatus.textContent = "Tối";
+            } else if (light <= 500) {
+                lightStatus.textContent = "Sáng vừa";
+            } else {
+                lightStatus.textContent = "Rất sáng";
+            }
+        }
+
+        const now = new Date();
+        lastUpdateEl.textContent =
+            "Lần cập nhật cuối: " +
+            now.toLocaleTimeString("vi-VN", { hour12: false });
+    }
+
+    function updateControlUI() {
+        const btnLed = document.getElementById("btnLed");
+        const btnPump = document.getElementById("btnPump");
+        const ledStatusText = document.getElementById("ledStatusText");
+        const pumpStatusText = document.getElementById("pumpStatusText");
+
+        // LED
+        if (ledOn) {
+            btnLed.classList.remove("off");
+            btnLed.classList.add("on");
+            ledStatusText.textContent = "Trạng thái: ON";
+            ledStatusText.classList.remove("off");
+            ledStatusText.classList.add("on");
+        } else {
+            btnLed.classList.remove("on");
+            btnLed.classList.add("off");
+            ledStatusText.textContent = "Trạng thái: OFF";
+            ledStatusText.classList.remove("on");
+            ledStatusText.classList.add("off");
+        }
+
+        // Pump
+        if (pumpOn) {
+            btnPump.classList.remove("off");
+            btnPump.classList.add("on");
+            pumpStatusText.textContent = "Trạng thái: ON";
+            pumpStatusText.classList.remove("off");
+            pumpStatusText.classList.add("on");
+        } else {
+            btnPump.classList.remove("on");
+            btnPump.classList.add("off");
+            pumpStatusText.textContent = "Trạng thái: OFF";
+            pumpStatusText.classList.remove("on");
+            pumpStatusText.classList.add("off");
+        }
+    }
+
+    function sendControlCommand(device) {
+        const topic = "control/" + device;
+        const msg = new Paho.Message("");
+        msg.destinationName = topic;
+        mqttClient.send(msg);
+    }
+
+    function setupEvents() {
+        const btnLed = document.getElementById("btnLed");
+        const btnPump = document.getElementById("btnPump");
+
+        btnLed.addEventListener("click", () => {
+            sendControlCommand("led");
+        });
+
+        btnPump.addEventListener("click", () => {
+            sendControlCommand("pump");
+        });
+    }
+
+    function initMQTT() {
+        mqttClient = new Paho.Client("192.168.137.100", 9001, "/mqtt", "webclient_" +  Date.now());
+
+        mqttClient.onConnectionLost = function(responseObject) {
+            console.log("MQTT disconnect:", responseObject.errorMessage);
+            document.getElementById("connectionStatus").textContent = "Mất kết nối MQTT";
+        };
+
+        mqttClient.onMessageArrived = function(message) {
+            switch (message.destinationName)
+            {
+                case "sensor/temp":
+                    try {
+                        sensorData.temperature = parseFloat(message.payloadString);
+                    } catch(e) {
+                        console.error("Invalid JSON:", e);
+                    }
+
+                    break;
+
+                case "sensor/humi":
+                    try {
+                        sensorData.humidity = parseInt(message.payloadString);
+                    } catch(e) {
+                        console.error("Invalid JSON:", e);
+                    }
+                    break;
+
+                case "sensor/lux":
+                    try {
+                        sensorData.light = parseInt(message.payloadString);
+                    } catch(e) {
+                        console.error("Invalid JSON:", e);
+                    }
+                    break;
+
+                case "state/led":
+                    ledOn = parseInt(message.payloadString);
+                    updateControlUI();
+                    break;
+
+                case "state/pump":
+                    pumpOn = parseInt(message.payloadString);
+                    updateControlUI();
+                    break;
+
+                default:
+                    break;
+            }
+
+            updateSensorUI();
+        };
+
+        mqttClient.connect({
+            onSuccess: () => {
+                console.log("MQTT connected!");
+                document.getElementById("connectionStatus").textContent = "Đã kết nối MQTT";
+
+                // Subscribe các topic cần nhận
+                mqttClient.subscribe("sensor/#");
+                mqttClient.subscribe("state/led");
+                mqttClient.subscribe("state/pump");
+            },
+            onFailure: () => {
+                document.getElementById("connectionStatus").textContent = "Kết nối MQTT thất bại";
+            },
+            cleanSession: true,
+        });
+    }
+
+    function init() {
+        setupEvents();
+        updateControlUI();
+        initMQTT();
+    }
+
+    document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>

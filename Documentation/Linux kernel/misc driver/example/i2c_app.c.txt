@@ -1,0 +1,28 @@
+#include <stdio.h>
+
+int main() {
+    FILE *fp;
+    int val;
+
+    // Đọc sysfs attribute
+    fp = fopen("/sys/bus/i2c/devices/1-0048/reg_val", "r");
+    if (!fp) {
+        perror("fopen read");
+        return 1;
+    }
+    fscanf(fp, "%d", &val);
+    fclose(fp);
+
+    printf("Read sysfs val = %d\n", val);
+
+    // Ghi sysfs attribute
+    fp = fopen("/sys/bus/i2c/devices/1-0048/reg_val", "w");
+    if (!fp) {
+        perror("fopen write");
+        return 1;
+    }
+    fprintf(fp, "%d", 0x55);
+    fclose(fp);
+
+    return 0;
+}
