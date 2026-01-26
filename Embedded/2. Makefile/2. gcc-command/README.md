@@ -1,5 +1,3 @@
-# GCC Command
-
 ## Build process
 
 Build Process là một quá trình xử lý với đầu vào là các file source code (`.c`, `.cpp`, `.h`, `.s`, ...) và đầu ra là các file nhị phân để xử dụng (`.exe`, `.elf`, `.hex`, `.bin`, ...).

@@ -1,17 +1,26 @@
 ﻿{
   "0. overview": {
     "title": "Tổng quan ESP32",
-    "date": "02-10-2023",
+    "date": "02-01-2026",
     "author": "Nguyen Ran",
     "description": "Tổng quan về kiến trúc hệ thống của ESP32...",
-    "image": "img/chip-boot-flow.png",
+    "image": "img/esp32.jpg",
     "tags": ["Boot", "System"]
   },
-  "1. lvgl": {
+  
+  "1. cmake": {
+    "title": "Tổng quan cmake trong ESP-IDF",
+    "date": "26-01-2026",
+    "author": "Nguyen Ran",
+    "description": "Hướng dẫn sử dụng file CMakeLists.txt trong esp-idf để thực hiện build system.",
+    "image": "img/esp32.jpg"
+  },
+
+  "2. lvgl": {
     "title": "LVGL Graphics Library",
-    "date": "05-10-2023",
+    "date": "05-01-2026",
     "author": "Nguyen Ran",
     "description": "Hướng dẫn sử dụng thư viện đồ họa LVGL trên ESP32",
-    "image": "img/lvgl_demo.png"
+    "image": "img/esp32.jpg"
   }
 }

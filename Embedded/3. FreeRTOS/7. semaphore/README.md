@@ -1,5 +1,3 @@
-# Semaphore
-
 ## Khái niệm
 
 Queue được giới thiệu trước đó có thể được sử dụng để truyền dữ liệu: giữa các task, và giữa các task và các ngắt.

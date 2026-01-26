@@ -1,5 +1,3 @@
-# Linker script
-
 ## Khái niệm cơ bản
 
 Linker là một chương trình có tác dụng liên kết các file object (file `*.o`) và static library (file `*.a`) thành một file binary duy nhất và có thể thực thi được. Linker Script là một file chứa các mã giúp cho Linker biết được vùng nào của các file đầu vào (object file, library file) phải được liên kết như thế nào để tạo file binary thực thi. Ví dụ, khi khai báo một vùng nhớ trong linker Script đại diện cho một vùng nhớ trên bộ nhớ. Tại mã chương trình ứng dụng, nếu một biến được khai báo với thuộc tính vùng đó thì Linker sẽ biết được cần phải sắp xếp biến vào vùng nhớ nào trong file đầu ra (`.bin`/`.elf`).

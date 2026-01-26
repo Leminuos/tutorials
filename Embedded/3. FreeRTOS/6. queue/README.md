@@ -1,5 +1,3 @@
-# Queue
-
 Như đã nói trong các bài trước, ta đã biết được rằng các task là các chương trình nhỏ độc lập với nhau và được chạy khi bộ lập lịch gọi. Vậy một câu hỏi đặt ra là các task này muốn giao tiếp với nhau thì như thế nào? Trong bài này, ta sẽ làm rõ hơn về điều này.
 
 ## Giao tiếp bằng biến toàn cục?

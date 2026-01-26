@@ -1,0 +1,73 @@
+﻿{
+  "1. cortex-mx-overview": {
+    "title": "Cortex mx overview",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Tổng quan kiến trúc vi điều khiển ARM Cortex-M.",
+    "image": "img/arm-cortex-chip.png",
+    "tags": ["embedded", "cortex"]
+  },
+
+  "2. build-process": {
+    "title": "Build process",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Quy trình compile và linker một chương trình nhúng.",
+    "image": "img/arm-cortex-chip.png",
+    "tags": ["embedded", "cortex", "linker"]
+  },
+
+  "3. startup-file": {
+    "title": "Startup file",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Trình tự khởi động CPU sau khi reset.",
+    "image": "img/arm-cortex-chip.png",
+    "tags": ["embedded", "cortex", "linker"]
+  },
+
+  "4. reset-sequence": {
+    "title": "Reset sequence",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Trình tự CPU thực hiện khi reset: đọc vector table, khởi tạo MSP, nhảy vào Reset_Handler và gọi main.",
+    "image": "img/arm-cortex-chip.png",
+    "tags": ["embedded", "cortex", "linker"]
+  },
+
+  "5. linker-script": {
+    "title": "Linker script",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Cách tổ chức bộ nhớ chương trình bằng linker script.",
+    "image": "img/arm-cortex-chip.png",
+    "tags": ["embedded", "cortex", "linker"]
+  },
+
+  "6. memory": {
+    "title": "Memory",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Nguyên lý memory-mapped trong vi điều khiển.",
+    "image": "img/arm-cortex-chip.png",
+    "tags": ["embedded", "cortex", "memory"]
+  },
+
+  "7. interrupt": {
+    "title": "Interrupt & Exception",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Hệ thống interrupt và exception trong Cortex-M.",
+    "image": "img/arm-cortex-chip.png",
+    "tags": ["embedded", "cortex", "interrupt"]
+  },
+
+  "8. systick": {
+    "title": "Systick timer",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "SysTick timer trong Cortex-M.",
+    "image": "img/arm-cortex-chip.png",
+    "tags": ["embedded", "cortex", "timer"]
+  }
+}

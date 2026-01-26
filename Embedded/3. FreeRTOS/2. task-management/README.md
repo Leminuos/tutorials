@@ -1,5 +1,3 @@
-# Task
-
 ## Khái niệm cơ bản
 
 Giống như công việc thường ngày của chúng ta, vi điều khiển thực thi những nhiệm vụ riêng của nó, trong RTOS, các công việc đó gọi là task. Như vậy, đối với vi điều khiển, task là một tập hợp các câu lệnh, được lưu trong bộ nhớ vi điều khiển, để thực hiện một nhiệm vụ nào đó.

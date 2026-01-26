@@ -1,5 +1,3 @@
-# Interrupt & Exception
-
 ## Khái niệm cơ bản
 
 Một bộ vi điều khiển cortex M hỗ trợ tới 256 ngắt, trong đó có 15 ngắt **system exceptions** là các ngắt đến từ core.

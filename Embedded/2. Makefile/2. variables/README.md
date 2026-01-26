@@ -1,5 +1,3 @@
-# Makefile variables
-
 ## Khái niệm cơ bản
 
 Một makefile có thể dùng để quản lý một project lớn, có thể bao gồm các folders: source files, header files, object files, output files,...Các folder này có thể cố định, nhưng không điều gì đảm bảo các file source trong đó không thay đổi.

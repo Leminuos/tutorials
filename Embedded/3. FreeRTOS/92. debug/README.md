@@ -1,5 +1,3 @@
-# Các phương pháp debug
-
 Ngoài việc lấy log bằng printf hoặc assert, FreeRTOS cũng hỗ trợ một số phương pháp để debug. Các phương pháp này sẽ được nói trong bài này.
 
 ## Trace

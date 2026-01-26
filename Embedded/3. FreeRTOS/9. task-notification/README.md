@@ -1,5 +1,3 @@
-# Task nofification
-
 Thuật ngữ task notification có thể được hiểu là "nofity task" hay thông báo cho task.
 
 Khi sử dụng các phương pháp như queue, semaphore và event group, ta không biết bên kia là ai. Khi sử dụng task notification, ta có thể chỉ định rõ ràng task nào cần được thông báo.

@@ -1,5 +1,3 @@
-# Giới thiệu tổng quan về Makefile
-
 ## Khái niệm cơ bản
 
 Makefile là một dạng script file chứa các thông tin:

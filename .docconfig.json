@@ -1,7 +1,7 @@
 {
-  "Embedded": { "layout": "tutorial" },
+  "Embedded": { "layout": "posts" },
   "Linux kernel": { "layout": "tutorial" },
   "Vi điều khiển": { "layout": "posts" },
   "Project": { "layout": "folder" },
-  "Documentation": { "layout": "folder" },
+  "Documentation": { "layout": "folder" }
 }

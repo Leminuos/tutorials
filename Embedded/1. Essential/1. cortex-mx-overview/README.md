@@ -1,5 +1,3 @@
-# Cortex Mx Overview
-
 ## Mở đầu
 
 Bộ xử lý Cortex-M0+ là bộ xử lý ARM Cortex 32-bit cơ bản được thiết kế theo kiến trúc ARMv6-M cho các ứng dụng nhúng. Xây dựng theo kiến trúc von Neumann.

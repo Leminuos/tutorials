@@ -1,5 +1,3 @@
-# Software timer
-
 Software timer có thể được ví như một "đồng hồ báo thức" trong hệ thống phần mềm.
 
 Trong đời sống hằng ngày, ta có thể đặt báo thức để:

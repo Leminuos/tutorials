@@ -1,5 +1,3 @@
-# Startup file
-
 Startup file được thực hiện trước hàm main, là file khởi tạo môi trường ban đầu trước khi call hàm main và chứa vector table.
 
 ::: tip

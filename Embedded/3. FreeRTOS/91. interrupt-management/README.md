@@ -1,5 +1,3 @@
-# Interrupt management
-
 Trong hệ điều hành RTOS, cần xử lý nhiều sự kiện khác nhau. Những sự kiện này thường được tạo ra bởi hardware interrupt. Vậy các ngắt này nên được xử lý như thế nào?
 
 Giả sử hệ thống hiện đang chạy task 1, và người dùng nhấn một phím, gây ra ngắt. Quá trình ISR này như sau:

@@ -1,0 +1,109 @@
+﻿{
+  "1. introduction": {
+    "title": "Introduction",
+    "date": "19-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết giới thiệu tổng quan về chuẩn USB, cấu trúc hệ thống bus, cách thiết bị kết nối với host và các khái niệm nền tảng cần biết trước khi đi sâu vào giao thức.",
+    "image": "img/usb.webp",
+    "tags": ["usb"]
+  },
+
+  "2. power": {
+    "title": "Power",
+    "date": "19-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết trình bày cơ chế cấp nguồn trong USB, các loại thiết bị theo mức tiêu thụ điện và quá trình thương lượng nguồn giữa host và device.",
+    "image": "img/usb.webp",
+    "tags": ["usb", "power"]
+  },
+
+  "3. cơ chế đồng bộ": {
+    "title": "Cơ chế đồng bộ",
+    "date": "19-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết giới thiệu cách USB duy trì đồng bộ tín hiệu và clock giữa host và device để đảm bảo truyền dữ liệu ổn định.",
+    "image": "img/usb.webp",
+    "tags": ["usb"]
+  },
+
+  "4. endpoint": {
+    "title": "Endpoint",
+    "date": "19-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết giải thích khái niệm endpoint trong USB và vai trò của endpoint trong việc tổ chức luồng dữ liệu giữa host và thiết bị.",
+    "image": "img/usb.webp",
+    "tags": ["usb"]
+  },
+
+  "5. pipe": {
+    "title": "Pipe",
+    "date": "19-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết mô tả pipe như một kênh giao tiếp logic giữa host và endpoint, giúp quản lý và lập lịch truyền dữ liệu trong hệ thống USB.",
+    "image": "img/usb.webp",
+    "tags": ["usb"]
+  },
+
+  "6. usb protocol": {
+    "title": "USB protocol",
+    "date": "19-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết tổng quan về cấu trúc giao thức USB, cách dữ liệu được đóng gói thành packet và transaction trong quá trình truyền thông.",
+    "image": "img/usb.webp",
+    "tags": ["usb", "protocol"]
+  },
+
+  "7. enumaration": {
+    "title": "Bus enumeration",
+    "date": "19-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết mô tả quá trình host nhận diện và cấu hình một thiết bị USB ngay khi nó được kết nối vào bus.",
+    "image": "img/usb.webp",
+    "tags": ["usb"]
+  },
+
+  "8. standard request": {
+    "title": "Standard Requests",
+    "date": "19-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết giới thiệu các yêu cầu điều khiển chuẩn trong USB mà \"host\" sử dụng để cấu hình và quản lý thiết bị.",
+    "image": "img/usb.webp",
+    "tags": ["usb"]
+  },
+
+  "9. usb descriptor": {
+    "title": "USB Descriptor",
+    "date": "19-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết tổng quan về hệ thống USB Descriptor và vai trò của descriptor trong việc giúp host nhận diện, phân loại và cấu hình thiết bị.",
+    "image": "img/usb.webp",
+    "tags": ["usb"]
+  },
+
+  "90. cdc": {
+    "title": "USB CDC Class",
+    "date": "19-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết giới thiệu lớp thiết bị USB CDC dùng cho truyền thông dữ liệu, như USB-UART và Virtual COM Port.",
+    "image": "img/usb.webp",
+    "tags": ["usb", "cdc"]
+  },
+
+  "91. hid": {
+    "title": "USB HID Class",
+    "date": "19-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết tổng quan về lớp thiết bị USB HID dành cho chuột, bàn phím và các thiết bị giao tiếp với người dùng.",
+    "image": "img/usb.webp",
+    "tags": ["usb", "hid"]
+  },
+
+  "92. usb-c": {
+    "title": "USB Type C",
+    "date": "19-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết giới thiệu chuẩn USB Type-C, cấu trúc chân kết nối, vai trò truyền dữ liệu và cấp nguồn trong các thiết bị hiện đại.",
+    "image": "img/usb.webp",
+    "tags": ["usb", "type-c"]
+  }
+}

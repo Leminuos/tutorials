@@ -1,5 +1,3 @@
-# Makefile function
-
 ## Wildcard character
 
 Wildcard character được dùng để thay thế nhiều tên tệp theo một pattern nhất định.

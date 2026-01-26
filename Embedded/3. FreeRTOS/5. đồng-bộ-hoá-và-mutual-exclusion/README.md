@@ -1,5 +1,3 @@
-# Đồng bộ hoá và mutual exclusion
-
 ## Khái niệm
 
 Để hiểu khái niệm đồng bộ hóa và mutual exclusion thì ta có một ví dụ nhỏ: Giả sử một phòng trọ có hai bạn sinh viên A và B. Một buổi sáng sớm, hai người đều thực dậy và muốn đi vệ sinh. Tuy nhiên, A đến trước và "chiếm dụng" nhà vệ sinh. B đến sau một tí nên đánh lên giường ngủ tiếp. Khi A dùng xong nhà vệ sinh thì anh ta "đánh thức" B dậy, lúc này B đi vào sử dụng nhà vệ sinh. Trong quá trình này, cả A và B sử dụng nhà vệ sinh một cách độc lập và nhà vệ sinh được gọi là một nguồn tài nguyên dùng chung.
