@@ -1,5 +1,3 @@
-# Direction
-
 ## include
 
 Direction `include` sẽ tạm dừng đọc makefile hiện tại và đọc các makefile khác trước khi tiếp tục.

@@ -1,5 +1,3 @@
-# Command Arm Toolchain
-
 ## Mở đầu
 
 **Khác nhau giữa project C và C nhúng**

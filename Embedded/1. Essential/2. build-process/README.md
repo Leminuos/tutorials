@@ -1,5 +1,3 @@
-# Build process
-
 Build Process: Về cơ bản tương tự một chương trình C trên window tuy nhiên có một vài điểm khác biệt:
 - Compiler không compile ra file ASM của máy tính nữa, mà ở đây là Cross Compiler.
 - Các file object vẫn được link với thư viện tĩnh, nhưng cần trải qua một bước nữa đó là `Locator`, bước này dùng một file Linker Script để phân bố vùng nhớ cho vi điều khiển.

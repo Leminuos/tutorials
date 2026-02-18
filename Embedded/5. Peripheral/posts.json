@@ -1,0 +1,19 @@
+﻿{
+  "1. i2c": {
+    "title": "Giao thức I2C",
+    "date": "01-02-2026",
+    "author": "Peizzon",
+    "description": "Bài viết giới thiệu về giao thức I2C.",
+    "image": "img/i2c.png",
+    "tags": ["peripheral", "i2c"]
+  },
+
+  "2. dma": {
+    "title": "Giao thức DMA",
+    "date": "01-02-2026",
+    "author": "Peizzon",
+    "description": "Bài viết giới thiệu về giao thức DMA.",
+    "image": "img/dma.png",
+    "tags": ["peripheral", "dma"]
+  }
+}

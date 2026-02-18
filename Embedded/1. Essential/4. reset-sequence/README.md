@@ -1,5 +1,3 @@
-# Reset sequence
-
 Khi reset, CPU sẽ thực hiện theo sequence sau:
 - CPU sẽ đọc thanh ghi `SCB_VTOR` -> tìm bảng vector table nằm trên bộ nhớ. Đối với dòng arm, khi reset thì `SCB_VTOR = 0` -> CPU sẽ tìm đến địa chỉ `0x00000000`.
 - Gán giá trị của địa chỉ này vào MSP để quy định vùng nhớ stack

@@ -1,0 +1,37 @@
+﻿{
+  "1. overview": {
+    "title": "Multicore overview",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Tổng quan kiến trúc multicore.",
+    "image": "img/multi-core.webp",
+    "tags": ["multicore"]
+  },
+
+  "2. cache": {
+    "title": "Cache",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Nguyên lý bộ nhớ cache.",
+    "image": "img/multi-core.webp",
+    "tags": ["multicore", "memory"]
+  },
+
+  "3. đồng-bộ": {
+    "title": "Các cơ chế đồng bộ",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Đồng bộ trong hệ thống multicore.",
+    "image": "img/multi-core.webp",
+    "tags": ["multicore"]
+  },
+
+  "4. interrupt-handling": {
+    "title": "Interrupt handling",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Xử lý ngắt trong hệ thống đa core.",
+    "image": "img/multi-core.webp",
+    "tags": ["multicore", "interrupt"]
+  }
+}

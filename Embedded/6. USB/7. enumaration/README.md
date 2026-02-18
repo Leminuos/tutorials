@@ -1,0 +1,12 @@
+Khi một device được attach, host sử dụng một quá trình gọi là "bus enumeration" để nhận diện thiết bị. Các bước sẽ diễn ra như sau:
+- Khi một device được attach, host sẽ kết nối với device và cấp cho nó một dòng điện ban đầu là 100mA. Nếu device cần nhiều dòng điện hơn, nó có thể gửi request tới host trong quá trình enumeration.
+- Host phải nhận diện device speed được attach là low speed, full speed hay high speed thông qua điện trở pullup ở đường D+ hoặc D-.
+- Host chờ ít nhất 100 ms để đảm bảo nguồn điện tại device đã ổn định.
+- Host gửi tín hiệu reset signal, đưa thiết bị về trạng thái mặc định. Lúc này device ở địa chỉ mặc định là 0.
+- Host gửi request Get Descriptor và nhận toàn bộ 18 byte Device Descriptor trả về từ device, sau đó, host ngay lập tức gửi lại một tín hiệu reset trên bus.
+- Host gửi lệnh Set Address, gán một địa chỉ mới cho device, chuyển device sang trạng thái addressed state.
+- Host tiếp tục gửi request Get Descriptor tới địa chỉ mới và nhận toàn bộ 18 byte Device Descriptor trả về từ device.
+- Sau đó, host gửi request Configuration Descriptor để lấy thêm thông tin về device và device sẽ trả về đầy đủ toàn bộ nội dung liên quan đến configuration bao gồm interface descriptor, endpoint descriptor…
+- Host tiếp tục gửi request String Descriptor nếu nó được khai báo trong device descriptor.
+- Khi host đã biết được đầy đủ thông tin về device, host sẽ chọn driver phù hợp với device dựa trên những thông tin này.
+- Driver sẽ chọn configuration đã biết và gửi request Set Configuration tới device.

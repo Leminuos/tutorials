@@ -1,5 +1,3 @@
-# Systick timer
-
 Systick Timer là một timer đếm ngược 24 bit, nằm độc lập trong core. Xảy ra ngắt Systick khi giá trị thanh ghi counter về 0 và tự nạp lại giá trị được lưu trong reload value register.
 
 SysTick Timer bao gồm:

@@ -1,5 +1,3 @@
-# Cache
-
 Ta thấy phần lớn vi điều khiển là đơn core, nó thường không sử dụng cache, ví dụ như các dòng vi xử lý cortex-m0, cortex-m3,...Tại sao lại vậy? vì tốc độ của core chưa đến mức phải dùng đến cache.
 
 Core trong các vi điều khiển hầu hết đều có tốc độ clock thấp khoảng vài chục MHz, độ trễ khi truy cập vào RAM là không đáng kể. Từ đó, core chưa đủ nhanh để gặp hiện tượng "đói dữ liệu" khi phải chờ đợi RAM.

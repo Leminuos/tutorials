@@ -1,17 +1,100 @@
 ﻿{
   "0. overview": {
     "title": "Tổng quan ESP32",
-    "date": "02-10-2023",
-    "author": "Nguyen Ran",
-    "description": "Tổng quan về kiến trúc hệ thống của ESP32...",
-    "image": "img/chip-boot-flow.png",
-    "tags": ["Boot", "System"]
+    "date": "02-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết tổng quan về kiến trúc hệ thống của ESP32...",
+    "image": "img/esp32.jpg",
+    "tags": ["esp32"]
   },
-  "1. lvgl": {
-    "title": "LVGL Graphics Library",
-    "date": "05-10-2023",
-    "author": "Nguyen Ran",
-    "description": "Hướng dẫn sử dụng thư viện đồ họa LVGL trên ESP32",
-    "image": "img/lvgl_demo.png"
+  
+  "1. partition-table": {
+    "title": "Tổng quan partition table trong ESP-IDF",
+    "date": "26-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết hướng dẫn sử dụng partition table.",
+    "image": "img/esp32.jpg",
+    "tags": ["esp32"]
+  },
+
+  "2. cmake": {
+    "title": "Tổng quan cmake trong ESP-IDF",
+    "date": "26-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết hướng dẫn sử dụng file CMakeLists.txt trong esp-idf để thực hiện build system.",
+    "image": "img/esp32.jpg",
+    "tags": ["esp32", "cmake"]
+  },
+
+  "3. i2c": {
+    "title": "Các API giao thức I2C",
+    "date": "26-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết này hướng dẫn sử dụng các I2C API trong ESP-IDF.",
+    "image": "img/esp32.jpg",
+    "tags": ["esp32", "i2c"]
+  },
+
+  "4. fatfs-sdcard": {
+    "title": "FAT file system & VFS",
+    "date": "10-02-2026",
+    "author": "Peizzon",
+    "description": "Bài viết mô tả chi tiết về cấu trúc hệ thống tập tin FAT và cách sử dụng FAT trong ESP-IDF.",
+    "image": "img/esp32.jpg",
+    "tags": ["esp32", "fat"]
+  },
+
+  "5. nvs": {
+    "title": "NVS (Non‑Volatile Storage)",
+    "date": "10-02-2026",
+    "author": "Peizzon",
+    "description": "Bài viết hướng dẫn về NVS trong ESP-IDF, tập trung vào kiến trúc lưu trữ, phân vùng dữ liệu, garbage collection, bảo mật và quy trình factory provisioning cho firmware ESP32 ở môi trường sản xuất.",
+    "image": "img/esp32.jpg",
+    "tags": ["esp32", "nvs"]
+  },
+
+  "6. wifi": {
+    "title": "Kiến trúc wifi trong ESP-IDF",
+    "date": "10-02-2026",
+    "author": "Peizzon",
+    "description": "Kiến trúc và cơ chế hoạt động của Wi-Fi trong ESP-IDF, bao gồm event model, state machine, threading, memory và power management cho ESP32.",
+    "image": "img/esp32.jpg",
+    "tags": ["esp32", "wifi"]
+  },
+
+  "7. wifi-provisioning": {
+    "title": "Wifi provisioning",
+    "date": "10-02-2026",
+    "author": "Peizzon",
+    "description": "Cơ chế Wi-Fi provisioning trên ESP-IDF: transport, bảo mật, captive portal và re-provisioning cho thiết bị IoT.",
+    "image": "img/esp32.jpg",
+    "tags": ["esp32", "wifi"]
+  },
+
+  "8. bluetooth": {
+    "title": "Bluetooth audio",
+    "date": "10-02-2026",
+    "author": "Peizzon",
+    "description": "Tổng quan về bluetooth classic trên ESP-IDF và pipeline A2DP để truyền và phát audio.",
+    "image": "img/esp32.jpg",
+    "tags": ["esp32", "bluetooth"]
+  },
+
+  "9. audio": {
+    "title": "Audio",
+    "date": "10-02-2026",
+    "author": "Peizzon",
+    "description": "Kiến thức nền tảng về audio và cách triển khai nó trong ESP-IDF.",
+    "image": "img/esp32.jpg",
+    "tags": ["esp32"]
+  },
+
+  "10. lvgl": {
+    "title": "LVGL graphics library",
+    "date": "05-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết hướng dẫn sử dụng thư viện đồ họa LVGL trên ESP32",
+    "image": "img/esp32.jpg",
+    "tags": ["esp32", "lvgl"]
   }
 }

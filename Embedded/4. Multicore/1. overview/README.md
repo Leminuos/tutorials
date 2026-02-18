@@ -1,5 +1,3 @@
-# Multicore overview
-
 Trong nhiều thập kỷ, hiệu năng của bộ xử lý đơn nhân (single core) được nâng cao chủ yếu thông qua tăng xung nhịp và tối ưu kiến trúc. Tuy nhiên, các giới hạn vật lý về tiêu thụ điện năng và tản nhiệt đặt ra “bức tường hiệu năng” đối với các bộ xử lý đơn nhân. Để vượt qua những giới hạn này, ngành công nghiệp bán dẫn đã chuyển sang thiết kế bộ xử lý đa nhân (multicore), nơi nhiều nhân xử lý (core) được tích hợp lên cùng một bộ xử lý nhằm xử lý song song nhiều tác vụ cùng lúc.
 
 ## Concurrency vs parallelism

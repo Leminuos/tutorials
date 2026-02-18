@@ -149,7 +149,7 @@ CMake quản lý các dependency thông qua các scope:
 | **PUBLIC**    | ✔                           | ✔                                   |
 | **INTERFACE** | ✘                           | ✔                                   |
 
-## Dependency discovery
+### Dependency discovery
 
 CMake cung cấp hệ thống tìm kiếm dependence mạnh mẽ.
 
@@ -327,8 +327,6 @@ CMake cung cấp hai nhóm hàm:
 
 Trong CMake, variable là giá trị lưu trữ trong quá trình configure.
 
-### Built-in variables
-
 **Nhóm directory**
 
 | Biến                         | Ý nghĩa                                        |
@@ -363,6 +361,8 @@ Trong CMake, variable là giá trị lưu trữ trong quá trình configure.
 
 ## Construct 
 
+### Khái niệm
+
 Trong CMake, construct hiểu là các khối cú pháp cơ bản mà CMake cung cấp để diễn tả:
 - cấu trúc dự án
 - xử lý biến
@@ -387,7 +387,7 @@ Những hàm như:
 
 ### Construct function
 
-function() trong CMake được dùng để định nghĩa một khối logic tái sử dụng, nó:
+`function()` trong CMake được dùng để định nghĩa một khối logic tái sử dụng, nó:
 - có thể nhận tham số.
 - có scope riêng cho biến:
   + Biến tạo trong function không ảnh hưởng đến biến bên ngoài

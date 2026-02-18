@@ -1,5 +1,3 @@
-# Memory management
-
 ## Tại sao cần tự triển khai hệ thống quản lý bộ nhớ riêng?
 
 Một hệ điều hành RTOS cần các thành phần như task, queue, semaphore và mutex. Các thành phần này sẽ có hai chiến lực cấp pháp bộ nhớ:

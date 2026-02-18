@@ -1,5 +1,3 @@
-# Interrupt handling
-
 Như đã nói trong bài [interrupt](#/docs/embedded/essential/interrupt) thì luồng xử lý ngắt sẽ như sau:
 - Khi có sự kiện ngắt xảy ra, ngoại vi sẽ kích hoạt một IRQ signal trên đường IRQ.
 - Interrupt controller (NVIC trên Cortex-M, PIC trên x86) sẽ nhận IRQ signal này.

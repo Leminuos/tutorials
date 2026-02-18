@@ -1,0 +1,55 @@
+﻿{
+  "1. overview": {
+    "title": "Giới thiệu tổng quan về Makefile",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Khái niệm và nguyên lý hoạt động của Makefile.",
+    "image": "img/makefile.webp",
+    "tags": ["build-system", "makefile"]
+  },
+
+  "2. gcc-command": {
+    "title": "GCC command",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Quy trình sử dụng GCC để biên dịch chương trình.",
+    "image": "img/makefile.webp",
+    "tags": ["build-system", "makefile", "gcc"]
+  },
+
+  "2. variables": {
+    "title": "Makefile variables",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Hệ thống biến và cách sử dụng nó trong Makefile.",
+    "image": "img/makefile.webp",
+    "tags": ["build-system", "makefile"]
+  },
+
+  "3. function": {
+    "title": "Makefile function",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Các hàm xử lý chuỗi và list trong Makefile.",
+    "image": "img/makefile.webp",
+    "tags": ["build-system", "makefile"]
+  },
+
+  "4. direction": {
+    "title": "Direction",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Các directive include và vpath trong Makefile.",
+    "image": "img/makefile.webp",
+    "tags": ["build-system", "makefile"]
+  },
+
+  "5. command-arm-toolchain": {
+    "title": "Command arm toolchain",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Cách cấu hình GNU Arm Toolchain cho cross-compilation.",
+    "image": "img/makefile.webp",
+    "tags": ["build-system", "makefile", "arm-toolchain"]
+  }
+}

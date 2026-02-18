@@ -1,5 +1,3 @@
-# Thuật toán lập lịch
-
 ## Khái niệm quan trọng
 
 Trong hệ thống đơn core, tại một thời điểm thì chỉ có một task ở trạng thái running.

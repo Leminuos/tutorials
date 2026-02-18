@@ -1,0 +1,109 @@
+﻿{
+  "1. overview": {
+    "title": "RTOS - Real Time Operating System",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Giới thiệu hệ điều hành thời gian thực (RTOS).",
+    "image": "img/logo-freertos.png",
+    "tags": ["freertos"]
+  },
+
+  "2. task-management": {
+    "title": "Task",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Cơ chế task trong FreeRTOS.",
+    "image": "img/logo-freertos.png",
+    "tags": ["freertos"]
+  },
+
+  "3. scheduling": {
+    "title": "Thuật toán lập lịch",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Thuật toán lập lịch trong FreeRTOS.",
+    "image": "img/logo-freertos.png",
+    "tags": ["freertos"]
+  },
+
+  "4. memory-management": {
+    "title": "Memory management",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Quản lý bộ nhớ trong FreeRTOS.",
+    "image": "img/logo-freertos.png",
+    "tags": ["freertos"]
+  },
+
+  "5. đồng-bộ-hoá-và-mutual-exclusion": {
+    "title": "Đồng bộ hoá và mutual exclusion",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Cơ chế đồng bộ và mutual exclusion trong RTOS.",
+    "image": "img/logo-freertos.png",
+    "tags": ["freertos"]
+  },
+
+  "6. queue": {
+    "title": "Queue",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Hàng đợi truyền dữ liệu trong FreeRTOS.",
+    "image": "img/logo-freertos.png",
+    "tags": ["freertos"]
+  },
+
+  "7. semaphore": {
+    "title": "Semaphore",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Semaphore trong FreeRTOS.",
+    "image": "img/logo-freertos.png",
+    "tags": ["freertos"]
+  },
+
+  "8. mutex": {
+    "title": "Mutex",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Mutex và cơ chế bảo vệ tài nguyên trong FreeRTOS.",
+    "image": "img/logo-freertos.png",
+    "tags": ["freertos"]
+  },
+
+  "9. task-notification": {
+    "title": "Task nofification",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Cơ chế task notification trong FreeRTOS.",
+    "image": "img/logo-freertos.png",
+    "tags": ["freertos"]
+  },
+
+  "90. software-timer": {
+    "title": "Software timer",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Software timer trong FreeRTOS.",
+    "image": "img/logo-freertos.png",
+    "tags": ["freertos"]
+  },
+
+  "91. interrupt-management": {
+    "title": "Interrupt management",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Quản lý ngắt trong FreeRTOS.",
+    "image": "img/logo-freertos.png",
+    "tags": ["freertos", "interrupt"]
+  },
+
+  "92. debug": {
+    "title": "Các phương pháp debug",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Các kỹ thuật debug trong FreeRTOS.",
+    "image": "img/logo-freertos.png",
+    "tags": ["freertos", "debug"]
+  }
+}

@@ -1,5 +1,3 @@
-# Mutex
-
 ## Khái niệm
 
 Mutex là viết tắt của mutial exclusion, tức là loại trừ lẫn nhau, nó là một binary semaphore đặc biệt nhằm đảm bảo chỉ có **một task duy nhất được quyền truy cập vào tài nguyên tại một thời điểm**.

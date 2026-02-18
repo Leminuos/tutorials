@@ -80,24 +80,21 @@ Nếu không thì phải gửi qua gateway.
 ### Tổng hợp
 
 Router nhận một gói tin từ Internet, quá trình sẽ như sau:
-1. Router đọc IP đích của gói tin
-- Gói tin có địa chỉ đích: `192.168.1.10`.
-- Router kiểm tra trong bảng routing → thấy 192.168.1.10 nằm trong LAN.
-
-2. Router cần biết MAC tương ứng với IP này
-- Router sẽ tra bảng ARP cache (bảng ánh xạ IP ↔ MAC).
-- Nếu chưa có, router gửi broadcast ARP: *"Ai là 192.168.1.10, cho tôi biết MAC của bạn?"*
-- ESP32 trả lời: *"Tôi là 192.168.1.10, MAC của tôi là AA:BB:CC:DD:EE:01"*.
-- Router lưu lại ánh xạ này trong bảng ARP.
-
-3. Router đóng gói gói tin với MAC đích
-- IP đích = `192.168.1.10`.
-- MAC đích = `AA:BB:CC:DD:EE:01`.
-- Gói tin được gửi đi trong LAN thông qua Wi-Fi hoặc Ethernet.
-
-4. ESP32 nhận gói
-- Card Wi-Fi của ESP32 lắng nghe gói có MAC `AA:BB:CC:DD:EE:01`.
-- Khi nhận được, nó giải đóng gói Ethernet, thấy IP đúng là `192.168.1.10` → chuyển tiếp cho stack TCP/IP xử lý.
+- Router đọc IP đích của gói tin
+  - Gói tin có địa chỉ đích: `192.168.1.10`.
+  - Router kiểm tra trong bảng routing → thấy 192.168.1.10 nằm trong LAN.
+- Router cần biết MAC tương ứng với IP này
+  - Router sẽ tra bảng ARP cache (bảng ánh xạ IP ↔ MAC).
+  - Nếu chưa có, router gửi broadcast ARP: *"Ai là 192.168.1.10, cho tôi biết MAC của bạn?"*
+  - ESP32 trả lời: *"Tôi là 192.168.1.10, MAC của tôi là AA:BB:CC:DD:EE:01"*.
+  - Router lưu lại ánh xạ này trong bảng ARP.
+- Router đóng gói gói tin với MAC đích
+  - IP đích = `192.168.1.10`.
+  - MAC đích = `AA:BB:CC:DD:EE:01`.
+  - Gói tin được gửi đi trong LAN thông qua Wi-Fi hoặc Ethernet.
+- ESP32 nhận gói
+  - Card Wi-Fi của ESP32 lắng nghe gói có MAC `AA:BB:CC:DD:EE:01`.
+  - Khi nhận được, nó giải đóng gói Ethernet, thấy IP đúng là `192.168.1.10` → chuyển tiếp cho stack TCP/IP xử lý.
 
 ## OSI & TCP/IP
 
@@ -122,39 +119,6 @@ Không như giao thức UDP – giao thức có thể lập tức gửi bản ti
 - Thiết lập kết nối (3-way handshake)
 - Truyền dữ liệu
 - Kết thúc kết nối (4-way handshake)
-
-### Các cơ chế đảm bảo độ tin cậy của TCP
-
-**Sequence number**
-
-- sequence number là một số ngẫu nhiên.
-- Mỗi byte dữ liệu được gửi đi, TCP sẽ đánh số thứ tự là sequence number.
-- Sau mỗi byte dữ liệu, sequence number sẽ tăng lên.
-- Bên nhận sẽ dựa vào sequence number để sắp xếp đúng thứ tự các gói dữ liệu, ngay cả khi chúng đến không đúng trình tự.
-
-Ví dụ: 
-
-```
-Client gửi:
-Seq=1000 (dữ liệu "abc")
-Seq=1003 (dữ liệu "def")
-```
-
-Nếu gói Seq=1003 đến trước, bên nhận vẫn đợi gói 1000, không chuyển dữ liệu lên ứng dụng cho đến khi đủ.
-
-**Acknowledgment Number**
-
-- Sau khi nhận được gói dữ liệu, TCP gửi lại ACK để xác nhận.
-- ACK = Sequence Number cuối cùng nhận được + 1.
-- Nếu trong một khoảng thời gian không nhận được ACK, thì bên gửi sẽ retransmit lại gói dữ liệu.
-
-**Checksum**
-
-- Mỗi gói TCP có trường checksum (16 bit).
-- Khi gửi, TCP tính checksum dựa trên toàn bộ header + payload.
-- Khi nhận, bên kia tính lại và so sánh:
-  + Nếu sai → bỏ gói, không gửi ACK.
-  + Bên gửi thấy không có ACK → tự retransmit.
 
 ### 3-Way Handshake
 
@@ -202,6 +166,39 @@ Nếu gói Seq=1003 đến trước, bên nhận vẫn đợi gói 1000, không 
 
 - Client gửi ACK=1 xác nhận.
 - Sau đó Client bước vào trạng thái TIME_WAIT (thường khoảng 2 phút) để đảm bảo nếu gói cuối bị trễ, server vẫn nhận được ACK.
+
+### Các cơ chế đảm bảo độ tin cậy của TCP
+
+**Sequence number**
+
+- sequence number là một số ngẫu nhiên.
+- Mỗi byte dữ liệu được gửi đi, TCP sẽ đánh số thứ tự là sequence number.
+- Sau mỗi byte dữ liệu, sequence number sẽ tăng lên.
+- Bên nhận sẽ dựa vào sequence number để sắp xếp đúng thứ tự các gói dữ liệu, ngay cả khi chúng đến không đúng trình tự.
+
+Ví dụ: 
+
+```
+Client gửi:
+Seq=1000 (dữ liệu "abc")
+Seq=1003 (dữ liệu "def")
+```
+
+Nếu gói Seq=1003 đến trước, bên nhận vẫn đợi gói 1000, không chuyển dữ liệu lên ứng dụng cho đến khi đủ.
+
+**Acknowledgment Number**
+
+- Sau khi nhận được gói dữ liệu, TCP gửi lại ACK để xác nhận.
+- ACK = Sequence Number cuối cùng nhận được + 1.
+- Nếu trong một khoảng thời gian không nhận được ACK, thì bên gửi sẽ retransmit lại gói dữ liệu.
+
+**Checksum**
+
+- Mỗi gói TCP có trường checksum (16 bit).
+- Khi gửi, TCP tính checksum dựa trên toàn bộ header + payload.
+- Khi nhận, bên kia tính lại và so sánh:
+  + Nếu sai → bỏ gói, không gửi ACK.
+  + Bên gửi thấy không có ACK → tự retransmit.
 
 ### Sự khác nhau giữa UDP và TCP
 

@@ -1,5 +1,3 @@
-# Memory
-
 ## Memory mapped
 
 Thanh ghi Non – Memory Mapped, là những thanh ghi nằm trong core và không có bất kỳ địa chỉ nào để truy cập chúng từ chương trình C => Muốn truy cập phải dùng tập lệnh Assembly.

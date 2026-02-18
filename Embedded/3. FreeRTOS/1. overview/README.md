@@ -1,5 +1,3 @@
-# RTOS - Real Time Operating System
-
 ## Mở đầu
 
 RTOS - Real-Time Operating system hay hệ điều hành thời gian thực, sử dụng trong những ứng dụng yêu cầu về thời gian đáp ứng nhanh với độ chính xác cao về thời gian.

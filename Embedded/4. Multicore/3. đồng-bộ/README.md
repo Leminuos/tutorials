@@ -1,5 +1,3 @@
-# Các cơ chế đồng bộ
-
 ## Atomic operation
 
 Như đã nói trong bài [Đồng bộ hoá và mutual exclusion](#/docs/embedded/freertos/dong-bo-hoa-va-mutual-exclusion), khi hai hoặc nhiều task cùng sử dụng biến toàn cục mà không có cơ chế critical section thì rất dễ xảy ra race condition.

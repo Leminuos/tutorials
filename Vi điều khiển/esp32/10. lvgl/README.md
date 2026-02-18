@@ -30,6 +30,8 @@ Có hai mô hình virtual display buffer:
 - Single buffer: 1 vùng ram, lvgl sẽ draw pixel rồi được flush ra màn hình.
 - Double buffer: 2 vùng ram, lvgl có thể draw vào buffer A, trong khi driver đang flush buffer B (nếu có hỗ trợ DMA).
 
+![LVGL timer](img/lvgl-timer.png)
+
 ## Triển khai lvgl
 
 Đây là các biết triển khai cho lvgl version 9, sử dụng framework esp-idf và sử dụng màn hình là ili9341.
