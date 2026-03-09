@@ -105,5 +105,14 @@
     "description": "Các kỹ thuật debug trong FreeRTOS.",
     "image": "img/logo-freertos.png",
     "tags": ["freertos", "debug"]
+  },
+
+  "93. streambuffer": {
+    "title": "Stream buffer",
+    "date": "10-01-2026",
+    "author": "Peizzon",
+    "description": "Stream buffer trong FreeRTOS.",
+    "image": "img/logo-freertos.png",
+    "tags": ["freertos"]
   }
 }

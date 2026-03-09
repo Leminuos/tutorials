@@ -1,13 +1,14 @@
 ## Mục lục
-[Tổng quan](#1-tổng-quan)
-[Kiến thức phần cứng](#2-kiến-thức-phần-cứng)
-[Kiến thức cơ bản về Pulse code modulation](#3-kiến-thức-cơ-bản-về-pulse-code-modulation)
-[Giao thức I2S](#4-giao-thức-i2s)
-[Driver I2S trong ESP-IDF](#5-driver-i2s-trong-esp-idf)
-[Cấu trúc file wav](#6-cấu-trúc-file-wav)
-[Cấu trúc file mp3](#7-cấu-trúc-file-mp3)
-[Lookup table](#8-lookup-table)
-[Workflow xử lý audio](#9-workflow-xử-lý-audio)
+[1. Tổng quan](#1-tổng-quan)
+[2. Kiến thức phần cứng](#2-kiến-thức-phần-cứng)
+[3. Kiến thức cơ bản về Pulse code modulation](#3-kiến-thức-cơ-bản-về-pulse-code-modulation)
+[4. Giao thức I2S](#4-giao-thức-i2s)
+[5. Driver I2S trong ESP-IDF](#5-driver-i2s-trong-esp-idf)
+[6. Cấu trúc file wav](#6-cấu-trúc-file-wav)
+[7. Cấu trúc file mp3](#7-cấu-trúc-file-mp3)
+[8. Lookup table](#8-lookup-table)
+[9. Tool `FFmpeg`](#9-tool-ffmpeg)
+[10. Workflow xử lý audio](#10-workflow-xử-lý-audio)
 
 ## 1. Tổng quan
 
@@ -599,7 +600,61 @@ static const int bitrate_table[16][2] = {
 };
 ```
 
-## 9. Workflow xử lý audio
+## 9. Tool `FFmpeg`
+
+FFmpeg là một bộ công cụ open source bao gồm các thư viện và chương trình để xử lý dữ liệu media (âm thanh, video, hình ảnh). Ta có thể sử dụng tool này để convert file mp3 sang các file `.wav` hoặc `.raw`.
+
+Cách cài đặt:
+- Windows: Tải file `.zip` từ trang chủ [ffmpeg.org](https://ffmpeg.org/), giải nén và thêm đường dẫn thư mục bin vào **Environment Variables (PATH)**.
+- Linux: `sudo apt install ffmpeg`.
+
+Cấu trúc lệnh cơ bản của FFmpeg là:
+
+```bash
+ffmpeg -i [file_đầu_vào] [các_thông_số_tùy_chọn] [file_đầu_ra]
+```
+
+**Convert mp3 sang wav**
+
+Như đã nói ở trên, file `.wav` là định dạng không nén (hoặc nén không mất dữ liệu) có chứa header. Nên việc convert từ mp3 sang wav khá dễ dàng:
+
+```bash
+ffmpeg -i input.mp3 output.wav
+```
+
+FFmpeg sẽ tự động hiểu ta muốn chất lượng tốt nhất từ file gốc.
+
+**Convert mp3 sang raw**
+
+File `.raw` khác `.wav` ở chỗ nó không có header. Khi mở một file `.raw`, software sẽ không biết sample rate hay số channel là bao nhiêu trừ khi ta chỉ định rõ.
+
+Để chuyển sang `.raw` (thường là định dạng PCM 16-bit, little endian):
+
+```bash
+ffmpeg -i input.mp3 -f s16le -acodec pcm_s16le output.raw
+```
+
+Trong đó:
+- `-f s16le`: Ép định dạng đầu ra là signed 16-bit little-endian.
+- `-acodec pcm_s16le`: Sử dụng thông số PCM tương ứng với từ file mp3.
+
+Hoặc ta cũng có thể ép các thông số PCM bằng cách sử dụng:
+
+```bash
+ffmpeg -i input.mp3 -f s16le -ar 44100 -ac 2 output.raw
+```
+
+Hoặc
+
+```bash
+ffmpeg -i input.mp3 -af "volume=0.5" -f s16le -ar 44100 -ac 2 output.raw
+```
+
+- `-ar 44100`: Sample rate.
+- `-ac 2`: Số channel.
+- `-af "volume=0.5"`: Software volune, giảm âm lượng xuống còn 50% so với gốc.
+
+## 10. Workflow xử lý audio
 
 Dưới đây là sơ đồ workflow từ lúc chưa có gì cho đến khi loa phát ra tiếng:
 

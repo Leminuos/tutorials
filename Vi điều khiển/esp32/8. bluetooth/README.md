@@ -13,6 +13,7 @@
 - [Giải thích các event trong callback](#7-giải-thích-các-event-trong-callback)
   - [GAP callback event](#71-gap-callback-event)
   - [A2DP callback event](#72-a2dp-callback-event)
+  - [Data callback](#73-data-callback)
 
 ## 1. Bluetooth là gì?
 
@@ -163,25 +164,36 @@ Tại giai đoạn này, sẽ có một số event được trigger là:
 
 ### 3.2. Pairing — Ghép đôi và bảo mật
 
-**Mục đích:** Hai thiết bị trao đổi link key để mã hóa kết nối và xác thực lẫn nhau.
+Pairing là quá trình thiết lập một mối quan hệ tin cậy giữa hai thiết bị Bluetooth (Source và Sink). Quá trình này bao gồm các bước:
+- IO Capability Exchange: Hai bên trao đổi khả năng hiển thị/nhập liệu (ví dụ: có màn hình không, có nút bấm không).
+- Authentication: Hai thiết bị trao đổi các thông tin bảo mật để tạo ra một khóa chung (Link Key). Mục đích là để thiết lập một kênh truyền tin an toàn.
+- Bonding: Sau khi pairing thành công, thiết bị source sẽ tự động lưu thông tin thiết bị đã ghép đôi vào NVS để sử dụng cho các lần sau mà không cần thực hiện lại bước xác thực phức tạp.
 
-**Phương thức:** Simple Secure Pairing (SSP) — Bluetooth 2.1+
-
-**4 chế độ pairing:**
+**Các chế độ pairing:**
 
 | Mode | Điều kiện | Bảo mật | Cách thực hiện |
 | ---- | --------- | ------- | -------------- |
-| Numeric Comparison | Cả hai có display + button | Cao | Hiển thị 6 chữ số, người dùng xác nhận |
-| Passkey Entry | Một bên có keyboard | Cao | Nhập PIN hiển thị ở bên kia |
-| Just Works | Không display/keyboard | Thấp | Tự động accept — dùng cho ESP32 |
+| Numeric Comparison | Cả source và sink có display + button | Cao | Hiển thị 6 chữ số, người dùng xác nhận |
+| Passkey Entry | Source có display, sink có keyboard | Cao | Nhập PIN hiển thị ở bên kia |
+| Just Works | Cả source và sink không có display/keyboard | Thấp | Tự động accept — dùng cho ESP32 |
 | Out of Band (OOB) | Có kênh khác (NFC) | Rất cao | Trao đổi key qua NFC |
 
 > ESP32 A2DP thường dùng just works với `ESP_BT_IO_CAP_NONE`.
 
-**Pairing vs Bonding:**
+**Bonding**
 
-|     | Pairing | Bonding |
-| --- | ------- | ------- |
+Cơ chế hoạt động của bonding trên esp32: Khi quá trình Pairing hoàn tất, Link Key và địa chỉ MAC (`BD_ADDR`) của sink sẽ được lưu vào một phân vùng NVS riêng do bluetooth stack quản lý. Khi khởi động lại ESP32 (Source), nó sẽ đọc danh sách các "Bonded devices" từ NVS. Thay vì phải discovery lại từ đầu, source có thể thực hiện lệnh kết nối trực tiếp (`esp_a2d_source_connect`) tới địa chỉ MAC đã lưu.
+
+ESP-IDF cung cấp các hàm để ta kiểm tra xem có bao nhiêu thiết bị đã từng kết nối:
+- `esp_bt_gap_get_bond_device_num()`: Lấy số lượng thiết bị đã ghép đôi.
+- `esp_bt_gap_get_bond_device_list()`: Lấy danh sách địa chỉ MAC của các thiết bị đó.
+
+Ngoài ra, nếu ta muốn source quên sink cũ để kết nối với sink mới, ta có thể gọi hàm `esp_bt_gap_remove_bonded_device(address)` để xóa thông tin liên quan đến sink đó.
+
+Sự khác biệt giữa pairing không bonding và bonding:
+
+|     | Không bonding | Bonding |
+| --- | ------------- | ------- |
 | Định nghĩa | Xác thực một lần | Lưu link key vào NVS |
 | Thời gian | Mỗi lần kết nối | Một lần, dùng lại sau |
 | Kết quả | Link Key tạm thời | Link Key permanent |
@@ -231,7 +243,7 @@ Tại giai đoạn này, sẽ có một số event được trigger là:
 | `ESP_A2D_AUDIO_CFG_EVT` | Khi sink thông báo codec config |
 | `ESP_A2D_MEDIA_CTRL_ACK_EVT` | Khi media control command được ACK |
 
-### 3.4. Data Transfer — Truyền dữ liệu audio
+### 3.4. Data transfer — Truyền dữ liệu audio
 
 **Mục đích:** Stream audio data từ source đến sink.
 
@@ -270,6 +282,25 @@ Nếu không có profile, hãng A có thể gửi packet theo cấu trúc khác 
 | AVRCP	  | Audio/Video Remote Control Profile | Điều khiển phát nhạc: play, pause, skip, volume |
 | HFP	  | Hands-Free Profile | Audio 2 chiều cho cuộc gọi điện thoại |
 | HID	  | Human Interface Device Profile | Điều khiển qua bàn phím, chuột bluetooth |
+
+### AVRCP - Audio/Video Remote Control Profile
+
+AVRCP là giao thức bluetooth cho phép điều khiển các trình phát media từ xa. Thay vì chỉ nghe nhạc, AVRCP giúp ta có thể bấm nút trên loa để chuyển bài trên điện thoại, hoặc hiển thị tên bài hát từ điện thoại lên màn hình của esp32.
+
+Thiết bị hỗ trợ AVRCP luôn đóng một trong hai vai trò hoặc cả hai:
+- Controller (CT): Thiết bị gửi lệnh.
+- Target (TG): Thiết bị nhận và thực thi lệnh.
+
+Ta không thể dùng AVRCP một mình mà thường phải đi đôi với A2DP.
+- A2DP: Truyền luồng dữ liệu âm thanh (Data stream).
+- AVRCP: Truyền tín hiệu điều khiển (Control signals).
+
+Ví dụ: Khi dùng esp32 làm loa bluetooth (A2DP Sink), esp32 sẽ nhận nhạc qua A2DP, nhưng đồng thời nó cũng đóng vai trò AVRCP controller để ta có thể gửi lệnh "next bài" ngược lại điện thoại.
+
+Khi làm việc với esp32, ta thường sẽ quan tâm đến 3 nhóm tính năng sau:
+- Remote control: Gửi các lệnh cơ bản như PLAY, PAUSE, STOP, NEXT, PREVIOUS.
+- Metadata information: Lấy thông tin bài hát đang phát (Tên bài hát, Nghệ sĩ, Album, Thời lượng).
+- Absolute volume: Đồng bộ mức âm lượng. Khi ta tăng âm lượng trên điện thoại, esp32 sẽ biết để điều chỉnh tương ứng và ngược lại.
 
 ### SBC codec
 
@@ -517,7 +548,6 @@ static void bt_app_a2d_cb(esp_a2d_cb_event_t event,
 
 Đăng ký bằng `esp_bt_gap_register_callback(callback)`. Callback prototype: `void cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)`.
 
-
 **1. `ESP_BT_GAP_DISC_RES_EVT` — Tìm thấy thiết bị**
 
 Kích hoạt mỗi lần scan thấy một thiết bị. Chỉ xảy ra ở source sau khi gọi `esp_bt_gap_start_discovery()`.
@@ -571,6 +601,40 @@ case ESP_BT_GAP_DISC_RES_EVT: {
     break;
 }
 ```
+
+Một số device mà ta không thể đọc được device name thông qua thuộc tính `ESP_BT_GAP_DEV_PROP_BDNAME`. Lúc này, ta sẽ có hai phương án:
+
+**Phương án 1: Tìm device name trong Extended Inquiry Response data**
+
+```c
+case ESP_BT_GAP_DISC_RES_EVT: {
+    uint8_t *p_name = NULL;
+    uint8_t name_len = 0;
+    
+    p_name = esp_bt_gap_resolve_eir_data(eir,
+                    ESP_BT_EIR_TYPE_CMPL_LOCAL_NAME, &name_len);
+    
+    if (!p_name)
+        p_name = esp_bt_gap_resolve_eir_data(eir,
+                    ESP_BT_EIR_TYPE_SHORT_LOCAL_NAME, &name_len);
+
+    if (p_name) {
+        printf("Tìm thấy thiết bị: %s\n", p_name);
+    }
+
+    break;
+}
+```
+
+**Phương án 2: Remote Name Request**
+
+Nếu phương án 1 trả về `NULL`, ta phải đợi quá trình discovery kết thúc, sau đó gọi hàm này cho địa chỉ MAC mà ta muốn đọc device name:
+
+```c
+esp_bt_gap_read_remote_name(remote_bda);
+```
+
+Sau đó, tên sẽ trả về trong một sự kiện khác là: `ESP_BT_GAP_READ_REMOTE_NAME_EVT`.
 
 **2. `ESP_BT_GAP_DISC_STATE_CHANGED_EVT` — Discovery state thay đổi**
 
@@ -794,6 +858,93 @@ case ESP_A2D_MEDIA_CTRL_ACK_EVT:
              param->media_ctrl_stat.status);
     break;
 ```
+
+## 8. Data callback
+
+Khi ESP32 đóng vai trò A2DP Source (nguồn phát nhạc), nhiệm vụ cốt lõi là cung cấp dữ liệu PCM cho BT stack để encode thành SBC rồi gửi đến loa/tai nghe. Việc này xảy ra thông qua data callback:
+
+```c
+// Đăng ký khi init
+esp_a2d_source_register_data_callback(my_data_cb);
+```
+
+```c
+// BT stack gọi hàm này khi cần data
+static int32_t my_data_cb(uint8_t *buf, int32_t len)
+{
+    size_t got = xStreamBufferReceive(s_stream_buf, buf, len, 0);
+    if ((int32_t)got < len) {
+        memset(buf + got, 0, len - got);  // thiếu data → silence
+    }
+    return len;
+}
+```
+
+Đặc điểm quan trọng của data callback:
+- Chạy trên BT stack task (Core 0) — block ở đây sẽ treo toàn bộ Bluetooth
+- Được gọi khoảng 345 lần/giây, mỗi lần yêu cầu 512 bytes
+- Tổng throughput: 512 × 345 ≈ 176,400 bytes/s = 44100 Hz × 2 ch × 16 bit
+- Phải trả về trong vài ms — chỉ nên memcpy, không được fread/malloc/lock mutex
+- Nếu return 0 → BT stack hiểu "không có data" → có thể tự suspend stream
+
+## 8.1. Khi nào data callback được gọi?
+
+Data callback không phải lúc nào cũng chạy. Sau khi đăng ký bằng `esp_a2d_source_register_data_callback`, nó vẫn im lặng hoàn toàn cho đến khi có đủ 2 điều kiện:
+
+1. A2DP connection đã thiết lập — ESP32 đã kết nối với sink (loa/tai nghe)
+2. Audio stream đã được **START** — BT stack nhận lệnh bắt đầu stream
+
+Điều kiện (1) xảy ra tự động khi `esp_a2d_source_connect(bda)` thành công. Còn điều kiện (2) chính là vai trò của API `esp_a2d_media_ctrl`.
+
+```c
+esp_err_t esp_a2d_media_ctrl(esp_a2d_media_ctrl_t ctrl);
+```
+
+Hàm này là công tắc điều khiển khi nào BT stack bắt đầu và dừng gọi data callback. Nó gửi lệnh điều khiển media đến sink thông qua giao thức AVDTP.
+
+Hàm không đồng bộ (asynchronous) — gọi xong trả về ngay, kết quả thực tế sẽ bắn qua callback `ESP_A2D_MEDIA_CTRL_ACK_EVT`.
+
+### 8.2. Lệnh `ESP_A2D_MEDIA_CTRL_START`
+
+Đây là lệnh quan trọng nhất. Gọi lệnh này để kích hoạt data callback và bắt đầu stream audio đến sink.
+
+**BT stack xử lý:**
+
+![Media ctrl start](img/04-data-callback.png)
+
+### 8.3. Lệnh `ESP_A2D_MEDIA_CTRL_STOP`
+
+Lệnh này ngược lại với lệnh START và có nhiệm vụ dừng stream audio.
+
+**BT stack xử lý:**
+
+![Media ctrl stop](img/05-data-callback.png)
+
+**Quan trọng:**
+- `STOP` chỉ suspend stream, không ngắt kết nối A2DP
+- Connection vẫn giữ nguyên — có thể gọi `START` lại bất cứ lúc nào
+- Sau `STOP`, sink thường hiển thị "paused" (không phải "disconnected")
+- Muốn ngắt kết nối hẳn → dùng `esp_a2d_source_disconnect(bda)`
+
+### 8.3. ACK Event chi tiết
+
+Mọi lệnh `esp_a2d_media_ctrl` đều trigger callback event `ESP_A2D_MEDIA_CTRL_ACK_EVT`:
+
+**Bảng giá trị cmd:**
+
+| cmd | Macro | Ý nghĩa |
+|-----|-------|---------|
+| 1 | `ESP_A2D_MEDIA_CTRL_CHECK_SRC_RDY` | Kiểm tra source ready |
+| 2 | `ESP_A2D_MEDIA_CTRL_START` | Bắt đầu stream |
+| 3 | `ESP_A2D_MEDIA_CTRL_STOP` | Dừng stream |
+
+**Bảng giá trị status:**
+
+| status | Macro | Ý nghĩa |
+|--------|-------|---------|
+| 0 | `ESP_A2D_MEDIA_CTRL_ACK_SUCCESS` | Thành công |
+| 1 | `ESP_A2D_MEDIA_CTRL_ACK_FAILURE` | Thất bại |
+| 2 | `ESP_A2D_MEDIA_CTRL_ACK_BUSY` | BT stack đang xử lý lệnh khác |
 
 ## Tài liệu tham khảo
 

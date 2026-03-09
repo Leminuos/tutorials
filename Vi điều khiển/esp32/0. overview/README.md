@@ -1,15 +1,16 @@
 ## Mục lục
 
-- [Đặc điểm](#1-đặc-điểm)
-- [ESP32 pinout](#2-esp32-pinout)
-- [ESP32 schematic](#3-esp32-schematic)
-- [Strapping pin](#4-strapping-pin)
-- [GPIO matrix](#5-gpio-matrix)
-- [Boot process](#6-boot-process)
-  - [Boot rom](#61-boot-rom)
-  - [Second stage bootloader](#62-second-stage-bootloader)
-  - [Application startup](#63-application-starup)
-- [Một số lệnh thường dùng](#7-một-số-lệnh-thường-dùng)
+- [1. Đặc điểm](#1-đặc-điểm)
+- [2. ESP32 pinout](#2-esp32-pinout)
+- [3. ESP32 schematic](#3-esp32-schematic)
+- [4. Strapping pin](#4-strapping-pin)
+- [5. GPIO matrix](#5-gpio-matrix)
+- [6. Task watchdog timer (TWDT)](#6-task-watchdog-timer-twdt)
+- [7. Boot process](#7-boot-process)
+  - [7.1. Boot rom](#71-boot-rom)
+  - [7.2. Second stage bootloader](#72-second-stage-bootloader)
+  - [7.3. Application startup](#73-application-starup)
+- [8. Một số lệnh thường dùng](#8-một-số-lệnh-thường-dùng)
 
 ## 1. Đặc điểm
 
@@ -99,9 +100,13 @@ Không phải chân pin nào cũng có thể sử dụng GPIO Matrix:
 Khi thiết kế mạch, hãy luôn ưu tiên dùng các chân GPIO từ 34 đến 39 cho các nút nhấn hoặc cảm biến, và để dành các chân GPIO như 16, 17, 18, 19, 21, 22, 23...cho các chức năng output phức tạp cần qua GPIO matrix như SPI, I2C, UART,...
 :::
 
-## 6. Boot process
+## 6. Task watchdog timer (TWDT)
 
-### 6.1. Boot rom
+
+
+## 7. Boot process
+
+### 7.1. Boot rom
 
 Firmware được nạp sẵn trong ROM của ESP32 và không thể sửa đổi. Nó được chạy ngay khi reset và tuỳ thuộc vào reset reason mà có cách thức xử lý khác nhau:
 - Reset khi power on sequence, software system reset và watchdog system reset: Thực hiện kiểm tra chân strapping pin GPIO0:
@@ -112,7 +117,7 @@ Firmware được nạp sẵn trong ROM của ESP32 và không thể sửa đổ
 
 ![Chip boot flow](img/chip-boot-flow.png)
 
-### 6.2. Second stage bootloader
+### 7.2. Second stage bootloader
 
 Đây là bootloader được load từ flash bắt đầu từ offset 0x1000. Source của Second Stage Bootloader nằm tại thư mục `components/bootloader` của ESP-IDF.
 
@@ -128,7 +133,7 @@ Bootloader này thực hiện:
   + DRAM: Chứa dữ liệu khởi tạo và chưa khởi tạo.
 - Nhảy tới entry point của application.
 
-### 6.3. Application starup
+### 7.3. Application starup
 
 Application starup thực hiện một số khởi tạo trước khi hàm `app_main` bắt đầu chạy. Điều này chia thành ba giai đoạn:
 
@@ -136,7 +141,7 @@ Application starup thực hiện một số khởi tạo trước khi hàm `app_
 - Khởi tạo system: Chạy hàm `start_cpu0`, mặc định hàm này được ghi đè bởi hàm `start_cpu0_default` nằm trong file `$IDF_PATH/components/esp_system/startup.c`.
 - Chạy `main_task` và gọi `app_main`.
 
-## 7. Một số lệnh thường dùng
+## 8. Một số lệnh thường dùng
 
 **Chỉnh thông số của project (bộ nhớ flash, tốc độ, GPIO,...)**
 
