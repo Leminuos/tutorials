@@ -102,7 +102,67 @@ Khi thiết kế mạch, hãy luôn ưu tiên dùng các chân GPIO từ 34 đ�
 
 ## 6. Task watchdog timer (TWDT)
 
+### 6.1. Watchdog timer là gì?
 
+Watchdog Timer (WDT) là cơ chế giám sát hệ thống, được thiết kế để phát hiện và phục hồi khi firmware bị treo hoặc một task chiếm CPU quá lâu mà không nhường quyền điều khiển.
+
+Bản chất của nó là một bộ timer chạy ngầm và nó tách biệt với bus CPU. Nhiệm vụ duy nhất của nó là đếm ngược:
+- Khi nó đếm về đến 0, nó sẽ kích hoạt một hành động (thường là khởi động lại CPU).
+- Để ngăn nó đếm về 0, các task trong code phải liên tục reset nó. Điều này có thuật ngữ gọi là "cho chó ăn" (Feeding the dog).
+
+Khi lập trình có những tình huống gây ra vấn đề hệ thống làm treo máy mà ta không lường trước được, có thể là:
+- Một đoạn code bị kẹt khiến các tác vụ khác không thể chạy.
+- Một task có độ ưu tiên quá cao chiếm hết CPU, khiến các task hệ thống quan trọng khác bị "chết đói".
+- Một cảm biến lỗi phần cứng không phản hồi khiến code đợi mãi mãi.
+
+Đây là các tính huống mà ta cần WDT, nó sẽ tự khởi động lại để cố gắng đưa hệ thống về trạng thái hoạt động bình thường.
+
+### 6.2. Cơ chế hoạt động trong ESP-IDF
+
+Trong ESP-IDF, không phải mọi task đều bị watchdog theo dõi. TWDT hoạt động dựa trên một danh sách các task đã đăng ký.
+
+Mặc định khi khởi tạo, ESP-IDF sẽ tự động đăng ký các Idle task của core CPU0 và CPU1 vào danh sách này.
+
+Nếu ta muốn giám sát một task quan trọng của mình, ta phải gọi hàm `esp_task_wdt_add(TaskHandle_t handle)`. Nếu truyền `NULL`, nó sẽ tự đăng ký task hiện tại. Và nếu task đó không gọi `esp_task_wdt_reset()` trong thời gian timeout thì TWDT sẽ trigger.
+
+```c
+#include "esp_task_wdt.h"
+
+void my_task(void *arg) {
+    // Đăng ký task này vào TWDT
+    esp_task_wdt_add(NULL); // NULL = task hiện tại
+
+    while (1) {
+        do_work();
+        esp_task_wdt_reset(); // phải gọi định kỳ trước khi timeout
+        vTaskDelay(pdMS_TO_TICKS(100));
+    }
+
+    esp_task_wdt_delete(NULL); // hủy đăng ký khi task kết thúc
+}
+```
+
+Đến đây thì ta có thể hiểu logic của các lỗi WDT trigger: Nếu ta viết một task có độ ưu tiên cao mà chạy liên tục mà không gọi `vTaskDelay()` hoặc không nhường quyền điều khiển thì idle task (có độ ưu tiên thấp) sẽ không bao giờ được chạy -> Không reset WDT -> WDT bị trigger -> Hệ thống reset. Điều này dùng để tránh một task chiếm hết CPU.
+
+### 6.3. Cấu hình timeout của TWDT
+
+Thông số thời gian timeout của TWDT không cố định mà có thể tùy chỉnh, nhưng có giá trị mặc định như sau là 5 giây (5000ms).
+
+Ta có thể tìm thấy và thay đổi thông số này trong cấu hình dự án:
+
+Mở giao diện cấu hình: `idf.py menuconfig`
+
+Di chuyển đến đường dẫn:
+
+```
+Component config -> ESP System Settings -> Task Watchdog timeout period (seconds).
+```
+
+Ta có thể đặt từ 1 giây đến hàng chục giây tùy thuộc vào độ nặng của các task trong dự án.
+
+:::warning Lưu ý
+Nếu ta đặt quá ngắn (ví dụ 1 giây), hệ thống rất dễ bị reset nhầm khi thực hiện các task tốn thời gian như kết nối wifi hoặc ghi file vào flash.
+:::
 
 ## 7. Boot process
 

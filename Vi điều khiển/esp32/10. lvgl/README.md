@@ -94,19 +94,17 @@ Trong đó:
 
 ### Các animation type
 
-| Animation Type |
-|---|---|
-| `LV_SCR_LOAD_ANIM_NONE` |
-| `LV_SCR_LOAD_ANIM_FADE_IN` |
-| `LV_SCR_LOAD_ANIM_FADE_OUT` |
-| `LV_SCR_LOAD_ANIM_MOVE_LEFT` |
-| `LV_SCR_LOAD_ANIM_MOVE_RIGHT` |
-| `LV_SCR_LOAD_ANIM_MOVE_TOP` |
-| `LV_SCR_LOAD_ANIM_MOVE_BOTTOM` |
-| `LV_SCR_LOAD_ANIM_OVER_LEFT` |
-| `LV_SCR_LOAD_ANIM_OVER_RIGHT` |
-| `LV_SCR_LOAD_ANIM_OVER_TOP` |
-| `LV_SCR_LOAD_ANIM_OVER_BOTTOM` |
+- `LV_SCR_LOAD_ANIM_NONE`
+- `LV_SCR_LOAD_ANIM_FADE_IN`
+- `LV_SCR_LOAD_ANIM_FADE_OUT`
+- `LV_SCR_LOAD_ANIM_MOVE_LEFT`
+- `LV_SCR_LOAD_ANIM_MOVE_RIGHT`
+- `LV_SCR_LOAD_ANIM_MOVE_TOP`
+- `LV_SCR_LOAD_ANIM_MOVE_BOTTOM`
+- `LV_SCR_LOAD_ANIM_OVER_LEFT`
+- `LV_SCR_LOAD_ANIM_OVER_RIGHT`
+- `LV_SCR_LOAD_ANIM_OVER_TOP`
+- `LV_SCR_LOAD_ANIM_OVER_BOTTOM`
 
 :::warning Hiệu năng
 Các animation dạng `MOVE_*` animate cả 2 screen đồng thời, trong khi `OVER_*` chỉ animate screen mới (screen cũ đứng yên), do đó `OVER_*` nhẹ hơn trên các hệ thống có tài nguyên hạn chế.
