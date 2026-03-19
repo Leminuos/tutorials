@@ -112,7 +112,7 @@ sequenceDiagram
     H->>D: Status Stage ACK
 ```
  
-:::tip Tại sao đọc Device Descriptor hai lần?**
+:::tip Tại sao đọc Device Descriptor hai lần?
 Lần đầu, host chỉ đọc 8 byte để lấy trường `bMaxPacketSize0` (offset 7) — vì EP0 max packet size chưa biết, host cần con số này để cấu hình đúng control pipe. Sau khi biết max packet size, host reset device, gán địa chỉ, rồi đọc lại đầy đủ 18 byte.
 :::
 
@@ -131,11 +131,11 @@ Sau khi đọc Device Descriptor lần đầu, host gửi `SET_ADDRESS` để g�
 | `wLength` | `0x0000` | Không có Data Stage |
 
 :::warning Thời điểm chuyển địa chỉ
-Device chỉ chuyển sang địa chỉ mới sau khi Status Stage hoàn tất thành công. Tức là trong suốt quá trình Setup Stage và Status Stage của SET_ADDRESS, device vẫn phản hồi ở địa chỉ cũ (0). USB spec yêu cầu device phải hoàn tất việc chuyển địa chỉ trong vòng **50ms** sau Status Stage.
+Device chỉ chuyển sang địa chỉ mới sau khi Status Stage hoàn tất thành công. Tức là trong suốt quá trình Setup Stage và Status Stage của SET_ADDRESS, device vẫn phản hồi ở địa chỉ cũ (0). USB spec yêu cầu device phải hoàn tất việc chuyển địa chỉ trong vòng 50ms sau Status Stage.
 :::
 
 :::warning Lưu ý cho firmware developer
-Trên nhiều MCU (STM32, ESP32,...), USB peripheral hardware tự động xử lý SET_ADDRESS — firmware chỉ cần ghi địa chỉ mới vào thanh ghi address tại thời điểm thích hợp (sau Status Stage). Tuy nhiên, một số stack yêu cầu firmware ghi address register **trước** Status Stage và hardware sẽ tự defer — cần đọc kỹ reference manual của MCU cụ thể.
+Trên nhiều MCU (STM32, ESP32,...), USB peripheral hardware tự động xử lý SET_ADDRESS — firmware chỉ cần ghi địa chỉ mới vào thanh ghi address tại thời điểm thích hợp (sau Status Stage). Tuy nhiên, một số stack yêu cầu firmware ghi address register trước Status Stage và hardware sẽ tự defer — cần đọc kỹ reference manual của MCU cụ thể.
 :::
 
 ### SET_CONFIGURATION 
@@ -157,7 +157,7 @@ Khi device nhận SET_CONFIGURATION thành công:
 - Host thiết lập pipe cho từng endpoint.
  
 :::warning Lưu ý
-Gửi SET_CONFIGURATION với `wValue = 0` sẽ đưa device về trạng thái **Address** (unconfigured) — tất cả endpoint ngoài EP0 bị vô hiệu hóa.
+Gửi SET_CONFIGURATION với `wValue = 0` sẽ đưa device về trạng thái Address (unconfigured) — tất cả endpoint ngoài EP0 bị vô hiệu hóa.
 :::
 
 ### GET_STATUS, SET_FEATURE, CLEAR_FEATURE

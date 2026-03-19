@@ -60,12 +60,12 @@ Cấu trúc topology của USB được thiết kế phân tầng theo kiểu h�
  
 ```mermaid
 graph TD
-    Host["🖥️ Host\n(Root Hub - Tier 1)"] --> Hub1["🔀 Hub 1\n(Tier 2)"]
-    Host --> Func1["⌨️ Keyboard\n(Function)"]
-    Hub1 --> Func2["🖱️ Mouse\n(Function)"]
-    Hub1 --> Hub2["🔀 Hub 2\n(Tier 3)"]
-    Hub2 --> Func3["💾 Flash Drive\n(Function)"]
-    Hub2 --> Func4["📷 Camera\n(Function)"]
+    Host["🖥️ Host<br/>(Root Hub - Tier 1)"] --> Hub1["🔀 Hub 1<br/>(Tier 2)"]
+    Host --> Func1["⌨️ Keyboard<br/>(Function)"]
+    Hub1 --> Func2["🖱️ Mouse<br/>(Function)"]
+    Hub1 --> Hub2["🔀 Hub 2<br/>(Tier 3)"]
+    Hub2 --> Func3["💾 Flash Drive<br/>(Function)"]
+    Hub2 --> Func4["📷 Camera<br/>(Function)"]
 ```
  
 Các thành phần chính:
@@ -82,7 +82,7 @@ Mỗi kết nối giữa hai thành phần là một liên kết **point-to-poin
 - Hub ↔ Function
 
 :::warning Giới hạn 7 tầng
-Do giới hạn thời gian truyền tín hiệu qua hub và cable, USB cho phép tối đa **7 tầng** (bao gồm cả Root Hub ở tầng 1). Ở **tầng 7**, chỉ được phép kết nối **function** — không được đặt hub. Điều này có nghĩa tối đa có **5 hub xếp chồng** (non-root) giữa host và device cuối cùng.
+Do giới hạn thời gian truyền tín hiệu qua hub và cable, USB cho phép tối đa 7 tầng (bao gồm cả Root Hub ở tầng 1). Ở tầng 7, chỉ được phép kết nối function — không được đặt hub. Điều này có nghĩa tối đa có 5 hub xếp chồng (non-root) giữa host và device cuối cùng.
 :::
 
 :::warning Số lượng thiết bị tối đa
@@ -111,7 +111,7 @@ flowchart LR
     end
 ```
  
-Phía host (hoặc hub), mỗi downstream port có **điện trở pull-down 15kΩ** trên cả D+ và D-. Khi chưa có thiết bị, cả hai line đều ở mức thấp. Khi thiết bị cắm vào, pull-up của device "thắng" pull-down của host trên một line, tạo ra mức logic cao → host nhận biết có thiết bị và xác định tốc độ.
+Phía host (hoặc hub), mỗi downstream port có **điện trở pull-down 15kΩ** trên cả D+ và D-. Khi chưa có thiết bị, cả hai line đều ở mức thấp. Khi thiết bị cắm vào, pull-up của device "thắng" pull-down của host trên một line, tạo ra mức logic cao $\rightarrow$ host nhận biết có thiết bị và xác định tốc độ.
  
 ![Speed identification](img/01-speed-identification.png)
  
@@ -155,7 +155,7 @@ USB 3.0 giữ nguyên 4 chân USB 2.0 và bổ sung thêm cặp SuperSpeed:
 Đặc điểm:
 - **Kênh SuperSpeed hoàn toàn độc lập** với kênh USB 2.0: Hai kênh có thể hoạt động đồng thời.
 - **Full-duplex**: USB 3.0 có cặp TX và RX riêng biệt, cho phép truyền và nhận cùng lúc (khác USB 2.0 chỉ half-duplex).
-- Tốc độ: **5 Gb/s** (USB 3.0 / USB 3.2 Gen 1), có thể lên **10 Gb/s** (Gen 2) hoặc **20 Gb/s** (Gen 2x2).
+- **Tốc độ:** 5 Gb/s (USB 3.0 / USB 3.2 Gen 1), có thể lên 10 Gb/s (Gen 2) hoặc 20 Gb/s (Gen 2x2).
 
 :::warning Tương thích ngược
 Khi cắm thiết bị USB 2.0 vào cổng USB 3.0, chỉ các chân 1–4 được sử dụng. Thiết bị hoạt động bình thường ở tốc độ USB 2.0. Ngược lại, thiết bị USB 3.0 cắm vào cổng USB 2.0 cũng sẽ fallback về tốc độ USB 2.0.
@@ -187,15 +187,15 @@ Output rise time và fall time được đo trong khoảng từ 10% đến 90% t
 | SE1   | D+ high, D- high |
 
 :::tip Tại sao có J và K state?
-USB sử dụng mã hóa NRZI: bit `0` gây ra chuyển đổi trạng thái (J→K hoặc K→J), bit `1` giữ nguyên trạng thái. Việc định nghĩa J/K thay vì dùng trực tiếp mức logic giúp giao thức hoạt động thống nhất cho cả FS và LS, dù mức điện áp thực tế ngược nhau.
+USB sử dụng mã hóa NRZI: bit `0` gây ra chuyển đổi trạng thái (J$\rightarrow$K hoặc K$\rightarrow$J), bit `1` giữ nguyên trạng thái. Việc định nghĩa J/K thay vì dùng trực tiếp mức logic giúp giao thức hoạt động thống nhất cho cả FS và LS, dù mức điện áp thực tế ngược nhau.
 :::
 
 ### Bus Events
 
 | Event     | Mô tả |
 | --------- | ----- |   
-| Start of Packet - SOP       | Data line chuyển từ trạng thái IDLE sang trạng thái K state |
-| End Of Packet - EOP	    | Data line chuyển sang trạng thái SE0 trong khoảng 2 bit, sau đó, chuyển sang trạng thái J state trong khoảng 1 bit. |
+| Start of Packet - SOP | Data line chuyển từ trạng thái IDLE sang trạng thái K state |
+| End Of Packet - EOP | Data line chuyển sang trạng thái SE0 trong khoảng 2 bit, sau đó, chuyển sang trạng thái J state trong khoảng 1 bit. |
 | Attach	| Data line chuyển từ trạng thái SE0 sang trạng thái IDLE trong khoảng 2.5μs. |
 | Detach	| Data line ở trạng thái SE0 trong khoảng 2.5μs. |
 | Reset	    | Host giữ data line ở trạng thái SE0 ≥ 10 ms. |
@@ -204,8 +204,8 @@ USB sử dụng mã hóa NRZI: bit `0` gây ra chuyển đổi trạng thái (J�
 | Sync pattern | Chuỗi tín hiệu KJKJKJKK. |
 
 :::warning Cấu trúc một packet trên bus
-Mỗi packet USB trên dây có cấu trúc: `SOP → Sync → Data (PID + payload + CRC) → EOP`. Sync pattern giúp receiver đồng bộ clock trước khi đọc data thực sự. Chi tiết sẽ được trình bày trong bài **USB Protocol**.
-"""
+Mỗi packet USB trên dây có cấu trúc: `SOP --> Sync --> Data (PID + payload + CRC) --> EOP`. Sync pattern giúp receiver đồng bộ clock trước khi đọc data thực sự. Chi tiết sẽ được trình bày trong bài **USB Protocol**.
+:::
  
 :::warning Remote wakeup
 Trong trạng thái suspend, nếu device hỗ trợ remote wakeup, device có thể chủ động phát tín hiệu K trên bus để đánh thức host. Đây là một trong rất ít trường hợp device được phép khởi tạo tín hiệu mà không cần host yêu cầu trước.

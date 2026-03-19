@@ -80,7 +80,7 @@ PID xác định loại packet, từ đó biết packet dùng để làm gì, c�
 
 **Cấu trúc PID** (8 bit):
 
-![PID format](img/03-pid-format.png)
+![PID format](img/02-pid-format.png)
 
 PID gồm 4 bit cao cho biết packet type field và 4 bit thấp dùng để check field. 4 bit check field là phần bù của 4 bit packet type field, nhằm đảm bảo dữ liệu được truyền chính xác.
 
@@ -88,10 +88,10 @@ PID gồm 4 bit cao cho biết packet type field và 4 bit thấp dùng để ch
 
 | Nhóm | PID Name | PID[3:0] | Mô tả |
 |---|---|---|---|
-| **Token** | OUT | 0001 | Host → Device data |
-| | IN | 1001 | Device → Host data |
+| **Token** | OUT | 0001 | Host $\rightarrow$ Device data |
+| | IN | 1001 | Device $\rightarrow$ Host data |
 | | SOF | 0101 | Start of Frame |
-| | SETUP | 1101 | Host → Device control setup |
+| | SETUP | 1101 | Host $\rightarrow$ Device control setup |
 | **Data** | DATA0 | 0011 | Data packet, toggle = 0 |
 | | DATA1 | 1011 | Data packet, toggle = 1 |
 | | DATA2 | 0111 | High-speed high-bandwidth isochronous |
@@ -165,24 +165,24 @@ EOP báo hiệu kết thúc packet bằng tín hiệu SE0 kéo dài 2 bit time, 
 
 Token packet do host gửi, dùng để khởi tạo transaction. Cấu trúc:
 
-![Token packet](img/05-token-packet.png)
+![Token packet](img/04-token-packet.png)
 
 | Token | Hướng data | Ý nghĩa |
 |---|---|---|
-| **OUT** | Host → Device | ADDR + ENDP xác định endpoint sẽ nhận Data Packet tiếp theo |
-| **IN** | Device → Host | ADDR + ENDP xác định endpoint sẽ truyền Data Packet |
-| **SETUP** | Host → Device | Giống OUT, nhưng dành riêng cho Control Transfer (Setup Stage) |
+| **OUT** | Host $\rightarrow$ Device | ADDR + ENDP xác định endpoint sẽ nhận Data Packet tiếp theo |
+| **IN** | Device $\rightarrow$ Host | ADDR + ENDP xác định endpoint sẽ truyền Data Packet |
+| **SETUP** | Host $\rightarrow$ Device | Giống OUT, nhưng dành riêng cho Control Transfer (Setup Stage) |
 
 Ví dụ:
 
 ```
 Token: IN, Address=5, Endpoint=1
-→ Nghĩa là: "Device số 5, hãy gửi dữ liệu từ endpoint 1 của bạn cho tôi"
+=> Nghĩa là: "Device số 5, hãy gửi dữ liệu từ endpoint 1 của bạn cho tôi"
 ```
 
 **SOF Packet** (đặc biệt — không theo format token thông thường):
 
-![SOF packet](img/04-sof-packet.png)
+![SOF packet](img/03-sof-packet.png)
 
 SOF được host phát ở đầu mỗi frame (1ms cho FS) hoặc microframe (125μs cho HS). Frame number đếm tuần tự từ 0 đến 2047 (11 bit) rồi quay lại 0.
 
@@ -190,15 +190,15 @@ SOF được host phát ở đầu mỗi frame (1ms cho FS) hoặc microframe (1
 
 Data packet chứa payload thực tế. Cấu trúc:
 
-![Data packet](img/06-data-packet.png)
+![Data packet](img/05-data-packet.png)
 
 USB sử dụng data toggle (DATA0/DATA1) để phát hiện packet bị mất hoặc bị trùng lặp. Đây là cơ chế quan trọng đảm bảo tính toàn vẹn dữ liệu:
 
 **Cơ chế hoạt động như sau:**
 - Mỗi endpoint duy trì một toggle bit nội bộ (0 hoặc 1).
 - Data packet gửi đi được đánh dấu DATA0 hoặc DATA1 tương ứng toggle bit hiện tại.
-- Sau mỗi lần truyền thành công (nhận ACK), **cả host và device đều đảo toggle bit** (0→1 hoặc 1→0).
-- Nếu host hoặc device nhận packet có toggle bit không khớp mong đợi → **packet bị coi là trùng lặp** → ignore data nhưng vẫn gửi ACK.
+- Sau mỗi lần truyền thành công (nhận ACK), **cả host và device đều đảo toggle bit** (0$\rightarrow$1 hoặc 1$\rightarrow$0).
+- Nếu host hoặc device nhận packet có toggle bit không khớp mong đợi $\rightarrow$ **packet bị coi là trùng lặp** $\rightarrow$ ignore data nhưng vẫn gửi ACK.
 
 **Ví dụ — OUT transfer bình thường:**
 
@@ -212,18 +212,18 @@ sequenceDiagram
 
     H->>D: OUT + DATA0 (payload A)
     D->>H: ACK
-    Note over H: toggle → 1
-    Note over D: expect → 1
+    Note over H: toggle --> 1
+    Note over D: expect --> 1
 
     H->>D: OUT + DATA1 (payload B)
     D->>H: ACK
-    Note over H: toggle → 0
-    Note over D: expect → 0
+    Note over H: toggle --> 0
+    Note over D: expect --> 0
 
     H->>D: OUT + DATA0 (payload C)
     D->>H: ACK
-    Note over H: toggle → 1
-    Note over D: expect → 1
+    Note over H: toggle --> 1
+    Note over D: expect --> 1
 ```
 
 **Ví dụ — ACK bị mất, host retry:**
@@ -238,22 +238,22 @@ sequenceDiagram
 
     H->>D: OUT + DATA0 (payload A)
     D->>H: ACK
-    Note over H: toggle → 1
-    Note over D: expect → 1
+    Note over H: toggle --> 1
+    Note over D: expect --> 1
 
     H->>D: OUT + DATA1 (payload B)
-    Note over D: Nhận OK, expect → 0
+    Note over D: Nhận OK, expect --> 0
     D--xH: ACK bị mất ❌
-    Note over H: Không nhận ACK → giữ toggle = 1
+    Note over H: Không nhận ACK --> giữ toggle = 1
 
     H->>D: OUT + DATA1 (payload B, retry)
-    Note over D: Toggle = 1, expect = 0<br/>→ Không khớp!<br/>→ Packet trùng lặp, bỏ qua data<br/>→ Vẫn gửi ACK
+    Note over D: Toggle = 1, expect = 0<br/>--> Không khớp!<br/>--> Packet trùng lặp, bỏ qua data<br/>--> Vẫn gửi ACK
     D->>H: ACK
-    Note over H: toggle → 0
+    Note over H: toggle --> 0
 ```
 
-:::tip Tại sao data toggle quan trọng?**
-Không có data toggle, khi ACK bị mất, host sẽ retry và device nhận data hai lần mà không biết → **dữ liệu bị trùng lặp**. Data toggle giải quyết vấn đề này bằng cách cho device biết "đây là packet mới hay packet cũ gửi lại".
+:::tip Tại sao data toggle quan trọng?
+Không có data toggle, khi ACK bị mất, host sẽ retry và device nhận data hai lần mà không biết $\rightarrow$ dữ liệu bị trùng lặp. Data toggle giải quyết vấn đề này bằng cách cho device biết "đây là packet mới hay packet cũ gửi lại".
 :::
 
 ### Handshake packet
@@ -270,21 +270,21 @@ Ví dụ:
  
 ```
 Tình huống 1: Printer nhận lệnh in
-Host → OUT Token → Data (lệnh in) → Device
-Device: Buffer đầy → NAK
-Host: Đợi 1ms → Thử lại
-Device: Buffer trống → ACK
+Host --> OUT Token --> Data (lệnh in) --> Device
+Device: Buffer đầy --> NAK
+Host: Đợi 1ms --> Thử lại
+Device: Buffer trống --> ACK
  
 Tình huống 2: Chuột gửi vị trí
-Host → IN Token → Device
-Device: Chưa di chuyển → NAK
-Host: Đợi → Thử lại
-Device: Có di chuyển → DATA1 (tọa độ) → Host: ACK
+Host --> IN Token --> Device
+Device: Chưa di chuyển --> NAK
+Host: Đợi --> Thử lại
+Device: Có di chuyển --> DATA1 (tọa độ) --> Host: ACK
 ```
 
 :::warning Phân biệt NAK và STALL
-- **NAK** = "Tôi đang bận, hỏi lại sau" → host tự động retry, hoàn toàn bình thường.
-- **STALL** = "Tôi gặp lỗi, không thể tiếp tục" → host phải gửi `CLEAR_FEATURE(ENDPOINT_HALT)` để reset endpoint trước khi giao tiếp lại.
+- **NAK** = "Tôi đang bận, hỏi lại sau" $\rightarrow$ host tự động retry, hoàn toàn bình thường.
+- **STALL** = "Tôi gặp lỗi, không thể tiếp tục" $\rightarrow$ host phải gửi `CLEAR_FEATURE(ENDPOINT_HALT)` để reset endpoint trước khi giao tiếp lại.
 :::
 
 ## Các loại transfer
@@ -330,7 +330,7 @@ Setup packet luôn có kích thước cố định 8 byte, không phụ thuộc 
 
 **Setup stage**
 
-![Setup stage](img/07-setup-stage.png)
+![Setup stage](img/06-setup-stage.png)
 
 Setup packet (8 byte) chứa thông tin về request mà host muốn thực hiện. Chi tiết cấu trúc setup packet sẽ được trình bày trong bài **standard request**.
 
@@ -350,7 +350,7 @@ Data stage có hai cách thực hiện khác nhau tùy thuộc vào hướng c�
 
 - OUT: Khi host cần gửi control data packet tới device, nó sẽ release một OUT token theo sau là một data packet chứa control data. Nếu OUT token hoặc data packet này bị hỏng thì function sẽ ignore packet. Nếu endpoint buffer của function là rỗng và nó nhận data control được gửi vào endpoint buffer thì device sẽ release một ACK để thông báo với Host rằng nó đã nhận dữ liệu thành công. Nếu endpoint buffer là không rỗng do vẫn đang xử lý packet trước đấy thì function sẽ trả về NAK. Tuy nhiên, nếu endpoint bị lỗi và bit halt của nó là được set thì nó sẽ trả về STALL.
 
-![Data stage](img/08-data-stage.png)
+![Data stage](img/07-data-stage.png)
 
 **Status stage**
 
@@ -358,17 +358,17 @@ Status stage báo cáo **kết quả cuối cùng** của toàn bộ control tra
 
 | Data stage hướng | Status stage thực hiện | Mô tả |
 |---|---|---|
-| IN (device → host) | Host gửi **OUT + zero-length DATA1** → Device reply handshake | Host xác nhận đã nhận đủ data, device báo trạng thái |
-| OUT (host → device) | Host gửi **IN Token** → Device reply **zero-length DATA1** | Device xác nhận đã xử lý xong data từ host |
-| No Data Stage | Host gửi **IN Token** → Device reply **zero-length DATA1** | Device báo đã thực hiện xong request |
+| IN (device $\rightarrow$ host) | Host gửi **OUT + zero-length DATA1** $\rightarrow$ Device reply handshake | Host xác nhận đã nhận đủ data, device báo trạng thái |
+| OUT (host $\rightarrow$ device) | Host gửi **IN Token** $\rightarrow$ Device reply **zero-length DATA1** | Device xác nhận đã xử lý xong data từ host |
+| No Data Stage | Host gửi **IN Token** $\rightarrow$ Device reply **zero-length DATA1** | Device báo đã thực hiện xong request |
 
 - IN: Nếu host gửi IN Token trong khi data stage nhận data thì host sẽ xác nhận dữ liệu được nhận thành công. Điều này được thực hiện bằng cách host sẽ gửi một OUT token theo sau là data packet có độ dài bằng 0. Lúc này, function có thể thông báo về status của nó tại handshaking stage. Một ACK cho biết một function đã hoàn thành command và giờ nó sẵn sàng để nhận một command khác. Nếu lỗi xảy ra trong khi xử lý command thì function sẽ release STALL. Tuy nhiên, nếu function là vẫn đang trong quá trình xử lý thì nó sẽ trả về NAK để báo cho host biết repeat status stage lần sau.
  
-  ![Status stage](img/09-state-stage.png)
+  ![Status stage](img/08-state-stage.png)
 
 - OUT: Nếu host gửi OUT token trong khi data stage đang truyền data, function sẽ xác nhận data được nhận thành công bằng cách gửi một zero length packet để response In token. Tuy nhiên, nếu lỗi xảy ra, function sẽ release một STALL hoặc nếu nó đang bận xử lý thì nó sẽ release NAK để yêu cầu host thử lại status stage.
 
-  ![Status stage](img/10-state-stage.png)
+  ![Status stage](img/09-state-stage.png)
 
 ### Interrupt transfer
 
@@ -409,7 +409,7 @@ sequenceDiagram
 | High Speed | 2^(bInterval−1) × 125μs |
 
 :::warning Chú ý:
-Tên "Interrupt Transfer" dễ gây nhầm lẫn. Device **không thể chủ động ngắt host** như interrupt trong MCU. Thay vào đó, host **polling đều đặn** theo interval, và device trả data khi có hoặc NAK khi không. Tên gọi chỉ phản ánh mục đích sử dụng, không phải cơ chế hoạt động.
+Tên "Interrupt Transfer" dễ gây nhầm lẫn. Device không thể chủ động ngắt host như interrupt trong MCU. Thay vào đó, host polling đều đặn theo interval, và device trả data khi có hoặc NAK khi không. Tên gọi chỉ phản ánh mục đích sử dụng, không phải cơ chế hoạt động.
 :::
 
 ### Bulk transfer
@@ -429,7 +429,7 @@ sequenceDiagram
     D->>H: ACK
 ```
 
-**Cơ chế hoạt động:** Host chỉ truyền data khi bus rảnh và nhận data khi nó ready. Nếu xảy ra lỗi, host sẽ tự retry cho đến khi thành công → độ tin cậy cực cao. Nhưng không có băng thông hay thời gian đảm bảo → có thể bị chậm nếu USB bận.
+**Cơ chế hoạt động:** Host chỉ truyền data khi bus rảnh và nhận data khi nó ready. Nếu xảy ra lỗi, host sẽ tự retry cho đến khi thành công $\rightarrow$ độ tin cậy cực cao. Nhưng không có băng thông hay thời gian đảm bảo $\rightarrow$ có thể bị chậm nếu USB bận.
 
 **Max packet size:**
 
@@ -440,7 +440,7 @@ sequenceDiagram
 | Low Speed | **Không hỗ trợ** bulk transfer |
 
 :::warning Short Packet và Zero-Length Packet (ZLP)**
-Bulk transfer kết thúc khi host/device gửi một **short packet** (nhỏ hơn max packet size). Nếu tổng data vừa đúng bội số của max packet size, cần gửi thêm một **zero-length packet (ZLP)** để báo hiệu kết thúc transfer. Đây là lỗi phổ biến khi viết firmware USB — quên gửi ZLP khiến host chờ mãi vì nghĩ transfer chưa xong.
+Bulk transfer kết thúc khi host/device gửi một short packet (nhỏ hơn max packet size). Nếu tổng data vừa đúng bội số của max packet size, cần gửi thêm một zero-length packet (ZLP) để báo hiệu kết thúc transfer. Đây là lỗi phổ biến khi viết firmware USB — quên gửi ZLP khiến host chờ mãi vì nghĩ transfer chưa xong.
 :::
 
 ### Isochronous transfer
@@ -468,10 +468,10 @@ sequenceDiagram
     Note over H: Bỏ qua, KHÔNG retry
 ```
 
-**Cơ chế hoạt động:** Host cấp phát băng thông cố định cho device ở mỗi frame. Data packet được gửi hoặc nhận tại mỗi frame, tức là sau 1 ms đối với full speed hoặc 125μs đối với High Speed. Packet có thể bị lỗi mà không cần retry, vì ưu tiên thời gian hơn độ chính xác => không có handshake (ACK/NAK).
+**Cơ chế hoạt động:** Host cấp phát băng thông cố định cho device ở mỗi frame. Data packet được gửi hoặc nhận tại mỗi frame, tức là sau 1 ms đối với full speed hoặc 125μs đối với High Speed. Packet có thể bị lỗi mà không cần retry, vì ưu tiên thời gian hơn độ chính xác $\rightarrow$ không có handshake (ACK/NAK).
 
 **Max packet size:** Kích thước tối đa của data packet là 1023 đối với full speed và 1024 đối với high speed.
 
-:::tip Tại sao Isochronous không retry?**
+:::tip Tại sao Isochronous không retry?
 Trong ứng dụng thời gian thực (audio, video), data cũ đã qua thời điểm phát lại sẽ vô nghĩa. Retry sẽ gây delay tích lũy, phá vỡ tính realtime. Thà mất một frame audio (gây "click" nhẹ) còn hơn delay cả stream. Đây là sự đánh đổi có chủ đích trong thiết kế USB protocol.
 :::

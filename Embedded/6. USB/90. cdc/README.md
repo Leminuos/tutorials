@@ -58,9 +58,9 @@ flowchart TD
 | Endpoint | Type | Hướng | Chức năng |
 |---|---|---|---|
 | **EP0** | Control | Bidirectional | Standard Request + CDC Class Request (SET_LINE_CODING,...) |
-| **Notification EP** | Interrupt IN | Device → Host | Thông báo sự kiện (vd: `SERIAL_STATE` — DCD, DSR thay đổi) |
-| **Data IN EP** | Bulk IN | Device → Host | Gửi data từ MCU lên PC |
-| **Data OUT EP** | Bulk OUT | Host → Device | Nhận data từ PC xuống MCU |
+| **Notification EP** | Interrupt IN | Device $\rightarrow$ Host | Thông báo sự kiện (vd: `SERIAL_STATE` — DCD, DSR thay đổi) |
+| **Data IN EP** | Bulk IN | Device $\rightarrow$ Host | Gửi data từ MCU lên PC |
+| **Data OUT EP** | Bulk OUT | Host $\rightarrow$ Device | Nhận data từ PC xuống MCU |
 
 ## CDC Class-Specific Requests
  
@@ -113,7 +113,7 @@ PC điều khiển tín hiệu DTR và RTS:
 :::warning Detect PC open/close serial port
 Khi ứng dụng trên PC mở serial port (ví dụ: PuTTY connect), host gửi `SET_CONTROL_LINE_STATE` với **DTR = 1**. Khi đóng port, host gửi **DTR = 0**. Firmware có thể dùng tín hiệu DTR để biết khi nào PC sẵn sàng nhận data, tránh gửi data khi không có ai đọc.
 
-Đây cũng là cơ chế mà ESP dùng để auto-reset MCU khi upload firmware: PC toggle DTR → MCU reset → bootloader bắt đầu.
+Đây cũng là cơ chế mà ESP dùng để auto-reset MCU khi upload firmware: PC toggle DTR $\rightarrow$ MCU reset $\rightarrow$ bootloader bắt đầu.
 :::
 
 ## Cấu trúc descriptor
@@ -204,7 +204,8 @@ Khi sử dụng IAD, Device Descriptor cần thay đổi:
 | `bDeviceSubClass` | `0x00` | `0x02` (Common Class) |
 | `bDeviceProtocol` | `0x00` | `0x01` (IAD) |
  
-:::warning Chú ý Nếu device chỉ có đúng một CDC-ACM function và không có function nào khác, có thể bỏ IAD và dùng `bDeviceClass = 0x02`. Tuy nhiên, luôn dùng IAD là practice an toàn nhất — đảm bảo tương thích khi mở rộng thêm function sau.
+:::warning Chú ý
+Nếu device chỉ có đúng một CDC-ACM function và không có function nào khác, có thể bỏ IAD và dùng `bDeviceClass = 0x02`. Tuy nhiên, luôn dùng IAD là practice an toàn nhất — đảm bảo tương thích khi mở rộng thêm function sau.
 :::
 
 ## Luồng giao tiếp thực tế
@@ -238,7 +239,7 @@ sequenceDiagram
     Note over BUS: Data chờ trong buffer...
     DRV->>BUS: IN Token (host polling)
     BUS->>DRV: DATA (EP Bulk IN)
-    DRV->>APP: read() → "OK\n"
+    DRV->>APP: read() --> "OK\n"
 ```
  
 ### Mở / Đóng serial port
@@ -254,14 +255,14 @@ sequenceDiagram
     FW->>DRV: ACK
     DRV->>FW: SET_CONTROL_LINE_STATE (DTR=1, RTS=1)
     FW->>DRV: ACK
-    Note over FW: DTR=1 → PC đã connect
+    Note over FW: DTR=1 --> PC đã connect
  
     Note over APP,FW: ... truyền data ...
  
     APP->>DRV: close()
     DRV->>FW: SET_CONTROL_LINE_STATE (DTR=0, RTS=0)
     FW->>DRV: ACK
-    Note over FW: DTR=0 → PC đã disconnect
+    Note over FW: DTR=0 --> PC đã disconnect
 ```
  
 ## Lưu ý khi implement CDC-ACM
@@ -272,13 +273,13 @@ Khi data gửi từ MCU lên PC có kích thước đúng bằng bội số củ
 
 ### 2. Buffer overflow trên MCU
 
-Nếu PC gửi data liên tục qua Bulk OUT nhưng firmware xử lý chậm, EP OUT buffer sẽ đầy → device trả NAK → host tự retry. Đây là flow control tự nhiên của USB, nhưng firmware nên đọc buffer kịp thời để tránh mất data khi buffer wrap around.
+Nếu PC gửi data liên tục qua Bulk OUT nhưng firmware xử lý chậm, EP OUT buffer sẽ đầy $\rightarrow$ device trả NAK $\rightarrow$ host tự retry. Đây là flow control tự nhiên của USB, nhưng firmware nên đọc buffer kịp thời để tránh mất data khi buffer wrap around.
 
 ### 3. Enumeration không thành công trên Windows
  
 Nguyên nhân phổ biến:
-- Thiếu hoặc sai Functional Descriptor → Windows không nhận dạng được CDC-ACM.
-- Thiếu IAD khi dùng composite device → Windows không nhóm được interface.
+- Thiếu hoặc sai Functional Descriptor $\rightarrow$ Windows không nhận dạng được CDC-ACM.
+- Thiếu IAD khi dùng composite device $\rightarrow$ Windows không nhóm được interface.
 - `bMaxPacketSize0` trong Device Descriptor không khớp với khả năng thật của EP0.
  
 ### 4. Tốc độ truyền thực tế

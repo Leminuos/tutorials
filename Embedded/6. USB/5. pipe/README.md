@@ -7,10 +7,10 @@ Có thể hình dung: nếu endpoint là **hộp thư** trên device, thì pipe 
 Mỗi pipe được đặc trưng bởi tập hợp các thông tin sau:
  
 | Thuộc tính | Mô tả |
-|---|---|---|
+|---|---|
 | **Endpoint Address** | Số endpoint + hướng (IN/OUT) |
 | **Transfer Type** | Control, Bulk, Interrupt, hoặc Isochronous |
-| **Direction** | IN (device → host) hoặc OUT (host → device) |
+| **Direction** | IN (device $\rightarrow$ host) hoặc OUT (host $\rightarrow$ device) |
 | **Max Packet Size** | Kích thước tối đa mỗi packet (byte) |
 | **Polling Interval** | Chu kỳ host poll endpoint (cho Interrupt/Isochronous) |
 
@@ -26,7 +26,7 @@ USB định nghĩa hai loại pipe với đặc tính khác nhau:
 ### 1. Control pipe (Message pipe)
  
 - Truyền dữ liệu hai chiều (bidirectional) — cả IN và OUT trên cùng một pipe.
-- Sử dụng cấu trúc message có format cố định: Setup Stage → Data Stage (optional) → Status Stage.
+- Sử dụng cấu trúc message có format cố định: Setup Stage $\rightarrow$ Data Stage (optional) $\rightarrow$ Status Stage.
 - Chỉ dùng cho Control Transfer.
 - Default Control Pipe (gắn với EP0) luôn tồn tại ngay khi device được kết nối, trước cả khi enumeration hoàn tất.
  
@@ -58,19 +58,19 @@ sequenceDiagram
     H->>D: GET_DESCRIPTOR (Configuration Descriptor)
     D->>H: Configuration + Interface + Endpoint Descriptors
     
-    Note over H: Đọc Endpoint Descriptors:<br/>• EP1 IN, Bulk, MaxPkt=512<br/>• EP2 OUT, Interrupt, MaxPkt=64
+    Note over H: Đọc Endpoint Descriptors:<br/>- EP1 IN, Bulk, MaxPkt=512<br/>- EP2 OUT, Interrupt, MaxPkt=64
  
     H->>D: SET_CONFIGURATION
     D->>H: ACK
     
-    Note over H: Thiết lập pipe cho mỗi endpoint:<br/>• Pipe 1 → EP1 IN (Bulk)<br/>• Pipe 2 → EP2 OUT (Interrupt)
+    Note over H: Thiết lập pipe cho mỗi endpoint:<br/>- Pipe 1 --> EP1 IN (Bulk)<br/>- Pipe 2 --> EP2 OUT (Interrupt)
     
     Note over H,D: Các pipe sẵn sàng truyền dữ liệu
 ```
 
 Tóm tắt quy trình:
  
-1. Khi một thiết bị USB được attach vào host → Default Control Pipe (EP0) tự động có sẵn.
+1. Khi một thiết bị USB được attach vào host $\rightarrow$ Default Control Pipe (EP0) tự động có sẵn.
 2. Host gửi các control request qua Default Control Pipe để lấy các descriptor từ device.
 3. Dựa trên các Endpoint Descriptor mà thiết bị trả về, host sẽ biết: số endpoint, transfer type, hướng, max packet size, polling interval.
 4. Host gửi **SET_CONFIGURATION** để kích hoạt configuration.
@@ -118,9 +118,9 @@ Ví dụ: Truyền 4096 byte qua endpoint Bulk có `wMaxPacketSize = 512`:
 **Lý do 2 — Nhiều yêu cầu đồng thời**:
  
 Ứng dụng có thể tạo ra nhiều URB cùng lúc trên cùng một pipe hoặc trên các pipe khác nhau. Ví dụ:
-- In tài liệu dài → hàng loạt URB gửi data qua Bulk OUT pipe.
-- Đọc liên tục từ chuột → URB Interrupt IN được submit liên tục.
-- Đồng thời stream audio → URB Isochronous IN chạy song song.
+- In tài liệu dài $\rightarrow$ hàng loạt URB gửi data qua Bulk OUT pipe.
+- Đọc liên tục từ chuột $\rightarrow$ URB Interrupt IN được submit liên tục.
+- Đồng thời stream audio $\rightarrow$ URB Isochronous IN chạy song song.
  
 Mỗi URB có thời gian xử lý khác nhau, cần cơ chế lập lịch để điều phối.
  
@@ -132,9 +132,9 @@ flowchart TD
         App3["🎵 Audio player"] --> URB3["URB: Isochronous IN\n192 bytes"]
     end
  
-    URB1 --> Q1["📋 Queue\nPipe → EP1 OUT (Bulk)"]
-    URB2 --> Q2["📋 Queue\nPipe → EP2 IN (Interrupt)"]
-    URB3 --> Q3["📋 Queue\nPipe → EP3 IN (Isochronous)"]
+    URB1 --> Q1["📋 Queue\nPipe --> EP1 OUT (Bulk)"]
+    URB2 --> Q2["📋 Queue\nPipe --> EP2 IN (Interrupt)"]
+    URB3 --> Q3["📋 Queue\nPipe --> EP3 IN (Isochronous)"]
  
     Q1 --> HCD["🔧 Host Controller Driver (HCD)"]
     Q2 --> HCD

@@ -14,8 +14,8 @@ Mỗi endpoint được thiết kế để truyền dữ liệu theo một hư�
 
 | Loại endpoint | Hướng dữ liệu | Mô tả |
 |---|---|---|
-| **Endpoint IN** | Device → Host | Chứa dữ liệu mà device muốn gửi cho host |
-| **Endpoint OUT** | Host → Device | Chứa dữ liệu mà host muốn gửi cho device |
+| **Endpoint IN** | Device $\rightarrow$ Host | Chứa dữ liệu mà device muốn gửi cho host |
+| **Endpoint OUT** | Host $\rightarrow$ Device | Chứa dữ liệu mà host muốn gửi cho device |
 
 :::warning Quy ước hướng
 Hướng IN/OUT luôn được xét **từ góc nhìn của host**:
@@ -61,7 +61,7 @@ EP0 được sử dụng cho:
 - **Điều khiển runtime**: Bất kỳ Standard/Class/Vendor Request nào trong suốt vòng đời thiết bị.
 
 :::warning Lưu ý
-EP0 là endpoint duy nhất hỗ trợ **Control Transfer** — một loại transfer đặc biệt gồm 3 giai đoạn (Setup → Data → Status). Các endpoint khác (EP1–EP15) chỉ hỗ trợ Bulk, Interrupt, hoặc Isochronous Transfer. Chi tiết về các loại transfer sẽ được trình bày trong bài **USB Protocol**.
+EP0 là endpoint duy nhất hỗ trợ **Control Transfer** — một loại transfer đặc biệt gồm 3 giai đoạn (Setup $\rightarrow$ Data $\rightarrow$ Status). Các endpoint khác (EP1–EP15) chỉ hỗ trợ Bulk, Interrupt, hoặc Isochronous Transfer. Chi tiết về các loại transfer sẽ được trình bày trong bài **USB Protocol**.
 :::
 
 ## Giới hạn số lượng endpoint
@@ -70,8 +70,8 @@ Một USB device có thể có tối đa **32 endpoint**:
 
 | Nhóm | Số lượng | Chi tiết |
 |---|---|---|
-| Endpoint OUT | 16 | EP0 OUT → EP15 OUT |
-| Endpoint IN | 16 | EP0 IN → EP15 IN |
+| Endpoint OUT | 16 | EP0 OUT $\rightarrow$ EP15 OUT |
+| Endpoint IN | 16 | EP0 IN $\rightarrow$ EP15 IN |
 
 :::warning Thực tế trên MCU
 Số endpoint thực sự khả dụng phụ thuộc vào phần cứng USB peripheral của MCU. Ví dụ:
