@@ -1,4 +1,18 @@
-## Endpoint là gì?
+## Mục lục
+
+- [1. Endpoint là gì?](#1-endpoint-là-gì)
+- [2. Tính đơn hướng của endpoint](#2-tính-đơn-hướng-của-endpoint)
+- [3. Endpoint number và cách định danh](#3-endpoint-number-và-cách-định-danh)
+- [4. Endpoint zero (EP0) — Control endpoint](#4-endpoint-zero-ep0-control-endpoint)
+- [5. Giới hạn số lượng endpoint](#5-giới-hạn-số-lượng-endpoint)
+- [6. Cơ chế truyền dữ liệu qua Endpoint](#6-cơ-chế-truyền-dữ-liệu-qua-endpoint)
+    - [6.1. Host ghi dữ liệu xuống Device (OUT Transaction)](#61-host-ghi-dữ-liệu-xuống-device-out-transaction)
+    - [6.2. Device gửi dữ liệu lên Host (IN Transaction)](#62-device-gửi-dữ-liệu-lên-host-in-transaction)
+- [7. Tính bất đồng bộ và vấn đề data corruption](#7-tính-bất-đồng-bộ-và-vấn đề-data-corruption)
+    - [7.1. Nguy cơ data corruption](#71-nguy-cơ-data-corruption)
+    - [7.2. Cơ chế bảo vệ](#72-cơ-chế-bảo-vệ)
+
+## 1. Endpoint là gì?
 
 Trong USB, mọi việc truyền dữ liệu giữa host và device đều diễn ra thông qua các **endpoint**. Endpoint là các **buffer** nằm bên trong device, đóng vai trò là điểm đầu/cuối của luồng dữ liệu.
 
@@ -8,7 +22,7 @@ Có thể hình dung đơn giản: endpoint giống như các **hộp thư** tr�
 Endpoint là khái niệm **chỉ tồn tại ở phía device**. Host không có endpoint. Mọi giao tiếp trên bus đều do host khởi tạo, nhưng dữ liệu thực sự được đọc/ghi tại các endpoint trên device.
 :::
 
-## Tính đơn hướng của endpoint
+## 2. Tính đơn hướng của endpoint
 
 Mỗi endpoint được thiết kế để truyền dữ liệu theo một hướng duy nhất:
 
@@ -18,14 +32,14 @@ Mỗi endpoint được thiết kế để truyền dữ liệu theo một hư�
 | **Endpoint OUT** | Host $\rightarrow$ Device | Chứa dữ liệu mà host muốn gửi cho device |
 
 :::warning Quy ước hướng
-Hướng IN/OUT luôn được xét **từ góc nhìn của host**:
-- **IN** = dữ liệu đi **vào** host (từ device gửi lên).
-- **OUT** = dữ liệu đi **ra** khỏi host (host gửi xuống device).
+Hướng IN/OUT luôn được xét từ góc nhìn của host:
+- IN = dữ liệu đi vào host (từ device gửi lên).
+- OUT = dữ liệu đi ra khỏi host (host gửi xuống device).
 
 Đây là quy ước xuyên suốt trong toàn bộ USB spec. Khi đọc tài liệu hoặc code driver, luôn nhớ "IN/OUT = theo hướng của host".
 :::
 
-## Endpoint number và cách định danh
+## 3. Endpoint number và cách định danh
 
 Mỗi endpoint được gán một **endpoint number hay ID** (0–15) cố định tại thời điểm thiết kế phần cứng. Tuy nhiên, endpoint number **chưa đủ** để xác định một endpoint mà cần kết hợp cả **hướng truyền**:
 
@@ -45,7 +59,7 @@ Endpoint address được biểu diễn bằng 1 byte trong USB descriptor:
 
 Ví dụ: `0x81` = endpoint number 1, hướng IN. `0x02` = endpoint number 2, hướng OUT.
 
-## Endpoint zero (EP0) — Control endpoint
+## 4. Endpoint zero (EP0) — Control endpoint
 
 EP0 là endpoint đặc biệt và bắt buộc phải có trên mọi USB device. EP0 bao gồm cả hai hướng: **EP0 IN** và **EP0 OUT**, tạo thành một cặp endpoint hai chiều dùng cho **Control Transfer**.
 
@@ -61,10 +75,10 @@ EP0 được sử dụng cho:
 - **Điều khiển runtime**: Bất kỳ Standard/Class/Vendor Request nào trong suốt vòng đời thiết bị.
 
 :::warning Lưu ý
-EP0 là endpoint duy nhất hỗ trợ **Control Transfer** — một loại transfer đặc biệt gồm 3 giai đoạn (Setup $\rightarrow$ Data $\rightarrow$ Status). Các endpoint khác (EP1–EP15) chỉ hỗ trợ Bulk, Interrupt, hoặc Isochronous Transfer. Chi tiết về các loại transfer sẽ được trình bày trong bài **USB Protocol**.
+EP0 là endpoint duy nhất hỗ trợ Control Transfer — một loại transfer đặc biệt gồm 3 giai đoạn (Setup $\rightarrow$ Data $\rightarrow$ Status). Các endpoint khác (EP1–EP15) chỉ hỗ trợ Bulk, Interrupt, hoặc Isochronous Transfer. Chi tiết về các loại transfer sẽ được trình bày trong bài USB Protocol.
 :::
 
-## Giới hạn số lượng endpoint
+## 5. Giới hạn số lượng endpoint
 
 Một USB device có thể có tối đa **32 endpoint**:
 
@@ -82,9 +96,9 @@ Số endpoint thực sự khả dụng phụ thuộc vào phần cứng USB peri
 Khi thiết kế USB device trên MCU, cần kiểm tra datasheet để biết số endpoint khả dụng và kích thước buffer (FIFO) của từng endpoint.
 :::
 
-## Cơ chế truyền dữ liệu qua Endpoint
+## 6. Cơ chế truyền dữ liệu qua Endpoint
 
-### Host ghi dữ liệu xuống Device (OUT Transaction)
+### 6.1. Host ghi dữ liệu xuống Device (OUT Transaction)
 
 ```mermaid
 sequenceDiagram
@@ -102,7 +116,7 @@ sequenceDiagram
 2. Data được lưu vào buffer của endpoint OUT.
 3. Firmware trên device đọc data từ buffer và xử lý.
 
-### Device gửi dữ liệu lên Host (IN Transaction)
+### 6.2. Device gửi dữ liệu lên Host (IN Transaction)
 
 ```mermaid
 sequenceDiagram
@@ -124,7 +138,7 @@ sequenceDiagram
 Device không thể chủ động gửi data lên host. Dù firmware đã chuẩn bị data sẵn trong EP IN, data vẫn nằm im cho đến khi host gửi IN transaction. Đây là bản chất **host-centric** (host là trung tâm điều khiển) của USB.
 :::
 
-## Tính bất đồng bộ và vấn đề data corruption
+## 7. Tính bất đồng bộ và vấn đề data corruption
 
 Giao tiếp giữa host và device qua USB là **bất đồng bộ (asynchronous)**:
 
@@ -132,7 +146,7 @@ Giao tiếp giữa host và device qua USB là **bất đồng bộ (asynchronou
 - Device phải **chủ động kiểm tra** (polling) xem có dữ liệu mới trong endpoint OUT hay không.
 - Host cũng không biết khi nào device đã chuẩn bị xong data trong endpoint IN.
 
-### Nguy cơ data corruption
+### 7.1. Nguy cơ data corruption
 
 Nếu **firmware đang đọc/ghi endpoint** đồng thời với **host đang truy cập endpoint đó** qua bus, dữ liệu có thể bị hỏng (data corruption).
 
@@ -149,7 +163,7 @@ sequenceDiagram
     Note over EP: ⚠️ DATA CORRUPTION!<br/>Firmware đọc được data<br/>nửa cũ nửa mới
 ```
 
-### Cơ chế bảo vệ
+### 7.2. Cơ chế bảo vệ
 
 USB hardware và firmware sử dụng một số cơ chế để tránh xung đột:
 
@@ -160,5 +174,5 @@ USB hardware và firmware sử dụng một số cơ chế để tránh xung đ�
 | **Interrupt/Flag** | Hardware phát interrupt hoặc set flag khi transaction hoàn thành, firmware chỉ truy cập buffer sau khi nhận interrupt/flag. |
 
 :::warning NAK không phải lỗi
-NAK là phản hồi hoàn toàn bình thường trong USB, cho biết "endpoint chưa sẵn sàng, hãy thử lại sau". Host sẽ tự động retry. Đây khác với **STALL** — báo hiệu lỗi nghiêm trọng, yêu cầu host can thiệp (thường qua control request để clear STALL).
+NAK là phản hồi hoàn toàn bình thường trong USB, cho biết "endpoint chưa sẵn sàng, hãy thử lại sau". Host sẽ tự động retry. Đây khác với STALL — báo hiệu lỗi nghiêm trọng, yêu cầu host can thiệp (thường qua control request để clear STALL).
 :::

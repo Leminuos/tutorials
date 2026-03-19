@@ -1,3 +1,13 @@
+## Mục lục
+
+- [1. Tổng quan](#1-tổng-quan)
+- [2. Device descriptor](#2-device-descriptor)
+- [3. Configuration descriptor](#3-configuration-descriptor)
+- [4. Interface descriptor](#4-interface-descriptor)
+- [5. Endpoint descriptor](#5-endpoint-descriptor)
+
+## 1. Tổng quan
+
 Tất cả thiết bị USB đều cần có hệ thống descriptor để mô tả cho host thông tin về:
 - Loại thiết bị
 - Nhà sản xuất
@@ -8,7 +18,7 @@ Cây hệ thống USB descriptor mà một device cần có được minh họa 
 
 ![USB descriptor](img/01-usb-descriptor.png)
 
-## Device descriptor
+## 2. Device descriptor
 
 Mỗi USB device chỉ có một device descriptor gồm các thông tin liên quan đến device như USB version, vendor ID, product ID, số lượng configuration có thể có. Thông tin chi tiết cấu trúc của device descriptor như sau:
 
@@ -29,7 +39,7 @@ Các trường `bDeviceClass`, `bDeviceSubClass` và `bDeviceProtocol` được 
 
 Trường `bNumConfigurations` cho biết số lượng cấu hình mà thiết bị hỗ trợ.
 
-## Configuration descriptor
+## 3. Configuration descriptor
 
 Mỗi device có thể có nhiều configuration descriptors, nhưng chỉ có một cấu hình được kích hoạt tại một thời điểm. Tuy nhiên, phần lớn các device chỉ có một configuration descriptors.
 
@@ -52,7 +62,7 @@ Khi host đọc configuration descriptor, device cần trả về toàn bộ c�
 
 ![Configuration descriptor](img/04-configuration-descriptor.png)
 
-## Interface descriptor
+## 4. Interface descriptor
 
 Interface đại diện cho một nhóm các endpoint tạo thành một chức năng cụ thể của device. Ví dụ như ta có một thiết bị có nhiều chức năng như printer, scanner, speaker thì interface descriptor cần có các endpoint phục vụ cho từng chức năng.
 
@@ -69,7 +79,7 @@ Thông tin chi tiết cấu trúc của interface descriptor như sau:
 
 ![Interface descriptor](img/05-interface-descriptor.png)
 
-## Endpoint descriptor
+## 5. Endpoint descriptor
 
 Mỗi interface bao gồm một hoặc nhiều endpoint descriptors.
 

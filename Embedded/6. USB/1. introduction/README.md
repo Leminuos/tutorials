@@ -1,4 +1,22 @@
-## USB là gì?
+## Mục lục
+
+- [1. USB là gì?](#1-usb-là-gì)
+- [2. Tại sao cần có USB?](#2-tại-sao-cần-có-usb)
+- [3. USB trong hệ thống nhúng](#3-usb-trong-hệ-thống-nhúng)
+- [4. Tổng quan kiến trúc USB](#4-tổng-quan-kiến-trúc-usb)
+    - [4.1. Vòng đời của một USB Device](#41-vòng-đời-của-một-usb-device)
+    - [4.2. Topology hệ thống USB](#42-topology-hệ-thống-usb)
+- [5. Speed identification](#5-speed-identification)
+- [6. Định nghĩa chân cổng USB](#6-định-nghĩa-chân-cổng-usb)
+    - [6.1. USB2.0](#61-usb20)
+    - [6.2. USB3.0](#62-usb30)
+- [7. Thông số kỹ thuật](#7-thông-số-kỹ-thuật)
+    - [7.1. Định nghĩa mức điện áp](#71-định-nghĩa-mức-điện-áp)
+    - [7.2. Rise/Fall Time](#72-risefall-time)
+    - [7.3. Line states](#73-line-states)
+    - [7.4. Bus Events](#74-bus-events)
+
+## 1. USB là gì?
 
 USB (Universal Serial Bus) là chuẩn giao tiếp nối tiếp được phát triển bởi nhóm các công ty gồm Intel, Compaq, Microsoft, NEC, IBM, DEC và Nortel vào giữa thập niên 1990. USB được thiết kế để cung cấp một giao diện bus thống nhất cho việc kết nối host (máy tính, vi điều khiển, SoC) với các thiết bị ngoại vi (keyboard, mouse, storage, camera, module IoT,...).
 
@@ -9,7 +27,7 @@ Mục tiêu cốt lõi của USB:
 - Đạt tốc độ truyền cao, phù hợp cho nhiều loại dữ liệu.
 - Mở rộng dễ dàng qua hub, hỗ trợ tối đa 127 thiết bị trên cùng một bus.
 
-## Tại sao cần có USB?
+## 2. Tại sao cần có USB?
 
 USB ra đời để giải quyết các vấn đề của các chuẩn giao tiếp cũ (RS232, PS/2, parallel,...):
 - Chuẩn hóa cổng kết nối: Một chuẩn duy nhất thay cho nhiều cổng khác nhau.
@@ -19,7 +37,7 @@ USB ra đời để giải quyết các vấn đề của các chuẩn giao ti�
 - Mở rộng dễ dàng qua hub: Hỗ trợ nhiều thiết bị trên cùng bus.
 - Tương thích rộng rãi: Từ PC đến vi điều khiển nhúng.
 
-## USB trong hệ thống nhúng
+## 3. USB trong hệ thống nhúng
 
 - Trong các hệ thống embedded, USB đóng vai trò quan trọng:
 - Giao tiếp PC ↔ thiết bị nhúng: Truyền dữ liệu, điều khiển, monitoring.
@@ -27,11 +45,11 @@ USB ra đời để giải quyết các vấn đề của các chuẩn giao ti�
 - Debug và logging: Sử dụng USB CDC làm virtual COM port thay cho UART truyền thống.
 - Kết nối ngoại vi: Đọc USB flash drive, kết nối camera, audio device,...
 
-## Tổng quan kiến trúc USB
+## 4. Tổng quan kiến trúc USB
 
 USB là một cable bus hỗ trợ giao tiếp giữa một host duy nhất và các thiết bị ngoại vi. Toàn bộ giao tiếp trên bus đều do host khởi tạo — device không được phép tự ý gửi dữ liệu nếu host không yêu cầu.
 
-### Vòng đời của một USB Device
+### 4.1. Vòng đời của một USB Device
 
 Khi một thiết bị được cắm vào host, nó trải qua một chuỗi các bước trước khi có thể hoạt động:
 
@@ -54,7 +72,7 @@ flowchart LR
 | **Configured** | Thiết bị sẵn sàng hoạt động. Các endpoint được kích hoạt theo configuration đã chọn. |
 | **Suspend** | Nếu bus idle ≥ 3ms, thiết bị phải vào chế độ tiết kiệm năng lượng (tiêu thụ ≤ 2.5mA). |
  
-### Topology hệ thống USB
+### 4.2. Topology hệ thống USB
  
 Cấu trúc topology của USB được thiết kế phân tầng theo kiểu hình cây:
  
@@ -77,9 +95,9 @@ Các thành phần chính:
 | **Function** | Thiết bị ngoại vi thực sự cung cấp chức năng cho người dùng (bàn phím, chuột, storage,...). | Leaf |
  
 Mỗi kết nối giữa hai thành phần là một liên kết **point-to-point**:
-- Host ↔ Hub
-- Hub ↔ Hub
-- Hub ↔ Function
+- Host $\leftrightarrow$ Hub
+- Hub $\leftrightarrow$ Hub
+- Hub $\leftrightarrow$ Function
 
 :::warning Giới hạn 7 tầng
 Do giới hạn thời gian truyền tín hiệu qua hub và cable, USB cho phép tối đa 7 tầng (bao gồm cả Root Hub ở tầng 1). Ở tầng 7, chỉ được phép kết nối function — không được đặt hub. Điều này có nghĩa tối đa có 5 hub xếp chồng (non-root) giữa host và device cuối cùng.
@@ -89,7 +107,7 @@ Do giới hạn thời gian truyền tín hiệu qua hub và cable, USB cho phé
 Mỗi thiết bị trên bus được gán một địa chỉ 7-bit (0–127). Địa chỉ 0 được dành riêng cho thiết bị chưa enumeration, nên số thiết bị tối đa là **127** (bao gồm cả hub).
 :::
 
-## Speed identification
+## 5. Speed identification
 
 USB có 3 loại tốc độ truyền dữ liệu:
 | Tốc độ | Tên gọi | Bandwidth | Ứng dụng điển hình |
@@ -97,8 +115,6 @@ USB có 3 loại tốc độ truyền dữ liệu:
 | **Low Speed** | LS | 1.5 Mb/s | Keyboard, mouse, joystick |
 | **Full Speed** | FS | 12 Mb/s | Audio, CDC, HID phức tạp |
 | **High Speed** | HS | 480 Mb/s | Mass storage, video, network adapter |
-
-### Cơ chế nhận dạng tốc độ
  
 Thiết bị báo tốc độ của nó cho host thông qua **điện trở pull-up 1.5kΩ** trên data line:
  
@@ -119,9 +135,9 @@ Phía host (hoặc hub), mỗi downstream port có **điện trở pull-down 15k
 Thiết bị high speed **ban đầu kết nối ở FS** (pull-up tại D+). Sau đó, host và device thực hiện một quá trình **handshake** đặc biệt để thương lượng chuyển sang HS. Nếu handshake thất bại, thiết bị tiếp tục hoạt động ở FS. Đây là lý do thiết bị HS luôn tương thích ngược với FS.
 :::
 
-## Định nghĩa chân cổng USB
+## 6. Định nghĩa chân cổng USB
 
-### USB2.0
+### 6.1. USB2.0
 
 | Pin   | Tên   | Mô tả |
 | ----- | ----- | ----- |
@@ -136,7 +152,7 @@ Thiết bị high speed **ban đầu kết nối ở FS** (pull-up tại D+). Sa
 - Mức logic 3.3V
 - Cáp xoắn đôi chống nhiễu
 
-### USB3.0
+### 6.2. USB3.0
 
 USB 3.0 giữ nguyên 4 chân USB 2.0 và bổ sung thêm cặp SuperSpeed:
 
@@ -161,22 +177,22 @@ USB 3.0 giữ nguyên 4 chân USB 2.0 và bổ sung thêm cặp SuperSpeed:
 Khi cắm thiết bị USB 2.0 vào cổng USB 3.0, chỉ các chân 1–4 được sử dụng. Thiết bị hoạt động bình thường ở tốc độ USB 2.0. Ngược lại, thiết bị USB 3.0 cắm vào cổng USB 2.0 cũng sẽ fallback về tốc độ USB 2.0.
 :::
 
-## Thông số kỹ thuật
+## 7. Thông số kỹ thuật
 
-### Định nghĩa mức điện áp
+### 7.1. Định nghĩa mức điện áp
 
 - Data line sử dụng tín hiệu vi sai D+ / D-
 - Mức logic danh định: 0V và 3.3V
 - Điện trở pull‑up tại thiết bị: ~1.5 kΩ
 - Điện trở termination phía host: 45 Ω mỗi line
 
-### Rise/Fall Time
+### 7.2. Rise/Fall Time
 
 Output rise time và fall time được đo trong khoảng từ 10% đến 90% tín hiệu và nằm trong khoảng 4ns đến 20ns.
 
 ![electrical](img/02-electrical.png)
 
-### Line states
+### 7.3. Line states
 
 | State | Electrical |
 | ----- | ---------- |
@@ -190,7 +206,7 @@ Output rise time và fall time được đo trong khoảng từ 10% đến 90% t
 USB sử dụng mã hóa NRZI: bit `0` gây ra chuyển đổi trạng thái (J$\rightarrow$K hoặc K$\rightarrow$J), bit `1` giữ nguyên trạng thái. Việc định nghĩa J/K thay vì dùng trực tiếp mức logic giúp giao thức hoạt động thống nhất cho cả FS và LS, dù mức điện áp thực tế ngược nhau.
 :::
 
-### Bus Events
+### 7.4. Bus Events
 
 | Event     | Mô tả |
 | --------- | ----- |   

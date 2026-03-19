@@ -1,4 +1,30 @@
-## Tổng quan
+## Mục lục
+
+- [1. Tổng quan](#1-tổng-quan)
+- [2. Tại sao CDC-ACM quan trọng trong embedded?](#2-tại-sao-cdc-acm-quan-trọng-trong-embedded)
+- [3. Kiến trúc CDC-ACM](#3-kiến-trúc-cdc-acm)
+    - [3.1. Mô hình hai interface](#31-mô-hình-hai-interface)
+    - [3.2. Vai trò từng Endpoint](#32-vai-trò-từng-endpoint)
+- [4. CDC Class-Specific Requests](#4-cdc-class-specific-requests)
+    - [4.1. SET_LINE_CODING (bRequest = 0x20)](#41-set_line_coding-brequest--0x20)
+    - [4.2. GET_LINE_CODING (bRequest = 0x21)](#42-get_line_coding-brequest--0x21)
+    - [4.3. SET_CONTROL_LINE_STATE (bRequest = 0x22)](#43-set_control_line_state-brequest--0x22)
+- [5. Cấu trúc descriptor](#5-cấu-trúc-descriptor)
+    - [5.1. Descriptor tree](#51-descriptor-tree)
+    - [5.2. CDC Functional Descriptors](#52-cdc-functional-descriptors)
+- [6. IAD (Interface Association Descriptor)](#6-iad-interface-association-descriptor)
+- [7. Luồng giao tiếp thực tế](#7-luồng-giao-tiếp-thực-tế)
+    - [7.1. PC gửi data xuống MCU](#71-pc-gửi-data-xuống-mcu)
+    - [7.2. MCU gửi data lên PC](#72-mcu-gửi-data-lên-pc)
+    - [7.3. Mở / Đóng serial port](#73-mở--đóng-serial-port)
+- [8. Lưu ý khi implement CDC-ACM](#8-lưu-ý-khi-implement-cdc-acm)
+    - [8.1. Zero-Length Packet (ZLP) cho Bulk Transfer](#81-zero-length-packet-zlp-cho-bulk-transfer)
+    - [8.2. Buffer overflow trên MCU](#82-buffer-overflow-trên-mcu)
+    - [8.3. Enumeration không thành công trên Windows](#83-enumeration-không-thành-công-trên-windows)
+    - [8.4. Tốc độ truyền thực tế](#84-tốc-độ-truyền-thực-tế)
+    - [8.5. Multiple CDC-ACM trên cùng device](#85-multiple-cdc-acm-trên-cùng-device)
+
+## 1. Tổng quan
 
 **CDC (Communication Device Class)** là một USB device class được thiết kế cho các thiết bị truyền thông — modem, network adapter, serial port,... Trong đó, **CDC-ACM (Abstract Control Model)** là subclass phổ biến nhất, cho phép thiết bị USB hoạt động như một Virtual COM Port (cổng serial ảo) trên máy tính.
 
@@ -9,7 +35,7 @@ Khi MCU implement CDC-ACM, nó sẽ xuất hiện trên PC dưới dạng:
 
 Từ góc nhìn phần mềm PC, giao tiếp với thiết bị CDC-ACM giống hệt giao tiếp UART qua serial port — dùng cùng API (open, read, write, close), cùng các tool (PuTTY, minicom, screen, Arduino Serial Monitor).
 
-## Tại sao CDC-ACM quan trọng trong embedded?
+## 2. Tại sao CDC-ACM quan trọng trong embedded?
  
 | Ưu điểm | Mô tả |
 |---|---|
@@ -20,12 +46,12 @@ Từ góc nhìn phần mềm PC, giao tiếp với thiết bị CDC-ACM giống 
 | **Driverless** | Windows 10+, Linux, macOS đều có driver CDC-ACM tích hợp sẵn |
  
 :::warning Chú ý
-CDC-ACM mô phỏng giao tiếp serial nhưng thực tế truyền qua USB bus. Các thông số serial (baud rate, parity, stop bits) mà PC gửi xuống **không ảnh hưởng đến tốc độ truyền USB** — chúng chỉ có ý nghĩa nếu MCU dùng chúng để cấu hình một UART thật phía sau (ví dụ: USB-to-UART bridge). Nếu MCU chỉ xử lý data nội bộ, firmware có thể nhận và bỏ qua các thông số này.
+CDC-ACM mô phỏng giao tiếp serial nhưng thực tế truyền qua USB bus. Các thông số serial (baud rate, parity, stop bits) mà PC gửi xuống không ảnh hưởng đến tốc độ truyền USB — chúng chỉ có ý nghĩa nếu MCU dùng chúng để cấu hình một UART thật phía sau (ví dụ: USB-to-UART bridge). Nếu MCU chỉ xử lý data nội bộ, firmware có thể nhận và bỏ qua các thông số này.
 :::
 
-## Kiến trúc CDC-ACM
+## 3. Kiến trúc CDC-ACM
  
-### Mô hình hai interface
+### 3.1. Mô hình hai interface
  
 CDC-ACM yêu cầu device khai báo hai interface:
 
@@ -53,7 +79,7 @@ flowchart TD
 | **Communication Interface (CCI)** | Class=0x02, Subclass=0x02, Protocol=0x01 | Điều khiển: nhận/gửi command, thông báo trạng thái | EP0 (Control) + 1 EP IN (Interrupt) |
 | **Data Interface (DCI)** | Class=0x0A, Subclass=0x00, Protocol=0x00 | Truyền data thực tế (payload) | 1 EP IN (Bulk) + 1 EP OUT (Bulk) |
 
-### Vai trò từng Endpoint
+### 3.2. Vai trò từng Endpoint
  
 | Endpoint | Type | Hướng | Chức năng |
 |---|---|---|---|
@@ -62,11 +88,11 @@ flowchart TD
 | **Data IN EP** | Bulk IN | Device $\rightarrow$ Host | Gửi data từ MCU lên PC |
 | **Data OUT EP** | Bulk OUT | Host $\rightarrow$ Device | Nhận data từ PC xuống MCU |
 
-## CDC Class-Specific Requests
+## 4. CDC Class-Specific Requests
  
 Ngoài Standard Request, CDC-ACM định nghĩa thêm các Class Request gửi qua Control Transfer. Đây là các request mà PC serial driver gửi xuống device để cấu hình "serial port ảo".
 
-### SET_LINE_CODING (bRequest = 0x20)
+### 4.1. SET_LINE_CODING (bRequest = 0x20)
  
 PC gửi thông số serial xuống device:
  
@@ -87,11 +113,11 @@ PC gửi thông số serial xuống device:
 | 5 | `bParityType` | 1 byte | Parity:<br>- `0`=None<br>- `1`=Odd<br>- `2`=Even<br>- `3`=Mark<br>- `4`=Space |
 | 6 | `bDataBits` | 1 byte | Data bits: 5, 6, 7, 8, hoặc 16 |
  
-### GET_LINE_CODING (bRequest = 0x21)
+### 4.2. GET_LINE_CODING (bRequest = 0x21)
  
 PC đọc thông số serial hiện tại từ device. Cấu trúc tương tự, nhưng hướng ngược lại (`bmRequestType = 0xA1`, device gửi 7 byte lên host).
  
-### SET_CONTROL_LINE_STATE (bRequest = 0x22)
+### 4.3. SET_CONTROL_LINE_STATE (bRequest = 0x22)
  
 PC điều khiển tín hiệu DTR và RTS:
  
@@ -116,19 +142,19 @@ Khi ứng dụng trên PC mở serial port (ví dụ: PuTTY connect), host gửi
 Đây cũng là cơ chế mà ESP dùng để auto-reset MCU khi upload firmware: PC toggle DTR $\rightarrow$ MCU reset $\rightarrow$ bootloader bắt đầu.
 :::
 
-## Cấu trúc descriptor
+## 5. Cấu trúc descriptor
  
 CDC-ACM cần một cấu trúc descriptor phức tạp hơn thông thường vì có hai interface và các **Functional Descriptor** đặc thù.
 
-### Descriptor tree
+### 5.1. Descriptor tree
 
 ![CDC](img/cdc.png)
  
-### CDC Functional Descriptors
+### 5.2. CDC Functional Descriptors
  
 Đây là các descriptor đặc thù của CDC class, nằm ngay sau Interface Descriptor của Communication Interface:
  
-#### Header Functional Descriptor (bắt buộc)
+#### 5.2.1. Header Functional Descriptor (bắt buộc)
  
 | Offset | Field | Size | Giá trị | Mô tả |
 |---|---|---|---|---|
@@ -137,7 +163,7 @@ CDC-ACM cần một cấu trúc descriptor phức tạp hơn thông thường v�
 | 2 | bDescriptorSubtype | 1 | 0x00 | Header |
 | 3–4 | bcdCDC | 2 | 0x0110 | CDC spec version 1.10 |
  
-#### Call Management Functional Descriptor
+#### 5.2.2. Call Management Functional Descriptor
  
 | Offset | Field | Size | Giá trị | Mô tả |
 |---|---|---|---|---|
@@ -147,7 +173,7 @@ CDC-ACM cần một cấu trúc descriptor phức tạp hơn thông thường v�
 | 3 | bmCapabilities | 1 | 0x00 | Thường = 0 (không handle call management) |
 | 4 | bDataInterface | 1 | 1 | Data Interface number |
  
-#### ACM Functional Descriptor
+#### 5.2.3. ACM Functional Descriptor
  
 | Offset | Field | Size | Giá trị | Mô tả |
 |---|---|---|---|---|
@@ -169,7 +195,7 @@ CDC-ACM cần một cấu trúc descriptor phức tạp hơn thông thường v�
 Giá trị `bmCapabilities = 0x02` là phổ biến nhất trong embedded — chỉ cần hỗ trợ Line Coding và Control Line State là đủ cho Virtual COM Port.
 :::
 
-#### Union Functional Descriptor
+#### 5.2.4. Union Functional Descriptor
  
 | Offset | Field | Size | Giá trị | Mô tả |
 |---|---|---|---|---|
@@ -181,7 +207,7 @@ Giá trị `bmCapabilities = 0x02` là phổ biến nhất trong embedded — ch
  
 Union Descriptor liên kết Communication Interface và Data Interface lại với nhau, cho host biết hai interface này thuộc cùng một function.
  
-## IAD (Interface Association Descriptor)
+## 6. IAD (Interface Association Descriptor)
  
 Khi một USB device có **nhiều function** (ví dụ: CDC-ACM + MSC, hoặc 2 CDC-ACM), cần sử dụng **IAD** để nhóm các interface thuộc cùng một function lại với nhau.
  
@@ -208,9 +234,9 @@ Khi sử dụng IAD, Device Descriptor cần thay đổi:
 Nếu device chỉ có đúng một CDC-ACM function và không có function nào khác, có thể bỏ IAD và dùng `bDeviceClass = 0x02`. Tuy nhiên, luôn dùng IAD là practice an toàn nhất — đảm bảo tương thích khi mở rộng thêm function sau.
 :::
 
-## Luồng giao tiếp thực tế
+## 7. Luồng giao tiếp thực tế
  
-### PC gửi data xuống MCU
+### 7.1. PC gửi data xuống MCU
  
 ```mermaid
 sequenceDiagram
@@ -225,7 +251,7 @@ sequenceDiagram
     FW->>FW: Đọc buffer, xử lý "Hello\n"
 ```
  
-### MCU gửi data lên PC
+### 7.2. MCU gửi data lên PC
  
 ```mermaid
 sequenceDiagram
@@ -242,7 +268,7 @@ sequenceDiagram
     DRV->>APP: read() --> "OK\n"
 ```
  
-### Mở / Đóng serial port
+### 7.3. Mở / Đóng serial port
  
 ```mermaid
 sequenceDiagram
@@ -265,34 +291,34 @@ sequenceDiagram
     Note over FW: DTR=0 --> PC đã disconnect
 ```
  
-## Lưu ý khi implement CDC-ACM
+## 8. Lưu ý khi implement CDC-ACM
  
-### 1. Zero-Length Packet (ZLP) cho Bulk Transfer
+### 8.1. Zero-Length Packet (ZLP) cho Bulk Transfer
  
 Khi data gửi từ MCU lên PC có kích thước đúng bằng bội số của max packet size (thường 64 byte ở FS), firmware phải gửi thêm một ZLP để host biết transfer đã kết thúc. Quên ZLP sẽ khiến PC đọc bị treo chờ.
 
-### 2. Buffer overflow trên MCU
+### 8.2. Buffer overflow trên MCU
 
 Nếu PC gửi data liên tục qua Bulk OUT nhưng firmware xử lý chậm, EP OUT buffer sẽ đầy $\rightarrow$ device trả NAK $\rightarrow$ host tự retry. Đây là flow control tự nhiên của USB, nhưng firmware nên đọc buffer kịp thời để tránh mất data khi buffer wrap around.
 
-### 3. Enumeration không thành công trên Windows
+### 8.3. Enumeration không thành công trên Windows
  
 Nguyên nhân phổ biến:
 - Thiếu hoặc sai Functional Descriptor $\rightarrow$ Windows không nhận dạng được CDC-ACM.
 - Thiếu IAD khi dùng composite device $\rightarrow$ Windows không nhóm được interface.
 - `bMaxPacketSize0` trong Device Descriptor không khớp với khả năng thật của EP0.
  
-### 4. Tốc độ truyền thực tế
- 
+### 8.4. Tốc độ truyền thực tế
+
 | Tốc độ USB | Bulk Max Packet | Throughput thực tế (xấp xỉ) |
 |---|---|---|
 | Full Speed (12 Mb/s) | 64 byte | ~1 MB/s |
 | High Speed (480 Mb/s) | 512 byte | ~40 MB/s |
- 
+
 Tốc độ thực tế phụ thuộc vào firmware processing speed, USB stack overhead, và lượng traffic khác trên bus.
- 
-### 5. Multiple CDC-ACM trên cùng device
- 
+
+### 8.5. Multiple CDC-ACM trên cùng device
+
 Một MCU có thể expose nhiều Virtual COM Port bằng cách khai báo nhiều cặp interface (CCI + DCI). Mỗi cặp cần một IAD riêng. Ví dụ: ESP32-S3 có thể tạo 2 CDC-ACM — một cho debug log, một cho data transfer.
 
 ## Tham khảo

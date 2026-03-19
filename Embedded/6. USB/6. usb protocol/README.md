@@ -1,4 +1,26 @@
-## Kiến trúc giao thức USB
+## Mục lục
+
+- [1. Kiến trúc giao thức USB](#1-kiến-trúc-giao-thức-usb)
+- [2. Transaction](#2-transaction)
+- [3. Định dạng packet](#3-định-dạng-packet)
+    - [3.1. SYNC Field](#31-sync-field)
+    - [3.2. PID Field (Packet Identifier)](#32-pid-field-packet-identifier)
+    - [3.3. Address Field](#33-address-field)
+    - [3.4. Endpoint Field](#34-endpoint-field)
+    - [3.5. Data Field](#35-data-field)
+    - [3.6. CRC Field](#36-crc-field)
+    - [3.7. EOP (End of Packet)](#37-eop-end-of-packet)
+- [4. Phân loại packet](#4-phân-loại-packet)
+    - [4.1. Token packet](#41-token-packet)
+    - [4.2. Data packet](#42-data-packet)
+    - [4.3. Handshake packet](#43-handshake-packet)
+- [5. Các loại transfer](#5-các-loại-transfer)
+    - [5.1. Control transfer](#51-control-transfer)
+    - [5.2. Interrupt transfer](#52-interrupt-transfer)
+    - [5.3. Bulk transfer](#53-bulk-transfer)
+    - [5.4. Isochronous transfer](#54-isochronous-transfer)
+
+## 1. Kiến trúc giao thức USB
 
 USB là giao thức truyền thông nối tiếp theo mô hình **host-centric**: toàn bộ bus được điều khiển bởi host, mọi hoạt động truyền dữ liệu đều do host khởi tạo và lập lịch. Device chỉ phản hồi theo yêu cầu từ host, không bao giờ tự ý phát dữ liệu lên bus.
 
@@ -31,7 +53,7 @@ flowchart TD
 Không phải mọi transaction đều có đủ 3 packet. Ví dụ: Isochronous transaction không có Handshake Packet, và một số transaction có thể không có Data Packet.
 :::
 
-## Transaction
+## 2. Transaction
 
 Transaction là đơn vị giao tiếp cơ bản giữa host và device, gồm tối đa ba packet:
 
@@ -52,7 +74,7 @@ H->>D: Handshake Packet
 
 Cách tổ chức này đảm bảo mọi giao tiếp đều được kiểm soát chặt chẽ, tránh xung đột trên bus và cho phép host chủ động quản lý băng thông.
 
-## Định dạng packet
+## 3. Định dạng packet
 
 Mọi packet USB đều tuân theo cấu trúc chung, bắt đầu bằng **SYNC** và kết thúc bằng **EOP**:
 
@@ -61,9 +83,7 @@ flowchart LR
 SYNC --> PID --> ADDR --> ENDP --> DATA --> CRC --> EOP
 ```
 
-### Chi tiết các trường
-
-#### SYNC Field
+### 3.1. SYNC Field
 
 Trường này được sử dụng để dồng bộ clock giữa transmitter và receiver.
 
@@ -74,7 +94,7 @@ Trường này được sử dụng để dồng bộ clock giữa transmitter v
 
 Hai bit cuối của SYNC field (`KK`) đánh dấu ranh giới với trường PID tiếp theo.
 
-#### PID Field (Packet Identifier)
+### 3.2. PID Field (Packet Identifier)
 
 PID xác định loại packet, từ đó biết packet dùng để làm gì, cấu trúc dữ liệu phía sau, và hướng truyền.
 
@@ -105,7 +125,7 @@ PID gồm 4 bit cao cho biết packet type field và 4 bit thấp dùng để ch
 | | SPLIT | 1000 | HS only: split transaction |
 | | PING | 0100 | HS only: kiểm tra endpoint sẵn sàng trước khi gửi OUT |
 
-#### Address Field
+### 3.3. Address Field
 
 Trường này cho biết địa chỉ của device.
 
@@ -117,7 +137,7 @@ Trường này cho biết địa chỉ của device.
 - Address được host cấp phát trong quá trình enumeration
 :::
 
-#### Endpoint Field
+### 3.4. Endpoint Field
 
 - Kích thước: 4 bit
 - Phạm vi: 0-15 (tối đa 16 endpoint)
@@ -125,7 +145,7 @@ Trường này cho biết địa chỉ của device.
   - Low Speed device: Tối đa 3 endpoint (bao gồm EP0)
   - Full/High Speed: Tối đa 16 endpoint
 
-#### Data Field
+### 3.5. Data Field
 
 - Kích thước: 0-1024 byte (tùy transfer type)
 - Thứ tự truyền: LSB (Least Significant Bit) trước
@@ -142,7 +162,7 @@ Trường này cho biết địa chỉ của device.
 Kích thước thực tế phụ thuộc `wMaxPacketSize` trong endpoint descriptor |
 :::
 
-#### CRC Field
+### 3.6. CRC Field
 
 Trường này được sử dụng để verify tất cả các trường ngoài trừ PID.
 
@@ -155,13 +175,13 @@ Trường này được sử dụng để verify tất cả các trường ngoà
 CRC không bảo vệ PID field — PID đã có cơ chế check riêng (4 bit complement). CRC chỉ bảo vệ các trường khác trong packet.
 :::
 
-#### EOP (End of Packet)
+### 3.7. EOP (End of Packet)
 
 EOP báo hiệu kết thúc packet bằng tín hiệu SE0 kéo dài 2 bit time, sau đó chuyển về J state trong 1 bit time (đã trình bày trong bài Introduction).
 
-## Phân loại packet
+## 4. Phân loại packet
 
-### Token packet
+### 4.1. Token packet
 
 Token packet do host gửi, dùng để khởi tạo transaction. Cấu trúc:
 
@@ -186,7 +206,7 @@ Token: IN, Address=5, Endpoint=1
 
 SOF được host phát ở đầu mỗi frame (1ms cho FS) hoặc microframe (125μs cho HS). Frame number đếm tuần tự từ 0 đến 2047 (11 bit) rồi quay lại 0.
 
-### Data packet
+### 4.2. Data packet
 
 Data packet chứa payload thực tế. Cấu trúc:
 
@@ -256,7 +276,7 @@ sequenceDiagram
 Không có data toggle, khi ACK bị mất, host sẽ retry và device nhận data hai lần mà không biết $\rightarrow$ dữ liệu bị trùng lặp. Data toggle giải quyết vấn đề này bằng cách cho device biết "đây là packet mới hay packet cũ gửi lại".
 :::
 
-### Handshake packet
+### 4.3. Handshake packet
 
 Handshake packet là packet đơn giản nhất, chỉ chứa PID:
 
@@ -287,7 +307,7 @@ Device: Có di chuyển --> DATA1 (tọa độ) --> Host: ACK
 - **STALL** = "Tôi gặp lỗi, không thể tiếp tục" $\rightarrow$ host phải gửi `CLEAR_FEATURE(ENDPOINT_HALT)` để reset endpoint trước khi giao tiếp lại.
 :::
 
-## Các loại transfer
+## 5. Các loại transfer
 
 Transfer là lớp cao nhất trong kiến trúc giao thức USB. Người thiết kế firmware làm việc chủ yếu ở mức transfer, không cần quan tâm đến từng transaction hay packet riêng lẻ (USB stack và hardware xử lý các lớp thấp hơn).
 
@@ -306,7 +326,7 @@ Ví dụ:
 
 ![USB protocol](img/01-usb-protocol.png)
 
-### Control transfer
+### 5.1. Control transfer
 
 Control transfer là loại transfer **bắt buộc** trên mọi USB device, sử dụng endpoint 0 để quản lý và cấu hình thiết bị. Control transfer có cấu trúc đặc biệt gồm 3 stage:
 
@@ -370,7 +390,7 @@ Status stage báo cáo **kết quả cuối cùng** của toàn bộ control tra
 
   ![Status stage](img/09-state-stage.png)
 
-### Interrupt transfer
+### 5.2. Interrupt transfer
 
 Interrupt transfer được sử dụng để truyền dữ liệu nhỏ, cần độ trễ thấp và phản hồi đảm bảo. Ví dụ như bàn phím, chuột,...
 
@@ -412,7 +432,7 @@ sequenceDiagram
 Tên "Interrupt Transfer" dễ gây nhầm lẫn. Device không thể chủ động ngắt host như interrupt trong MCU. Thay vào đó, host polling đều đặn theo interval, và device trả data khi có hoặc NAK khi không. Tên gọi chỉ phản ánh mục đích sử dụng, không phải cơ chế hoạt động.
 :::
 
-### Bulk transfer
+### 5.3. Bulk transfer
 
 Bulk transfer được dùng để truyền dữ liệu lớn, không yêu cầu real-time. Dùng khi cần độ tin cậy cao, ví dụ như USB Flash Drive, Printer, UART qua USB (CDC/ACM).
 
@@ -439,11 +459,11 @@ sequenceDiagram
 | High Speed | 512 byte |
 | Low Speed | **Không hỗ trợ** bulk transfer |
 
-:::warning Short Packet và Zero-Length Packet (ZLP)**
+:::warning Short Packet và Zero-Length Packet (ZLP)
 Bulk transfer kết thúc khi host/device gửi một short packet (nhỏ hơn max packet size). Nếu tổng data vừa đúng bội số của max packet size, cần gửi thêm một zero-length packet (ZLP) để báo hiệu kết thúc transfer. Đây là lỗi phổ biến khi viết firmware USB — quên gửi ZLP khiến host chờ mãi vì nghĩ transfer chưa xong.
 :::
 
-### Isochronous transfer
+### 5.4. Isochronous transfer
 
 Isochronous transfer được dùng trong các ứng dụng yêu cầu thời gian thực, cần truyền đều đặn, ví dụ như microphone, webcam USB, audio USB. Isochronous Transfer không hỗ trợ low speed.
 

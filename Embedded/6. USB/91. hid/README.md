@@ -1,4 +1,15 @@
-## Tổng quan
+## Mục lục
+
+- [1. Tổng quan](#1-tổng-quan)
+- [2. Report Descriptor](#2-report-descriptor)
+- [3. Logical Minimum và Physical Minimum](#3-logical-minimum-và-physical-minimum)
+- [4. Usage minimum và Usage maximum](#4-usage-minimum-và-usage-maximum)
+- [5. Usage Page, Usage và Collection](#5-usage-page-usage-và-collection)
+- [6. USB HID Keyboard](#6-usb-hid-keyboard)
+- [7. USB HID Mouse](#7-usb-hid-mouse)
+- [8. USB HID Custom](#8-usb-hid-custom)
+
+## 1. Tổng quan
 
 HID là một chuẩn thiết bị USB dành cho các thiết bị giao tiếp trực tiếp với người dùng (human interface). Các thiết bị này thường gửi dữ liệu đơn giản, tốc độ thấp, nhưng yêu cầu phản hồi nhanh. Ví dụ như mouse, keyboard,...Ngoài ra, các thiết bị HID không nhất thiết phải tương tác giữa người và máy tính. Bất kỳ thiết bị nào tuân thủ theo thông số kỹ thuật của HID đều là thiết bị HID.
 
@@ -126,7 +137,7 @@ Host ra lệnh cho thiết bị chuyển đổi chế độ giao tiếp 2 chế 
 - Boot Protocol: Format đơn giản chuẩn hóa.
 - Report Protocol: Format tự do theo Report Descriptor.
 
-## Report Descriptor
+## 2. Report Descriptor
 
 Như đã nói ở trên, HID là một chuẩn dành cho rất nhiều loại thiết bị khác nhau, vì thế nó không thể nào có một định dạng dữ liệu cụ thể cho tất cả các thiết bị HID được. Do đó, cần một cơ chế để các thiết bị HID tự mô tả cấu trúc dữ liệu mà nó sẽ gửi hoặc nhận. Cơ chế đó chính là HID Report Descriptor.
 
@@ -191,7 +202,7 @@ Thông tin data của main item như sau:
 - 0x09: String Maximum
 - 0x0A: Delimiter
 
-## Logical Minimum và Physical Minimum
+## 3. Logical Minimum và Physical Minimum
 
 Trong HID Report Descriptor, Logical Minimum và Physical Minimum (cùng với Logical Maximum và Physical Maximum) là các thông tin quan trọng, nhưng chúng phục vụ hai mục đích khác nhau:
 - Logical Minimum và Logical Maximum xác định giá trị dữ liệu thực tế mà thiết bị gửi qua report. Nó mô tả khoảng giá trị mà dữ liệu sẽ thể hiện trong báo cáo.
@@ -205,7 +216,7 @@ Ví dụ: Giả sử ta có một joystick có thể nghiêng trái phải trong
 
 Ý nghĩa: Giá trị bit gửi về từ thiết bị sẽ nằm trong khoảng từ -127 đến 127.Nhưng về mặt vật lý, giá trị đó biểu diễn cho khoảng từ -90 độ đến +90 độ. Giá trị -127 tương ứng với -90 độ, giá trị 0 tương ứng 0 độ, và giá trị 127 tương ứng với +90 độ.
 
-## Usage minimum và Usage maximum
+## 4. Usage minimum và Usage maximum
 
 Khi khai báo Usage Minimum - Usage Maximum, tức là ta đang tạo ra nhiều Usage liên tiếp nhau.
 
@@ -225,7 +236,7 @@ Usage Minimum (0x04) ; Keyboard 'A'
 Usage Maximum (0x1D) ; Keyboard 'Z'
 ```
 
-## Usage Page, Usage và Collection
+## 5. Usage Page, Usage và Collection
 
 Trong kiến trúc USB HID (Human Interface Device), Usage Page và Usage là hai khái niệm trung tâm dùng để mô tả ý nghĩa và chức năng của từng phần dữ liệu mà một thiết bị gửi đến host. Khi một thiết bị HID như chuột, bàn phím hoặc tay cầm chơi game giao tiếp với máy tính, nó phải chỉ rõ từng phần dữ liệu tượng trưng cho hành động hoặc thành phần nào. Để làm được việc đó, hệ thống HID sử dụng hai cấp độ phân loại: Usage Page và Usage.
 
@@ -276,7 +287,7 @@ Cấu trúc Collection có thể là Application, Logical, hoặc Physical tùy 
 - Logical Collection: Nhóm các hành động có liên quan chặt chẽ với nhau (có thể là các phím, nút, hoặc trục).
 - Physical Collection: Nhóm các chức năng của thiết bị vật lý, như các bộ phận khác nhau của một thiết bị phức tạp.
 
-## USB HID Keyboard
+## 6. USB HID Keyboard
 
 Report Descriptor mà một thiết bị USB HID Keyboard cần truyền tới host sẽ có format như sau:
 
@@ -329,7 +340,7 @@ Với trường Modifier keys status các giá trị từ E0-E7 tương ứng v�
 
 Với trường keypress giá trị từ 0x00 đến 0x65 có thể xem rõ hơn tại [đây](https://d1.amobbs.com/bbs_upload782111/files_47/ourdev_692986N5FAHU.pdf)
 
-## USB HID Mouse
+## 7. USB HID Mouse
 
 Report Descriptor mà một thiết bị USB HID Mouse cần truyền tới host sẽ có format như sau:
 
@@ -428,7 +439,7 @@ Nhìn vào Report Descriptor của Mouse ta dễ dàng phân tích được dữ
   </tr>
 </table>
 
-## USB HID Custom
+## 8. USB HID Custom
 
 USB HID Custom đơn giản là truyền dữ liệu thông qua giao thức USB HID nhưng có thể truyền tùy ý mà không tuân theo report như những thiết bị đã được fix sẵn như chuột, bàn phím, gamepad…. HID custom cho phép người dùng truyền dữ liệu giữa thiết bị và host giống như USB CDC mà không cần cài driver cổng com ảo. Chính vì thế chúng ta có thể sử dụng điều này để giao tiếp nhanh và hiệu quả hơn.
 

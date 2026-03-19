@@ -1,6 +1,16 @@
 Trong USB, mọi thao tác cấu hình và điều khiển thiết bị đều được thực hiện thông qua Control Transfer trên endpoint 0. Nội dung của các control transfer này được chuẩn hóa thành một tập hợp các Standard Requests. Đây là các yêu cầu bắt buộc mà mọi thiết bị USB phải hiểu và phản hồi đúng theo specification.
 
-## Setup packet
+## Mục lục
+
+- [1. Setup packet](#1-setup-packet)
+- [2. Danh sách Standard Requests](#2-danh-sách-standard-requests)
+- [3. Chi tiết các request quan trọng](#3-chi-tiết-các-request-quan-trọng)
+    - [3.1. GET_DESCRIPTOR](#31-get_descriptor)
+    - [3.2. SET_ADDRESS](#32-set_address)
+    - [3.3. SET_CONFIGURATION](#33-set_configuration)
+    - [3.4. GET_STATUS, SET_FEATURE, CLEAR_FEATURE](#34-get_status-set_feature-clear_feature)
+
+## 1. Setup packet
 
 Mọi Standard Request đều được gửi trong Setup Stage của Control Transfer, dưới dạng một Setup Packet cố định 8 byte:
 
@@ -22,7 +32,7 @@ Trường `bmRequestType` được chia thành các bit ý nghĩa như sau:
 
 Post này sẽ chỉ tập trung vào Standard Requests, tương ứng `bmRequestType` có Type = 00.
 
-## Danh sách Standard Requests
+## 2. Danh sách Standard Requests
 
 Các Standard Requests bắt buộc theo USB 2.0 Specification:
 
@@ -40,9 +50,9 @@ Các Standard Requests bắt buộc theo USB 2.0 Specification:
 | 0x0B     | `SET_INTERFACE`      | Host → Device | Chọn alternate interface |
 | 0x0C     | `SYNCH_FRAME`        | Device → Host | Đồng bộ frame (dùng cho isochronous endpoint) |
 
-## Chi tiết các request quan trọng
+## 3. Chi tiết các request quan trọng
 
-### GET_DESCRIPTOR
+### 3.1. GET_DESCRIPTOR
 
 Đây là request quan trọng nhất trong toàn bộ giao thức USB. Host sử dụng `GET_DESCRIPTOR` để đọc các descriptor từ thiết bị, bắt đầu bằng Device Descriptor ở địa chỉ mặc định 0. Từ các descriptor này, host xác định loại thiết bị, số lượng cấu hình, số lượng interface và các endpoint cần kích hoạt.
 
@@ -116,7 +126,7 @@ sequenceDiagram
 Lần đầu, host chỉ đọc 8 byte để lấy trường `bMaxPacketSize0` (offset 7) — vì EP0 max packet size chưa biết, host cần con số này để cấu hình đúng control pipe. Sau khi biết max packet size, host reset device, gán địa chỉ, rồi đọc lại đầy đủ 18 byte.
 :::
 
-### SET_ADDRESS
+### 3.2. SET_ADDRESS
 
 Sau khi đọc Device Descriptor lần đầu, host gửi `SET_ADDRESS` để gán một địa chỉ mới cho thiết bị.
 
@@ -138,7 +148,7 @@ Device chỉ chuyển sang địa chỉ mới sau khi Status Stage hoàn tất t
 Trên nhiều MCU (STM32, ESP32,...), USB peripheral hardware tự động xử lý SET_ADDRESS — firmware chỉ cần ghi địa chỉ mới vào thanh ghi address tại thời điểm thích hợp (sau Status Stage). Tuy nhiên, một số stack yêu cầu firmware ghi address register trước Status Stage và hardware sẽ tự defer — cần đọc kỹ reference manual của MCU cụ thể.
 :::
 
-### SET_CONFIGURATION 
+### 3.3. SET_CONFIGURATION 
 
 Host gửi `SET_CONFIGURATION` để chọn một cấu hình cụ thể mà thiết bị hỗ trợ.
  
@@ -160,7 +170,7 @@ Khi device nhận SET_CONFIGURATION thành công:
 Gửi SET_CONFIGURATION với `wValue = 0` sẽ đưa device về trạng thái Address (unconfigured) — tất cả endpoint ngoài EP0 bị vô hiệu hóa.
 :::
 
-### GET_STATUS, SET_FEATURE, CLEAR_FEATURE
+### 3.4. GET_STATUS, SET_FEATURE, CLEAR_FEATURE
 
 Ba request này được dùng để quản lý trạng thái thiết bị và endpoint. Ví dụ, `CLEAR_FEATURE` được sử dụng để xóa trạng thái HALT của một endpoint sau khi xảy ra STALL.
 
