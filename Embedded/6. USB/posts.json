@@ -105,5 +105,14 @@
     "description": "Bài viết giới thiệu chuẩn USB Type-C, cấu trúc chân kết nối, vai trò truyền dữ liệu và cấp nguồn trong các thiết bị hiện đại.",
     "image": "img/usb.webp",
     "tags": ["usb", "type-c"]
+  },
+
+  "93. triển khai usb": {
+    "title": "Triển khai USB protocol trên STM32F103",
+    "date": "19-01-2026",
+    "author": "Peizzon",
+    "description": "Bài viết này sẽ triển khai từng bước USB protocol trên STM32F103.",
+    "image": "img/usb.webp",
+    "tags": ["usb"]
   }
 }

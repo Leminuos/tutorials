@@ -1,8 +1,30 @@
-## USB Type C receptacle pinout
+## Tổng quan USB Type-C
+ 
+**USB Type-C** là chuẩn connector vật lý thế hệ mới, được thiết kế để thay thế tất cả các loại connector USB trước đó (Type-A, Type-B, Mini-B, Micro-B). Type-C không chỉ là hình dạng đầu cắm — nó đi kèm một hệ sinh thái giao thức phức tạp hơn nhiều so với USB 2.0/3.0 truyền thống
+
+**Đặc điểm chính:**
+ 
+| Đặc điểm | Mô tả |
+|---|---|
+| **Reversible** | Cắm chiều nào cũng được — không phân biệt trên/dưới |
+| **Symmetrical** | Cả hai đầu cáp đều giống nhau (không còn Type-A ↔ Type-B) |
+| **Đa năng** | Hỗ trợ USB 2.0, USB 3.x, Thunderbolt, DisplayPort, sạc, audio |
+| **Cấp nguồn cao** | Lên đến 240W (48V × 5A) với USB PD 3.1 Extended Power Range |
+| **Nhỏ gọn** | Kích thước tương đương Micro-B, phù hợp thiết bị mỏng |
+ 
+:::warning Lưu ý quan trọng
+USB Type-C là connector (đầu cắm vật lý), không phải protocol. Một cổng Type-C có thể chỉ hỗ trợ USB 2.0 (480 Mb/s) hoặc hỗ trợ đến USB4 (40 Gb/s) — tùy vào phần cứng bên trong. Không phải cổng Type-C nào cũng nhanh hoặc cấp nguồn cao.
+:::
+
+## Pinout USB Type-C
+ 
+USB Type-C có 24 chân, được bố trí đối xứng để hỗ trợ cắm đảo chiều:
+
+### USB Type C receptacle pinout
 
 ![Type C receptacle pinout](img/01-type-c-pinout.png)
 
-## USB Type C plug pinout
+### USB Type C plug pinout
 
 ![Type C plug pinout](img/02-type-c-pinout.png)
 

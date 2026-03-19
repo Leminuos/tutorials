@@ -1,8 +1,8 @@
 Tất cả thiết bị USB đều cần có hệ thống descriptor để mô tả cho host thông tin về:
-Loại thiết bị
-Nhà sản xuất
-Phiên bản USB hỗ trợ
-Số configuration, số interface, số endpoint và kiểu của chúng...
+- Loại thiết bị
+- Nhà sản xuất
+- Phiên bản USB hỗ trợ
+- Số configuration, số interface, số endpoint và kiểu của chúng...
 
 Cây hệ thống USB descriptor mà một device cần có được minh họa như hình sau:
 

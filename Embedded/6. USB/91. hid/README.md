@@ -1,3 +1,5 @@
+## Tổng quan
+
 HID là một chuẩn thiết bị USB dành cho các thiết bị giao tiếp trực tiếp với người dùng (human interface). Các thiết bị này thường gửi dữ liệu đơn giản, tốc độ thấp, nhưng yêu cầu phản hồi nhanh. Ví dụ như mouse, keyboard,...Ngoài ra, các thiết bị HID không nhất thiết phải tương tác giữa người và máy tính. Bất kỳ thiết bị nào tuân thủ theo thông số kỹ thuật của HID đều là thiết bị HID.
 
 Các descriptors tại hình minh hoạ dưới đây là bắt buộc đối với USB HID Device:

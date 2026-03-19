@@ -1,32 +1,45 @@
-# USB protocol
-
 ## Kiến trúc giao thức USB
 
-USB là một giao thức truyền thông nối tiếp theo mô hình host–centric. Trong hệ thống USB thì toàn bộ bus được điều khiển bởi host; mọi hoạt động truyền dữ liệu đều do host khởi tạo và lập lịch. Thiết bị ngoại vi (device) chỉ phản hồi theo yêu cầu từ host, không bao giờ tự ý phát dữ liệu lên bus.
+USB là giao thức truyền thông nối tiếp theo mô hình **host-centric**: toàn bộ bus được điều khiển bởi host, mọi hoạt động truyền dữ liệu đều do host khởi tạo và lập lịch. Device chỉ phản hồi theo yêu cầu từ host, không bao giờ tự ý phát dữ liệu lên bus.
 
-Dữ liệu trên bus USB được tổ chức theo ba lớp logic: packet, transaction, và frame. Trong đó:
-- Packet là đơn vị vật lý nhỏ nhất trên đường truyền.
-- Transaction là chuỗi các packet thực hiện một hành động hoàn chỉnh.
-- Frame là khoảng thời gian mà host dùng để lập lịch các transaction.
+Dữ liệu trên bus USB được tổ chức theo ba lớp logic từ thấp đến cao:
 
-Mối quan hệ giữa ba lớp này được mô tả như sau:
+| Lớp | Vai trò | Mô tả |
+|---|---|---|
+| **Packet** | Đơn vị vật lý nhỏ nhất trên đường truyền | Chứa dữ liệu thô cần truyền |
+| **Transaction** | Đơn vị truyền dữ liệu cơ bản (gồm token, data, handshake) | Chuỗi các packet thực hiện một hành động hoàn chỉnh |
+| **Transfer** | Mục đích truyền dữ liệu | Chuỗi nhiều transaction, hoàn thành một tác vụ cụ thể |
+
+Các lớp này được tổ chức trong **frame** — đơn vị thời gian mà host dùng để lập lịch:
 
 ```mermaid
-flowchart LR
-Frame --> Transaction1
-Frame --> Transaction2
-Transaction1 --> PacketA
-Transaction1 --> PacketB
-Transaction2 --> PacketC
-Transaction2 --> PacketD
+flowchart TD
+    F["Frame (1ms FS / 125μs HS)"]
+    F --> T1["Transaction 1"]
+    F --> T2["Transaction 2"]
+    F --> T3["Transaction 3"]
+    T1 --> P1A["Token Packet"]
+    T1 --> P1B["Data Packet"]
+    T1 --> P1C["Handshake Packet"]
+    T2 --> P2A["Token Packet"]
+    T2 --> P2B["Data Packet"]
+    T3 --> P3A["Token Packet"]
+    T3 --> P3B["Handshake Packet"]
 ```
+
+:::warning Lưu ý
+Không phải mọi transaction đều có đủ 3 packet. Ví dụ: Isochronous transaction không có Handshake Packet, và một số transaction có thể không có Data Packet.
+:::
 
 ## Transaction
 
-Một USB transaction được chia thành ba phase:
-- Token Packet: Do host gửi, xác định loại transaction và endpoint đích.
-- Data Packet (Optional): Chứa payload dữ liệu, do host hoặc device gửi tùy hướng.
-- Status Packet: Gói phản hồi trạng thái (ACK / NAK / STALL) nhằm xác nhận transaction thành công hay thất bại.
+Transaction là đơn vị giao tiếp cơ bản giữa host và device, gồm tối đa ba packet:
+
+| Packet | Người gửi | Vai trò |
+|---|---|---|
+| Token Packet | Host | Xác định loại transaction (IN/OUT/SETUP), địa chỉ device và endpoint đích |
+| Data Packet (optional) | Host hoặc Device | Chứa payload dữ liệu thực tế |
+| Handshake Packet | Device hoặc Host | Gói phản hồi trạng thái (ACK / NAK / STALL) nhằm xác nhận transaction thành công hay thất bại |
 
 ```mermaid
 sequenceDiagram
@@ -39,115 +52,297 @@ H->>D: Handshake Packet
 
 Cách tổ chức này đảm bảo mọi giao tiếp đều được kiểm soát chặt chẽ, tránh xung đột trên bus và cho phép host chủ động quản lý băng thông.
 
-## Định dạng Packet
+## Định dạng packet
 
-Mọi packet đều tuân theo cấu trúc chung như sau:
+Mọi packet USB đều tuân theo cấu trúc chung, bắt đầu bằng **SYNC** và kết thúc bằng **EOP**:
 
 ```mermaid
 flowchart LR
 SYNC --> PID --> ADDR --> ENDP --> DATA --> CRC --> EOP
 ```
 
-Trong đó:
+### Chi tiết các trường
 
-- **Sync field**: Tất cả các packet phải được bắt đầu bằng trường Sync. Trường này dài 8 bit đối với full/low speed hoặc 32 bit đối với high speed, được sử dụng để đồng bộ clock giữa receiver và transmitter. Trong đó, hai bit cuối cho biết nơi bắt đầu của trường PID.
+#### SYNC Field
 
-- **Packet Identifier Field - PID**: Trường này xác định loại gói sẽ được gửi, từ đó biết được packet dùng để làm gì, hướng dữ liệu của packet,..., nếu là Handshake packet, chúng sẽ cho biết đã truyền nhận thành công hay chưa.
+Trường này được sử dụng để dồng bộ clock giữa transmitter và receiver.
 
-  ![PID table](img/02-pid-table.png)
+| Thuộc tính | Low/Full Speed | High Speed |
+|---|---|---|
+| Kích thước | 8 bit | 32 bit |
+| Pattern | KJKJKJKK | KJKJKJKK... ×4 lần |
 
-  PID gồm 4 bit cao cho biết packet type field và 4 bit thấp dùng để check field. 4 bit check field là phần bù của 4 bit packet type field, nhằm đảm bảo dữ liệu được truyền chính xác.
+Hai bit cuối của SYNC field (`KK`) đánh dấu ranh giới với trường PID tiếp theo.
 
-  ![PID format](img/03-pid-format.png)
+#### PID Field (Packet Identifier)
 
-- **Address field**: Cho biết địa chỉ của device. Trường này có độ dài 7 bit cho phép hỗ trợ 127 device. Address 0 không hợp lệ vì nó được dùng làm default address.
+PID xác định loại packet, từ đó biết packet dùng để làm gì, cấu trúc dữ liệu phía sau, và hướng truyền.
 
-- **Endpoint field**: Độ dài 4 bit cho phép hỗ trợ 16 endpoint. Tuy nhiên, đối với low speed device chỉ có tối đa là 3 endpoint.
+**Cấu trúc PID** (8 bit):
 
-- **Data field**: Trường dữ liệu có độ dài nằm trong khoảng 0 đến 1024 byte. Các bit trong mỗi byte được dịch từ LSB đầu tiên. Kích thước của data field tuỳ thuộc vào transfer type.
+![PID format](img/03-pid-format.png)
 
-- **Cyclic Redundancy Checks - CRC**: được sử dụng để verify tất cả các trường không phải là PID trong token và data packet. Các token packet có 5 bit CRC, trong khi data packets có 16 bit CRC.
+PID gồm 4 bit cao cho biết packet type field và 4 bit thấp dùng để check field. 4 bit check field là phần bù của 4 bit packet type field, nhằm đảm bảo dữ liệu được truyền chính xác.
 
-- **End Of Packet - EOP**: cho biết packet kết thúc.
+**Bảng phân loại PID:**
 
-:::tip
-Cần phải hiểu rõ rằng mỗi một packet sẽ được bắt đầu bằng SYNC và kết thúc bằng EOP.
+| Nhóm | PID Name | PID[3:0] | Mô tả |
+|---|---|---|---|
+| **Token** | OUT | 0001 | Host → Device data |
+| | IN | 1001 | Device → Host data |
+| | SOF | 0101 | Start of Frame |
+| | SETUP | 1101 | Host → Device control setup |
+| **Data** | DATA0 | 0011 | Data packet, toggle = 0 |
+| | DATA1 | 1011 | Data packet, toggle = 1 |
+| | DATA2 | 0111 | High-speed high-bandwidth isochronous |
+| | MDATA | 1111 | High-speed high-bandwidth isochronous |
+| **Handshake** | ACK | 0010 | Nhận thành công |
+| | NAK | 1010 | Chưa sẵn sàng, host retry sau |
+| | STALL | 1110 | Endpoint lỗi, cần host can thiệp |
+| | NYET | 0110 | HS only: nhận OK nhưng chưa sẵn sàng cho packet tiếp |
+| **Special** | PRE | 1100 | Preamble (hub dùng cho LS device) |
+| | ERR | 1100 | HS only: lỗi từ hub |
+| | SPLIT | 1000 | HS only: split transaction |
+| | PING | 0100 | HS only: kiểm tra endpoint sẵn sàng trước khi gửi OUT |
+
+#### Address Field
+
+Trường này cho biết địa chỉ của device.
+
+- Kích thước: 7 bit
+- Phạm vi: 0-127 (hỗ trợ tối đa 127 device)
+
+:::warning Lưu ý
+- Address 0 = Default address (dùng khi device mới cắm vào)
+- Address được host cấp phát trong quá trình enumeration
 :::
+
+#### Endpoint Field
+
+- Kích thước: 4 bit
+- Phạm vi: 0-15 (tối đa 16 endpoint)
+- Giới hạn:
+  - Low Speed device: Tối đa 3 endpoint (bao gồm EP0)
+  - Full/High Speed: Tối đa 16 endpoint
+
+#### Data Field
+
+- Kích thước: 0-1024 byte (tùy transfer type)
+- Thứ tự truyền: LSB (Least Significant Bit) trước
+- Phân loại theo Transfer Type:
+ 
+| Transfer Type | Low Speed | Full Speed | High Speed |
+|--------------|-----------|------------|------------|
+| Control | 8 byte | 8/16/32/64 byte | 64 byte |
+| Interrupt | 8 byte | 64 byte | 1024 byte |
+| Bulk | N/A | 8/16/32/64 byte | 512 byte |
+| Isochronous | N/A | 1023 byte | 1024 byte |
+
+:::warning Chú ý
+Kích thước thực tế phụ thuộc `wMaxPacketSize` trong endpoint descriptor |
+:::
+
+#### CRC Field
+
+Trường này được sử dụng để verify tất cả các trường ngoài trừ PID.
+
+| Áp dụng cho | Loại CRC | Độ dài | Bảo vệ |
+|---|---|---|---|
+| Token Packet | CRC5 | 5 bit | ADDR + ENDP fields |
+| Data Packet | CRC16 | 16 bit | Data field |
+
+:::warning Lưu ý
+CRC không bảo vệ PID field — PID đã có cơ chế check riêng (4 bit complement). CRC chỉ bảo vệ các trường khác trong packet.
+:::
+
+#### EOP (End of Packet)
+
+EOP báo hiệu kết thúc packet bằng tín hiệu SE0 kéo dài 2 bit time, sau đó chuyển về J state trong 1 bit time (đã trình bày trong bài Introduction).
 
 ## Phân loại packet
 
 ### Token packet
 
-Đối với OUT và SETUP transaction, trường address và endpoint cho biết endpoint nào sẽ được nhận Data packet.
-
-Đối với IN transaction, các trường này sẽ xác định endpoint sẽ truyền Data packet.
+Token packet do host gửi, dùng để khởi tạo transaction. Cấu trúc:
 
 ![Token packet](img/05-token-packet.png)
 
+| Token | Hướng data | Ý nghĩa |
+|---|---|---|
+| **OUT** | Host → Device | ADDR + ENDP xác định endpoint sẽ nhận Data Packet tiếp theo |
+| **IN** | Device → Host | ADDR + ENDP xác định endpoint sẽ truyền Data Packet |
+| **SETUP** | Host → Device | Giống OUT, nhưng dành riêng cho Control Transfer (Setup Stage) |
+
+Ví dụ:
+
+```
+Token: IN, Address=5, Endpoint=1
+→ Nghĩa là: "Device số 5, hãy gửi dữ liệu từ endpoint 1 của bạn cho tôi"
+```
+
+**SOF Packet** (đặc biệt — không theo format token thông thường):
+
+![SOF packet](img/04-sof-packet.png)
+
+SOF được host phát ở đầu mỗi frame (1ms cho FS) hoặc microframe (125μs cho HS). Frame number đếm tuần tự từ 0 đến 2047 (11 bit) rồi quay lại 0.
+
 ### Data packet
 
-Data Packet: Có hai loại data packet gồm DATA0 hoặc DATA1, mỗi loại có khả năng truyền từ 1 đến 1024 byte dữ liệu.
+Data packet chứa payload thực tế. Cấu trúc:
 
 ![Data packet](img/06-data-packet.png)
 
-USB cung cấp một cơ chế động bộ hoá dữ liệu giữa transmitter và receiver. Cơ chế này nhằm đảm bảo rằng việc bắt tay giữa các transaction được chính xác. Cơ chế này được sử dụng thông qua DATA0 và DATA1.
+USB sử dụng data toggle (DATA0/DATA1) để phát hiện packet bị mất hoặc bị trùng lặp. Đây là cơ chế quan trọng đảm bảo tính toàn vẹn dữ liệu:
 
-Cơ chế hoạt động như sau:
-- Một endpoint duy trì một trạng thái toggle bit: 0 hoặc 1.
-- Data packet gửi đi sẽ được đánh dấu là DATA0 hoặc DATA1, tương ứng với trạng thái toggle hiện tại.
-- Sau mỗi lần truyền thành công, host và device sẽ đảo trạng thái toggle, tức là từ 0 → 1 hoặc 1 → 0.
-- Nếu host hoặc device nhận được data packet với toggle bit không đúng với mong đợi, nó sẽ ignore và yêu cầu gửi lại.
+**Cơ chế hoạt động như sau:**
+- Mỗi endpoint duy trì một toggle bit nội bộ (0 hoặc 1).
+- Data packet gửi đi được đánh dấu DATA0 hoặc DATA1 tương ứng toggle bit hiện tại.
+- Sau mỗi lần truyền thành công (nhận ACK), **cả host và device đều đảo toggle bit** (0→1 hoặc 1→0).
+- Nếu host hoặc device nhận packet có toggle bit không khớp mong đợi → **packet bị coi là trùng lặp** → ignore data nhưng vẫn gửi ACK.
 
-Giả sử host gửi dữ liệu tới device:
-- Lần đầu: Host gửi gói DATA0, device nhận và phản hồi ACK.
-- Lần sau: Host gửi DATA1, device phản hồi ACK.
-- Nếu host không nhận được ACK, nó sẽ gửi lại DATA1.
-- Device kiểm tra toggle bit. Nếu nó trùng với lần trước, device biết là gói cũ, và có thể bỏ qua.
-
-### Handshake packet
-
-Handshake Packets: Các Handshake Packet được phân cách bằng EOP. Có 3 loại handshake packets chính:
-- ACK: cho biết data packet đã được nhận thành công.
-- NAK: cho biết function không nhận data từ host (OUT) hoặc function không có data để truyền đến host (IN).
-- STALL: cho biết function không thể truyền hoặc nhận data.
-
-## Các loại transfer
-
-Các phần trước đã mô tả cách USB truyền dữ liệu ở mức packet và cách các packet được ghép lại thành transaction. Tuy nhiên, người thiết kế firmware không làm việc với từng transaction riêng lẻ, mà làm việc với khái niệm transfer.
-
-Một transfer là một chuỗi nhiều transaction liên tiếp, được host lập lịch để thực hiện một mục đích truyền dữ liệu hoàn chỉnh, ví dụ: đọc một descriptor, truyền một khối dữ liệu lớn, hay stream audio thời gian thực.
-
-![USB protocol](img/01-usb-protocol.png)
-
-### Control Transfers
-
-Control transfer là loại truyền dữ liệu cơ bản và bắt buộc trong USB protocol, dùng để quản lý và cấu hình thiết bị USB thông qua host. Protocol này sử dụng endpoint 0 để giao tiếp, bắt buộc phải có ở mọi thiết bị USB.
-
-Kích thước tối đa của data payload đối với full speed device là 8, 16, 32 hoặc 64 byte; đối với high speed device là 64 bytes và đối với low speed device là 8 byte. Điều này được áp dụng cho các data packet sau khi Setup. Setup packet luôn có kích thước là 8 byte.
+**Ví dụ — OUT transfer bình thường:**
 
 ```mermaid
 sequenceDiagram
-participant H as Host
-participant D as Device
-H->>D: Setup Token + Setup Data
-D->>H: ACK
-H->>D: Data Stage (IN/OUT)
-D->>H: ACK / NAK / STALL
-H->>D: Status Stage
-D->>H: ACK
+    participant H as 🖥️ Host (toggle)
+    participant D as 🔌 Device (toggle)
+
+    Note over H: toggle = 0
+    Note over D: expect = 0
+
+    H->>D: OUT + DATA0 (payload A)
+    D->>H: ACK
+    Note over H: toggle → 1
+    Note over D: expect → 1
+
+    H->>D: OUT + DATA1 (payload B)
+    D->>H: ACK
+    Note over H: toggle → 0
+    Note over D: expect → 0
+
+    H->>D: OUT + DATA0 (payload C)
+    D->>H: ACK
+    Note over H: toggle → 1
+    Note over D: expect → 1
 ```
+
+**Ví dụ — ACK bị mất, host retry:**
+
+```mermaid
+sequenceDiagram
+    participant H as 🖥️ Host (toggle)
+    participant D as 🔌 Device (toggle)
+
+    Note over H: toggle = 0
+    Note over D: expect = 0
+
+    H->>D: OUT + DATA0 (payload A)
+    D->>H: ACK
+    Note over H: toggle → 1
+    Note over D: expect → 1
+
+    H->>D: OUT + DATA1 (payload B)
+    Note over D: Nhận OK, expect → 0
+    D--xH: ACK bị mất ❌
+    Note over H: Không nhận ACK → giữ toggle = 1
+
+    H->>D: OUT + DATA1 (payload B, retry)
+    Note over D: Toggle = 1, expect = 0<br/>→ Không khớp!<br/>→ Packet trùng lặp, bỏ qua data<br/>→ Vẫn gửi ACK
+    D->>H: ACK
+    Note over H: toggle → 0
+```
+
+:::tip Tại sao data toggle quan trọng?**
+Không có data toggle, khi ACK bị mất, host sẽ retry và device nhận data hai lần mà không biết → **dữ liệu bị trùng lặp**. Data toggle giải quyết vấn đề này bằng cách cho device biết "đây là packet mới hay packet cũ gửi lại".
+:::
+
+### Handshake packet
+
+Handshake packet là packet đơn giản nhất, chỉ chứa PID:
+
+| Handshake | Ý nghĩa | Khi nào gửi | Hành động tiếp theo |
+|-----------|---------|-------------|---------------------|
+| **ACK** | Acknowledge - Thành công | Data nhận đúng, CRC OK | Host/Device tiếp tục transaction mới |
+| **NAK** | Not Acknowledge - Chưa sẵn sàng | Device bận hoặc chưa có data | Host thử lại sau (retry) |
+| **STALL** | Endpoint bị halt/lỗi | Endpoint lỗi hoặc không hỗ trợ request | Host phải can thiệp (clear stall) |
+
+Ví dụ:
+ 
+```
+Tình huống 1: Printer nhận lệnh in
+Host → OUT Token → Data (lệnh in) → Device
+Device: Buffer đầy → NAK
+Host: Đợi 1ms → Thử lại
+Device: Buffer trống → ACK
+ 
+Tình huống 2: Chuột gửi vị trí
+Host → IN Token → Device
+Device: Chưa di chuyển → NAK
+Host: Đợi → Thử lại
+Device: Có di chuyển → DATA1 (tọa độ) → Host: ACK
+```
+
+:::warning Phân biệt NAK và STALL
+- **NAK** = "Tôi đang bận, hỏi lại sau" → host tự động retry, hoàn toàn bình thường.
+- **STALL** = "Tôi gặp lỗi, không thể tiếp tục" → host phải gửi `CLEAR_FEATURE(ENDPOINT_HALT)` để reset endpoint trước khi giao tiếp lại.
+:::
+
+## Các loại transfer
+
+Transfer là lớp cao nhất trong kiến trúc giao thức USB. Người thiết kế firmware làm việc chủ yếu ở mức transfer, không cần quan tâm đến từng transaction hay packet riêng lẻ (USB stack và hardware xử lý các lớp thấp hơn).
+
+| Transfer Type | Đặc điểm chính | Ứng dụng |
+|---|---|---|
+| **Control** | Bắt buộc, có cấu trúc Setup/Data/Status | Enumeration, configuration |
+| **Interrupt** | Polling định kỳ, độ trễ thấp | Keyboard, mouse, gamepad |
+| **Bulk** | Dữ liệu lớn, đảm bảo chính xác | Flash drive, printer, CDC |
+| **Isochronous** | Thời gian thực, không retry | Audio, video, webcam |
+
+Một transfer là một chuỗi nhiều transaction liên tiếp, được host lập lịch để thực hiện một mục đích truyền dữ liệu hoàn chỉnh, ví dụ: đọc một descriptor, truyền một khối dữ liệu lớn, hay stream audio thời gian thực.
+
+Ví dụ:
+- Đọc một descriptor (device descriptor) = 1 Control Transfer = 3 Transaction (Setup + Data + Status)
+- Stream audio trong 1 giây = 1000 Isochronous Transfer (mỗi 1ms một transfer)
+
+![USB protocol](img/01-usb-protocol.png)
+
+### Control transfer
+
+Control transfer là loại transfer **bắt buộc** trên mọi USB device, sử dụng endpoint 0 để quản lý và cấu hình thiết bị. Control transfer có cấu trúc đặc biệt gồm 3 stage:
+
+```mermaid
+flowchart LR
+    S["Setup Stage\n(bắt buộc)"] --> D["Data Stage\n(optional)"]
+    D --> ST["Status Stage\n(bắt buộc)"]
+```
+
+**Max packet size cho control transfer**
+
+| Tốc độ | Max packet size (Data Stage) | Ghi chú |
+|---|---|---|
+| Low Speed | 8 byte | Cố định |
+| Full Speed | 8, 16, 32, hoặc 64 byte | Khai báo trong device descriptor |
+| High Speed | 64 byte | Cố định |
+
+:::warning Lưu ý
+Setup packet luôn có kích thước cố định 8 byte, không phụ thuộc tốc độ.
+:::
 
 **Setup stage**
 
-- Setup token chứa address và endpoint number.
-- Data packet 
-- Handshake Packet: cho biết nhận thành công hoặc báo lỗi. Nếu nhận dữ liệu thành công, nó sẽ trả về ACK, ngược lại, nó sẽ bỏ qua dữ liệu và không gửi Handshake packet. Các function không thể trả về NAK hoặc STALL để phản hồi setup packet
-
 ![Setup stage](img/07-setup-stage.png)
+
+Setup packet (8 byte) chứa thông tin về request mà host muốn thực hiện. Chi tiết cấu trúc setup packet sẽ được trình bày trong bài **standard request**.
+
+:::warning Lưu ý
+Khi device nhận setup packet mới, nó phải **hủy bỏ mọi transfer đang dở trên EP0** và bắt đầu xử lý request mới.
+:::
 
 **Data stage**
 
-Gồm một hoặc nhiều lần transfer IN hoặc OUT. Setup stage cho biết kích thước data được truyền trong stage. Nếu nó vượt quá kích thước packet tối đa, data sẽ được truyền nhiều lần với mỗi lần là độ dài packet tối đa, ngoài trừ last packet.
+Data stage truyền dữ liệu thực tế liên quan đến request. Stage này có thể có hoặc không tùy thuộc vào request.
+
+Nếu dữ liệu lớn hơn max packet size, nó sẽ được **chia thành nhiều transaction**, mỗi transaction tối đa bằng max packet size. Transaction cuối cùng có thể ngắn hơn (last transaction).
 
 Data stage có hai cách thực hiện khác nhau tùy thuộc vào hướng của data transfer:
 
@@ -159,7 +354,13 @@ Data stage có hai cách thực hiện khác nhau tùy thuộc vào hướng c�
 
 **Status stage**
 
-Cho biết status của yêu cầu vừa được nhận từ host. Status stage luôn được thực hiện bởi function.
+Status stage báo cáo **kết quả cuối cùng** của toàn bộ control transfer. Hướng truyền ở status stage **ngược lại** với data stage:
+
+| Data stage hướng | Status stage thực hiện | Mô tả |
+|---|---|---|
+| IN (device → host) | Host gửi **OUT + zero-length DATA1** → Device reply handshake | Host xác nhận đã nhận đủ data, device báo trạng thái |
+| OUT (host → device) | Host gửi **IN Token** → Device reply **zero-length DATA1** | Device xác nhận đã xử lý xong data từ host |
+| No Data Stage | Host gửi **IN Token** → Device reply **zero-length DATA1** | Device báo đã thực hiện xong request |
 
 - IN: Nếu host gửi IN Token trong khi data stage nhận data thì host sẽ xác nhận dữ liệu được nhận thành công. Điều này được thực hiện bằng cách host sẽ gửi một OUT token theo sau là data packet có độ dài bằng 0. Lúc này, function có thể thông báo về status của nó tại handshaking stage. Một ACK cho biết một function đã hoàn thành command và giờ nó sẵn sàng để nhận một command khác. Nếu lỗi xảy ra trong khi xử lý command thì function sẽ release STALL. Tuy nhiên, nếu function là vẫn đang trong quá trình xử lý thì nó sẽ trả về NAK để báo cho host biết repeat status stage lần sau.
  
@@ -169,35 +370,108 @@ Cho biết status của yêu cầu vừa được nhận từ host. Status stage
 
   ![Status stage](img/10-state-stage.png)
 
-### Interrupt Transfer
+### Interrupt transfer
 
-Interrupt transfer được sử dụng để truyền dữ liệu nhỏ, quan trọng, cần phản hồi nhanh, ví dụ như bàn phím, chuột,...
+Interrupt transfer được sử dụng để truyền dữ liệu nhỏ, cần độ trễ thấp và phản hồi đảm bảo. Ví dụ như bàn phím, chuột,...
 
-Cơ chế hoạt động: Host sẽ định kỳ thăm dò endpoint theo khoảng thời gian được lập trình trong endpoint descriptor. Nếu device có dữ liệu, host sẽ nhận được ngay khi polling. Nếu không có dữ liệu, host nhận được gói NAK. Khi xảy ra lỗi, host tự động retry để đảm bảo dữ liệu truyền và nhận chính xác.
+```mermaid
+sequenceDiagram
+    participant H as 🖥️ Host
+    participant D as 🔌 Device
 
-Kích thước tối đa của data packet:
-- Đối với low speed là 8 byte.
-- Đối với full speed là 64 byte.
-- Đối với high speed là 1024 byte.
+    loop Mỗi polling interval
+        H->>D: IN Token (ADDR + EP)
+        alt Device có data
+            D->>H: DATA0/DATA1 (payload)
+            H->>D: ACK ✅
+        else Chưa có data
+            D->>H: NAK ⏳
+        end
+    end
+```
 
-![Interrupr transfer](img/11-interrupt-transfer.png)
+**Cơ chế hoạt động:** Host sẽ định kỳ thăm dò endpoint theo khoảng thời gian được lập trình trong endpoint descriptor. Nếu device có dữ liệu, host sẽ nhận được ngay khi polling. Nếu không có dữ liệu, host nhận được gói NAK. Khi xảy ra lỗi, host tự động retry để đảm bảo dữ liệu truyền và nhận chính xác.
 
-### Bulk Transfer
+**Max packet size:**
+
+| Tốc độ | Max packet size |
+|---|---|
+| Low Speed | 8 byte |
+| Full Speed | 64 byte |
+| High Speed | 1024 byte |
+
+**Polling interval:**
+
+| Tốc độ | Giá trị `bInterval` |
+|---|---|
+| Low Speed | 10–255 | 
+| Full Speed | 1–255 |
+| High Speed | 2^(bInterval−1) × 125μs |
+
+:::warning Chú ý:
+Tên "Interrupt Transfer" dễ gây nhầm lẫn. Device **không thể chủ động ngắt host** như interrupt trong MCU. Thay vào đó, host **polling đều đặn** theo interval, và device trả data khi có hoặc NAK khi không. Tên gọi chỉ phản ánh mục đích sử dụng, không phải cơ chế hoạt động.
+:::
+
+### Bulk transfer
 
 Bulk transfer được dùng để truyền dữ liệu lớn, không yêu cầu real-time. Dùng khi cần độ tin cậy cao, ví dụ như USB Flash Drive, Printer, UART qua USB (CDC/ACM).
 
-Cơ chế hoạt động: Host chỉ truyền data khi bus rảnh và nhận data khi nó ready. Nếu xảy ra lỗi, host sẽ tự retry cho đến khi thành công → độ tin cậy cực cao. Nhưng không có băng thông hay thời gian đảm bảo → có thể bị chậm nếu USB bận.
+```mermaid
+sequenceDiagram
+    participant H as 🖥️ Host
+    participant D as 🔌 Device
 
-Đối với full speed, kích thước tối đa của data packet là 8,16, 32 và 64 byte. Đối với high speed, kích thước tối đa của data packet là 512 byte.
+    H->>D: OUT Token + DATA0 (512 bytes)
+    D->>H: ACK
+    H->>D: OUT Token + DATA1 (512 bytes)
+    D->>H: ACK
+    H->>D: OUT Token + DATA0 (128 bytes - short packet)
+    D->>H: ACK
+```
 
-![Bulk transfer](img/12-bulk-transfer.png)
+**Cơ chế hoạt động:** Host chỉ truyền data khi bus rảnh và nhận data khi nó ready. Nếu xảy ra lỗi, host sẽ tự retry cho đến khi thành công → độ tin cậy cực cao. Nhưng không có băng thông hay thời gian đảm bảo → có thể bị chậm nếu USB bận.
 
-### Isochronous Transfer
+**Max packet size:**
 
-Isochronous transfer được dùng trong các ứng dụng yêu cầu thời gian thực, cần truyền đều đặn, ví dụ như Microphone, webcam USB, audio USB. Isochronous Transfer không hỗ trợ low speed.
+| Tốc độ | Max packet size |
+|---|---|
+| Full Speed | 8, 16, 32, hoặc 64 byte |
+| High Speed | 512 byte |
+| Low Speed | **Không hỗ trợ** bulk transfer |
 
-Cơ chế hoạt động: Host cấp phát băng thông cố định cho device ở mỗi frame. Data packet được gửi hoặc nhận tại mỗi frame, tức là sau 1 ms đối với full speed hoặc 125μs đối với High Speed. Packet có thể bị lỗi mà không cần retry, vì ưu tiên thời gian hơn độ chính xác => không có handshake (ACK/NAK).
+:::warning Short Packet và Zero-Length Packet (ZLP)**
+Bulk transfer kết thúc khi host/device gửi một **short packet** (nhỏ hơn max packet size). Nếu tổng data vừa đúng bội số của max packet size, cần gửi thêm một **zero-length packet (ZLP)** để báo hiệu kết thúc transfer. Đây là lỗi phổ biến khi viết firmware USB — quên gửi ZLP khiến host chờ mãi vì nghĩ transfer chưa xong.
+:::
 
-Kích thước tối đa của data packet là 1023 đối với full speed và 1024 đối với high speed.
- 
-![Isochronous transfer](img/13-isochronous-transfer.png)
+### Isochronous transfer
+
+Isochronous transfer được dùng trong các ứng dụng yêu cầu thời gian thực, cần truyền đều đặn, ví dụ như microphone, webcam USB, audio USB. Isochronous Transfer không hỗ trợ low speed.
+
+```mermaid
+sequenceDiagram
+    participant H as 🖥️ Host
+    participant D as 🔌 Device (Microphone)
+
+    Note over H,D: Frame N
+    H->>D: IN Token
+    D->>H: DATA0 (audio samples)
+    Note over H: Không gửi ACK
+
+    Note over H,D: Frame N+1
+    H->>D: IN Token
+    D->>H: DATA1 (audio samples)
+    Note over H: Không gửi ACK
+
+    Note over H,D: Frame N+2
+    H->>D: IN Token
+    D--xH: DATA0 bị lỗi CRC ❌
+    Note over H: Bỏ qua, KHÔNG retry
+```
+
+**Cơ chế hoạt động:** Host cấp phát băng thông cố định cho device ở mỗi frame. Data packet được gửi hoặc nhận tại mỗi frame, tức là sau 1 ms đối với full speed hoặc 125μs đối với High Speed. Packet có thể bị lỗi mà không cần retry, vì ưu tiên thời gian hơn độ chính xác => không có handshake (ACK/NAK).
+
+**Max packet size:** Kích thước tối đa của data packet là 1023 đối với full speed và 1024 đối với high speed.
+
+:::tip Tại sao Isochronous không retry?**
+Trong ứng dụng thời gian thực (audio, video), data cũ đã qua thời điểm phát lại sẽ vô nghĩa. Retry sẽ gây delay tích lũy, phá vỡ tính realtime. Thà mất một frame audio (gây "click" nhẹ) còn hơn delay cả stream. Đây là sự đánh đổi có chủ đích trong thiết kế USB protocol.
+:::
