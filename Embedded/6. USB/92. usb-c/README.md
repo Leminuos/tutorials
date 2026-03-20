@@ -111,23 +111,23 @@ Khi cable được cắm vào và có device ở đầu kia:
 ```mermaid
 flowchart LR
     subgraph "Source"
-        VBUS_S["3.3V"] --> Rp["Rp\n(pull-up)"]
+        VBUS_S["3.3V"] --> Rp["Rp<br/>(pull-up)"]
         Rp --> CC1_S["CC1"]
-        VBUS_S2["3.3V"] --> Rp2["Rp\n(pull-up)"]
+        VBUS_S2["3.3V"] --> Rp2["Rp<br/>(pull-up)"]
         Rp2 --> CC2_S["CC2"]
     end
  
-    CC1_S --- CC_WIRE["🔌 Cable\n(chỉ 1 đường CC)"] --- CC1_D["CC1"]
+    CC1_S --- CC_WIRE["🔌 Cable<br/>(chỉ 1 đường CC)"] --- CC1_D["CC1"]
  
     subgraph "Sink"
-        CC1_D --> Rd1["Rd\n(5.1kΩ)"]
+        CC1_D --> Rd1["Rd<br/>(5.1kΩ)"]
         Rd1 --> GND1["GND"]
-        CC2_D["CC2"] --> Rd2["Rd\n(5.1kΩ)"]
+        CC2_D["CC2"] --> Rd2["Rd<br/>(5.1kΩ)"]
         Rd2 --> GND2["GND"]
     end
  
-    CC1_S -.-> DET["Source đo CC1:\nđiện áp giảm \n --> Device detected!"]
-    CC2_S -.-> NC["Source đo CC2:\nđiện áp cao\n --> Không kết nối"]
+    CC1_S -.-> DET["Source đo CC1:<br/>điện áp giảm <br/> --> Device detected!"]
+    CC2_S -.-> NC["Source đo CC2:<br/>điện áp cao<br/> --> Không kết nối"]
 ```
  
 **Ví dụ tính toán**: Với Rp = 56kΩ (default) và Rd = 5.1kΩ, điện áp trên CC khi có device:
@@ -138,11 +138,11 @@ V_CC = 3.3V × Rd / (Rp + Rd) = 3.3V × 5.1kΩ / (56kΩ + 5.1kΩ) ≈ 0.275V
  
 Source so sánh `V_CC` với ngưỡng để quyết định: nếu `V_CC` thấp hơn ngưỡng $\rightarrow$ có device. Nếu `V_CC` cao (gần 3.3V) $\rightarrow$ không có device.
  
-:::warning Điểm khác biệt quan trọng với USB Type-A cũ**:
+:::warning Điểm khác biệt quan trọng với USB Type-A cũ:
 Ở USB Type-A, host detect device qua pull-up trên D+/D−. Ở USB Type-C, chân CC là bắt buộc cho việc detect — D+/D− không còn đóng vai trò này. Nếu thiết kế phần cứng Type-C mà thiếu Rp hoặc Rd trên CC, hệ thống sẽ không hoạt động.
 :::
 
-:::warning Cable USB Type-C to USB 2.0**:
+:::warning Cable USB Type-C to USB 2.0:
 Khi sử dụng cable Type-C to USB 2.0 (đầu kia là Type-A hoặc Micro-B), đầu Type-C của cable có điện trở Rd (5.1kΩ) gắn sẵn bên trong plug. Nhờ vậy, Source vẫn detect được device attach dù thiết bị phía bên kia là USB 2.0 cũ không có CC pin. Đây là cơ chế tương thích ngược quan trọng.
 :::
 
@@ -166,8 +166,8 @@ flowchart TD
     CC -->|CC2 kéo xuống| F["Chiều 2 (Flipped)"]
     CC -->|Cả hai hở| NC["Không kết nối"]
  
-    N --> MUX1["MUX chọn:\n• USB 2.0: A6/A7\n• SS TX: A2/A3 (TX1)\n• SS RX: A10/A11 (RX2)"]
-    F --> MUX2["MUX chọn:\n• USB 2.0: B6/B7\n• SS TX: B2/B3 (TX2)\n• SS RX: B10/B11 (RX1)"]
+    N --> MUX1["MUX chọn:<br/>• USB 2.0: A6/A7<br/>• SS TX: A2/A3 (TX1)<br/>• SS RX: A10/A11 (RX2)"]
+    F --> MUX2["MUX chọn:<br/>• USB 2.0: B6/B7<br/>• SS TX: B2/B3 (TX2)<br/>• SS RX: B10/B11 (RX1)"]
 ```
 
 :::warning Lưu ý
@@ -213,11 +213,11 @@ eMarker (viết tắt của **Electronically Marked Cable Assembly — EMCA**) l
 
 | Trường hợp | Cần eMarker? | Lý do |
 |---|---|---|
-| Truyền dòng ≤ 3A, USB 2.0 only | **Không bắt buộc** | Mọi cable Type-C đều phải chịu được 3A |
-| Truyền dòng **> 3A** (vd: 5A cho PD 100W) | **Bắt buộc** | Source phải xác nhận cable chịu 5A trước khi cấp |
-| USB 3.2 Gen 2 (10 Gb/s) trở lên | **Bắt buộc** | Đảm bảo chất lượng tín hiệu |
-| USB4 / Thunderbolt 3/4 | **Bắt buộc** | Cable phải là active cable với re-timer |
-| Alternate Mode (DisplayPort ≥ HBR3) | **Bắt buộc** | Khai báo khả năng mang tín hiệu alt mode |
+| Truyền dòng ≤ 3A, USB 2.0 only | Không bắt buộc | Mọi cable Type-C đều phải chịu được 3A |
+| Truyền dòng > 3A (vd: 5A cho PD 100W) | Bắt buộc | Source phải xác nhận cable chịu 5A trước khi cấp |
+| USB 3.2 Gen 2 (10 Gb/s) trở lên | Bắt buộc | Đảm bảo chất lượng tín hiệu |
+| USB4 / Thunderbolt 3/4 | Bắt buộc | Cable phải là active cable với re-timer |
+| Alternate Mode (DisplayPort ≥ HBR3) | Bắt buộc | Khai báo khả năng mang tín hiệu alt mode |
 
 **Cách Source đọc thông tin eMarker**
 
@@ -252,19 +252,19 @@ Nhớ lại: cable chỉ có một đường CC dùng cho giao tiếp PD với d
 ```mermaid
 flowchart LR
     subgraph "Source"
-        CC1_S["CC1\n🔗 Giao tiếp PD\nvới Sink"]
-        CC2_S["CC2\n⚡ Cấp VCONN (5V)\ncho eMarker"]
+        CC1_S["CC1<br/>🔗 Giao tiếp PD<br/>với Sink"]
+        CC2_S["CC2<br/>⚡ Cấp VCONN (5V)<br/>cho eMarker"]
     end
  
     subgraph "Bên trong Cable"
-        CC_WIRE["Đường CC\n(nối thẳng\nSource CC1 ↔ Sink CC1)"]
-        EMARKER["🔌 eMarker IC\n• Khai báo cable info\n• Phản hồi SOP' message"]
-        RA["Ra\n(800Ω–1.2kΩ)\nkéo xuống GND"]
+        CC_WIRE["Đường CC<br/>(nối thẳng<br/>Source CC1 ↔ Sink CC1)"]
+        EMARKER["🔌 eMarker IC<br/>• Khai báo cable info<br/>• Phản hồi SOP' message"]
+        RA["Ra<br/>(800Ω–1.2kΩ)<br/>kéo xuống GND"]
     end
  
     subgraph "Sink"
-        CC1_D["CC1\n🔗 Giao tiếp PD\nvới Source"]
-        CC2_D["CC2\n(hở — không\nnối trong cable)"]
+        CC1_D["CC1<br/>🔗 Giao tiếp PD<br/>với Source"]
+        CC2_D["CC2<br/>(hở — không<br/>nối trong cable)"]
     end
  
     CC1_S --- CC_WIRE --- CC1_D
@@ -337,11 +337,11 @@ sequenceDiagram
     H->>D: Enter Mode (VDM)
     D->>H: ACK — Mode entered
  
-    Note over H,D: Alternate Mode active\nTX/RX lanes giờ mang tín hiệu DisplayPort
+    Note over H,D: Alternate Mode active<br/>TX/RX lanes giờ mang tín hiệu DisplayPort
 ```
  
 :::warning Chú ý
-Khi Alternate Mode active, một số hoặc tất cả SuperSpeed lanes bị chiếm dụng cho giao thức alt mode. USB 3.x data có thể bị giảm hoặc mất hoàn toàn tùy cấu hình. Ví dụ: DP 4-lane chiếm hết TX/RX → chỉ còn USB 2.0. Một số cấu hình cho phép **DP 2-lane + USB 3.x** đồng thời.
+Khi Alternate Mode active, một số hoặc tất cả SuperSpeed lanes bị chiếm dụng cho giao thức alt mode. USB 3.x data có thể bị giảm hoặc mất hoàn toàn tùy cấu hình. Ví dụ: DP 4-lane chiếm hết TX/RX → chỉ còn USB 2.0. Một số cấu hình cho phép DP 2-lane + USB 3.x đồng thời.
 :::
 
 :::warning Chú ý

@@ -8,6 +8,7 @@
 6. [Bước 5: Khởi tạo USB Peripheral](#bước-5-khởi-tạo-usb-peripheral)
 7. [Bước 6: Xử lý USB Event](#bước-6-xử-lý-usb-event)
 8. [Bước 7: Xử lý Control Transfer](#bước-7-xử-lý-control-transfer)
+9. [Tool debug](#tool-debug)
 
 ## Tổng quan STM32F103 USB
 
@@ -974,3 +975,14 @@ void USB_GetDescriptor(USB_SetupPacket_t *setup)
     }
 }
 ```
+
+## Tool debug
+
+**Software:** Wireshark + USBPcap: Capture USB traffic
+
+**Hardware:** Logic Analyzer
+
+Nếu muốn theo dõi quá trình giao tiếp giữa host và thiết bị USB thì có một số tool chuyên dụng rất mạnh như sau:
+- Total Phase Beagle USB 12/480 Protocol Analyzer
+- LeCroy USB Analyzer
+- Ellisys USB Explorer

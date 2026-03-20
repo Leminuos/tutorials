@@ -114,5 +114,14 @@
     "description": "Bài viết này sẽ triển khai từng bước USB protocol trên STM32F103.",
     "image": "img/usb.webp",
     "tags": ["usb"]
+  },
+
+  "94. pdic": {
+    "title": "Power delivery",
+    "date": "21-03-2026",
+    "author": "Peizzon",
+    "description": "Bài viết này sẽ giới thiệu về chuẩn power delivery.",
+    "image": "img/usb.webp",
+    "tags": ["usb"]
   }
 }
