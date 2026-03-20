@@ -91,6 +91,15 @@ Contract này được enter khi hoàn tất quá trình thương lượng power
 | **PR_Swap hoặc FR_Swap** | $\rightarrow$ Implicit Contract | VBUS về 5V, đổi vai trò, thương lượng Explicit Contract mới |
 | **Source gửi Source_Capabilities mới** | $\rightarrow$ Thương lượng lại | Contract cũ bị thay thế bằng contract mới (re-negotiation) |
 
+**Re-negotiation trong Explicit Contract**
+ 
+Explicit Contract không phải là cố định — cả Source và Sink đều có thể khởi tạo thương lượng lại:
+ 
+| Ai khởi tạo | Cách thực hiện | Ví dụ thực tế |
+|---|---|---|
+| **Source** | Gửi lại `Source_Capabilities` message mới (có thể khác PDO list) | Charger đang dùng chung cho 2 thiết bị, cần giảm dòng cho thiết bị thứ nhất |
+| **Sink** | Gửi Get_Source_Cap → Source trả `Source_Capabilities` → Sink gửi Request mới | Laptop đang sạc pin, pin gần đầy → request giảm dòng xuống |
+
 ```mermaid
 sequenceDiagram
     participant SRC as Source (Charger)
@@ -430,13 +439,13 @@ sequenceDiagram
 ### Cơ chế Sink chọn PDO
 
 Khi nhận `Source_Capabilities`, Sink thực hiện:
-1. **Duyệt danh sách PDO** từ Source.
-2. **So sánh** với nhu cầu nguồn của mình.
-3. **Chọn PDO phù hợp nhất** — thường là PDO có điện áp và dòng đáp ứng nhu cầu mà không quá dư thừa.
-4. **Gửi Request message** chứa **Request Data Object (RDO)** với:
-   - **Object Position**: Chỉ số PDO được chọn (1-indexed, PDO1 = position 1).
-   - **Operating Current**: Dòng Sink cần ở mức hoạt động bình thường.
-   - **Max Operating Current**: Dòng tối đa Sink có thể yêu cầu.
+1. Duyệt danh sách PDO từ Source.
+2. So sánh với nhu cầu nguồn của mình.
+3. Chọn PDO phù hợp nhất — thường là PDO có điện áp và dòng đáp ứng nhu cầu mà không quá dư thừa.
+4. Gửi Request message chứa Request Data Object (RDO) với:
+   - Object Position: Chỉ số PDO được chọn (1-indexed, PDO1 = position 1).
+   - Operating Current: Dòng Sink cần ở mức hoạt động bình thường.
+   - Max Operating Current: Dòng tối đa Sink có thể yêu cầu.
 
 :::warning Chú ý
 Nếu nhu cầu nguồn của Sink vượt quá mọi PDO mà Source quảng bá, Sink vẫn phải chọn PDO gần nhất có thể và thương lượng lại nếu cần. Sink không được từ chối mọi PDO — luôn phải gửi Request.
