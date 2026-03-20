@@ -4,7 +4,11 @@
 2. [Bước 1: Cấu hình Hardware](#bước-1-cấu-hình-hardware)
 3. [Bước 2: Hiểu về USB Registers](#bước-2-hiểu-về-usb-registers)
 4. [Bước 3: Packet Memory Area (PMA)](#bước-3-packet-memory-area-pma)
- 
+5. [Bước 4: Thao tác với endpoint](#bước-4-thao-tác-với-endpoint)
+6. [Bước 5: Khởi tạo USB Peripheral](#bước-5-khởi-tạo-usb-peripheral)
+7. [Bước 6: Xử lý USB Event](#bước-6-xử-lý-usb-event)
+8. [Bước 7: Xử lý Control Transfer](#bước-7-xử-lý-control-transfer)
+
 ## Tổng quan STM32F103 USB
 
 STM32F103 tích hợp USB 2.0 Full Speed Device peripheral với các đặc điểm:
@@ -161,40 +165,6 @@ STM32F103 có các nhóm register chính:
 RC_W0 = Read, Clear by writing 0
 :::
 
-**Ví dụ xử lý interrupt:**
- 
-```c
-void USB_LP_CAN1_RX0_IRQHandler(void)
-{
-    uint16_t istr = USB->ISTR;
-    
-    // 1. USB Reset
-    if (istr & USB_ISTR_RESET) {
-        USB_HandleReset();
-        USB->ISTR = ~USB_ISTR_RESET;  // Clear by writing 0
-    }
-    
-    // 2. Correct Transfer (CTR)
-    if (istr & USB_ISTR_CTR) {
-        uint8_t ep_id = istr & USB_ISTR_EP_ID;
-        USB_HandleTransfer(ep_id);
-        // CTR không clear ở đây, clear trong endpoint handler
-    }
-
-    // 3. Suspend
-    if (istr & USB_ISTR_SUSP) {
-        USB_HandleSuspend();
-        USB->ISTR = ~USB_ISTR_SUSP;
-    }
-    
-    // 4. Wakeup
-    if (istr & USB_ISTR_WKUP) {
-        USB_HandleWakeup();
-        USB->ISTR = ~USB_ISTR_WKUP;
-    }
-}
-```
-
 ### 2.4. USB_EPnR - Endpoint Register
 
 **Offset:** 0x00 + (n × 4), n = 0..7  
@@ -255,39 +225,50 @@ XOR value = 10 XOR 11 = 01
 → Ghi STAT_RX = 01
 ```
  
-#### 2.4.2. Các bit cần giữ khi ghi EPnR
-  
-Khi ghi vào USB_EPnR, **PHẢI** giữ các bit sau (vì có thể bị hardware thay đổi):
-- **CTR_RX** (bit 15): RC_W0 - Phải ghi 0 để clear
-- **CTR_TX** (bit 7): RC_W0 - Phải ghi 0 để clear
-- **DTOG_RX** (bit 14): Toggle - Giữ nguyên nếu không muốn thay đổi
-- **DTOG_TX** (bit 6): Toggle - Giữ nguyên nếu không muốn thay đổi
-- **STAT_RX** (bits 13:12): Toggle - Dùng XOR
-- **STAT_TX** (bits 5:4): Toggle - Dùng XOR
+#### 2.4.2. Xây dựng code để thao tác các bit trong thanh ghi
 
-**Mask để giữ:**
+Khi ghi vào thanh ghi `USB_EPnR`, ta cần sử dụng bit mask để giữ các bit sau:
 
 ```c
 #define USB_EPREG_MASK  (USB_EP_CTR_RX | USB_EP_SETUP | \
-                         USB_EP_T_FIELD | USB_EP_KIND | \
-                         USB_EP_CTR_TX | USB_EPADDR_FIELD)
-// = 0x870F (giữ tất cả ngoại trừ toggle bits)
+                         USB_EP_EP_TYPE | USB_EP_KIND | \
+                         USB_EP_CTR_TX | USB_EP_EA)
+// = 0x8F8F
 ```
 
-**Template ghi EPnR an toàn:**
+Template ghi EPnR an toàn:
 
 ```c
-// Đọc giá trị hiện tại
-uint16_t reg = USB->EPnR;
- 
-// Giữ lại các bits cố định, clear CTR_RX và CTR_TX
-reg &= USB_EPREG_MASK;
- 
-// XOR với giá trị mới cho toggle bits
-reg ^= new_toggle_value;
- 
-// Ghi lại
-USB->EPnR = reg;
+#define EP_RX_DIS    0x0000  // 00: Disabled
+#define EP_RX_STALL  0x1000  // 01: Stall
+#define EP_RX_NAK    0x2000  // 10: NAK
+#define EP_RX_VALID  0x3000  // 11: Valid
+
+static inline void USB_SetRxStatus (uint8_t ep, uint16_t status)
+{
+    // Đọc giá trị hiện tại
+    uint16_t reg = USB->EPnR[ep].WORD;
+    
+    // Giữ lại các bits cố định
+    reg &= USB_EPREG_MASK;
+
+    // XOR với giá trị mới
+    reg ^= status;
+
+    // Ghi lại
+    USB->EPnR[ep].WORD = reg;
+}
+```
+
+Tương tự như vậy ta sẽ triển khai các API thao tác với các bit khác trong thanh ghi EPnR:
+
+```c
+static inline void USB_SetRxStatus(uint8_t ep, uint16_t status);
+static inline void USB_SetTxStatus(uint8_t ep, uint16_t status);
+static inline void USB_SetToggleRxData(uint8_t ep, uint16_t toggle);
+static inline void USB_SetToggleTxData(uint8_t ep, uint16_t toggle);
+static inline void USB_ClearRxFlag(uint8_t ep);
+static inline void USB_ClearTxFlag(uint8_t ep);
 ```
 
 ### 2.5. USB_DADDR - Device Address Register
@@ -374,7 +355,7 @@ EP7: 0x38 (TX), 0x3C (RX)
 | +0 | ADDRn_TX/RX | Buffer address (offset trong PMA) |
 | +2 | COUNTn_TX/RX | Byte count |
  
-### 3.3. TX Descriptor (ADDRn_TX, COUNTn_TX)
+#### 3.2.1. TX Descriptor
  
 **ADDRn_TX** (16-bit):
 
@@ -390,8 +371,8 @@ EP7: 0x38 (TX), 0x3C (RX)
 | 15:10 | - | Reserved |
 | 9:0 | COUNTn_TX[9:0] | Number of bytes to transmit (0-1023) |
  
-### 3.4. RX Descriptor (ADDRn_RX, COUNTn_RX)
- 
+#### 3.2.2. RX Descriptor
+
 **ADDRn_RX** (16-bit):
 
 | Bit(s) | Tên | Mô tả |
@@ -419,7 +400,6 @@ Ví dụ: Buffer 32 byte
   NUM_BLOCK = (32 / 2) - 1 = 15 = 0x0F
   COUNTn_RX = 0x0000 | (15 << 10) = 0x3C00
 ```
-
 
 **Format 2: Buffer size > 62 byte**
 
@@ -450,12 +430,71 @@ Ví dụ: Buffer 64 byte
 | 128 byte | 2 | 3 | 0x8C00 |
 | 256 byte | 2 | 7 | 0x9C00 |
 | 512 byte | 2 | 15 | 0xBC00 |
- 
-### 3.5. Truy cập PMA
+
+#### 3.2.3. Triển khai các API cho Buffer Descriptor Table
+
+Ta định nghĩa các API để đọc/ghi số lượng byte và địa chỉ offset trong PMA.
+
+```c
+#define PMA                     ((uint16_t *)USB_PMAADDR)
+
+// BDT offsets for each endpoint
+#define BDT_TX_ADDR(ep)         ((ep) * 8 + 0)
+#define BDT_TX_COUNT(ep)        ((ep) * 8 + 2)
+#define BDT_RX_ADDR(ep)         ((ep) * 8 + 4)
+#define BDT_RX_COUNT(ep)        ((ep) * 8 + 6)
+
+static inline void BDT_SetTxAddr(uint8_t ep, uint16_t addr) {
+    PMA[BDT_TX_ADDR(ep)] = addr;
+}
+
+static inline uint16_t BDT_GetTxAddr(uint8_t ep) {
+    return PMA[BDT_TX_ADDR(ep)];
+}
+
+static inline void BDT_SetTxCount(uint8_t ep, uint16_t count) {
+    PMA[BDT_TX_COUNT(ep)] = count & 0x3FF;
+}
+
+static inline uint16_t BDT_GetTxCount(uint8_t ep) {
+    return PMA[BDT_TX_COUNT(ep)] & 0x3FF;
+}
+
+static inline void BDT_SetRxAddr(uint8_t ep, uint16_t addr) {
+    PMA[BDT_RX_ADDR(ep)] = addr;
+}
+
+static inline uint16_t BDT_GetRxAddr(uint8_t ep) {
+    return PMA[BDT_RX_ADDR(ep)];
+}
+
+static inline uint16_t BDT_GetRxCount(uint8_t ep) {
+    return PMA[BDT_RX_COUNT(ep)] & 0x3FF;
+}
+
+void BDT_SetRxCount(uint8_t ep, uint16_t size)
+{
+    uint16_t count_reg;
+    
+    if (size <= 62) {
+        // Format 1: blocks of 2 bytes
+        uint16_t num_block = (size >> 1) - 1;
+        count_reg = (num_block << 10);
+    } else {
+        // Format 2: blocks of 32 bytes
+        uint16_t num_block = (size >> 5) - 1;
+        count_reg = 0x8000 | (num_block << 10);
+    }
+    
+    PMA[BDT_RX_COUNT(ep)] = count_reg;
+}
+```
+
+### 3.3. Truy cập PMA
  
 ⚠️ **PMA không truy cập như SRAM bình thường!**
- 
-Mỗi byte data chiếm **2 byte (word)** trong PMA, chỉ sử dụng **lower byte**.
+
+Mỗi byte data chiếm 2 byte (word) trong PMA, chỉ sử dụng lower byte.
 
 ```
 Physical PMA layout:
@@ -482,62 +521,52 @@ PMA[0x46] = 0x0078  // Byte 3
 ```c
 #define USB_PMAADDR  0x40006000UL
 
-static inline uint16_t* PMA_GetAddr(uint16_t offset)
+static inline uint16_t* USB_PMA_GetAddr(uint16_t offset)
 {
     return (uint16_t *)(USB_PMAADDR + (offset << 1));
 }
 
-// Ghi 1 byte vào PMA
-void PMA_WriteByte(uint16_t offset, uint8_t data)
+void USB_PMA_Write(uint16_t pma_offset, const uint8_t *buf, uint16_t len)
 {
-    *PMA_GetAddr(offset) = data;
-}
+    uint16_t *pma = USB_PMA_GetAddr(pma_offset);
 
-// Đọc 1 byte từ PMA
-uint8_t PMA_ReadByte(uint16_t offset)
-{
-    return (uint8_t)(*PMA_GetAddr(offset));
-}
-
-// Ghi buffer vào PMA
-void PMA_WriteBuffer(uint16_t pma_offset, const uint8_t *buf, uint16_t len)
-{
-    uint16_t *pma = PMA_GetAddr(pma_offset);
-    
-    for (uint16_t i = 0; i < len; i++) {
-        *pma++ = buf[i];
-    }
-}
- 
-// Đọc buffer từ PMA
-void PMA_ReadBuffer(uint16_t pma_offset, uint8_t *buf, uint16_t len)
-{
-    uint16_t *pma = PMA_GetAddr(pma_offset);
-    
-    for (uint16_t i = 0; i < len; i++) {
-        buf[i] = (uint8_t)(*pma++);
-    }
-}
-```
-
-**Tối ưu:**
-
-Vì USB buffer thường chẵn (2/4/8/16/32/64), có thể tối ưu bằng word copy:
- 
-```c
-void PMA_Write(uint16_t pma_offset, const uint8_t *buf, uint16_t len)
-{
-    uint16_t *pma = PMA_GetAddr(pma_offset);
-    uint16_t n = (len + 1) >> 1;  // Round up to words
+    /* Vì USB buffer thường chẵn (2/4/8/16/32/64), có thể tối ưu bằng word copy */
+    uint16_t n = (len + 1) >> 1;
     
     for (uint16_t i = 0; i < n; i++) {
         uint16_t word = buf[i * 2] | (buf[i * 2 + 1] << 8);
         *pma++ = word;
     }
 }
+
+void USB_PMA_Read(uint16_t pma_offset, const uint8_t *buf, uint16_t len)
+{
+    uint16_t *pma = USB_PMA_GetAddr(pma_offset);
+
+    /* Vì USB buffer thường chẵn (2/4/8/16/32/64), có thể tối ưu bằng word copy */
+    uint16_t n = (len + 1) >> 1;
+    
+    for (uint16_t i = 0; i < n; i++) {
+        *((uint16_t*) buf) = *((uint16_t*) pma);
+        pma++;
+        buf = buf + 2;
+    }
+}
 ```
 
-### 3.6. Layout ví dụ PMA cho USB HID Mouse
+**Ví dụ sử dụng:**
+
+```c
+// Write data to EP0 TX buffer
+uint8_t data[] = {0x12, 0x34, 0x56, 0x78};
+USB_PMA_Write(EP0_TX_ADDR, data, 4);
+
+// Read data from EP0 RX buffer
+uint8_t buffer[64];
+USB_PMA_Read(EP0_RX_ADDR, buffer, count);
+```
+
+### 3.4. Layout ví dụ PMA cho USB HID Mouse
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -565,7 +594,64 @@ void PMA_Write(uint16_t pma_offset, const uint8_t *buf, uint16_t len)
 └─────────────────────────────────────────────────┘
 ```
 
-## Bước 4: Khởi tạo USB Peripheral
+## Bước 4: Thao tác với endpoint
+
+### 4.1. Khởi tạo endpoint
+
+```c
+void USB_EndpointInit(uint8_t ep, uint8_t type, uint16_t addr, uint16_t len)
+{
+    uint8_t ep_mask = 0;
+    
+    ep_mask = ep & 0x7FU;
+    USB_SET_TYPE_TRANSFER(ep_mask, type);
+    USB_SET_ENDPOINT_ADDRESS(ep_mask);
+
+    if ((ep & 0x80) == 0x80)      // IN endpoint
+    {
+        BDT_SetTxAddr(ep_mask, addr);
+
+        USB_SetTxStatus(ep_mask, EP_TX_NAK);
+        USB_SetToggleTxData(ep_mask, DATA_TGL_0);
+    }
+    else
+    {
+        BDT_SetRxAddr(ep_mask, addr);
+        BDT_SetRxCount(ep_mask, len);
+
+        USB_SetRxStatus(ep_mask, EP_RX_VALID);
+        USB_SetToggleRxData(ep_mask, DATA_TGL_0);
+    }
+}
+```
+
+### 4.2. Gửi data tới endpoint
+
+```c
+void EP_Transmit(uint8_t ep, const uint8_t *data, uint16_t len)
+{
+    uint16_t tx_addr  = BDT_GetTxAddr(ep);
+    USB_PMA_Write(tx_addr, data, len);
+    BDT_SetTxCount(ep, len);
+    EP_SetTxStatus(ep, EP_TX_VALID);
+}
+```
+
+### 4.3. Nhận data từ endpoint
+
+```c
+uint16_t EP_Receive(uint8_t ep, uint8_t *buffer)
+{
+    uint16_t count = BDT_GetRxCount(ep);
+    if (count > 0) {
+        uint16_t rx_addr = PMA[BDT_RX_ADDR(ep)];
+        USB_PMA_Read(rx_addr, buffer, count);
+    }
+    return count;
+}
+```
+
+## Bước 5: Khởi tạo USB Peripheral
 
 ```mermaid
 sequenceDiagram
@@ -588,4 +674,303 @@ sequenceDiagram
     CPU->>USB: Set device address = 0
     CPU->>NVIC: Enable USB IRQ
     CPU->>USB: Connect to bus (pull-up)
+```
+
+Đây là source code khởi tạo:
+
+```c
+void USB_Init(void)
+{
+    // 1. Enable clock
+    __HAL_RCC_USB_CLK_ENABLE();
+    
+    // 2. Reset peripheral
+    USB->CNTR.BITS.FRES = 0x01;
+    HAL_Delay(1);
+    USB->CNTR.BITS.FRES = 0x00;
+    
+    // 3. Clear flags & set BTABLE
+    USB->ISTR.WORD = 0;
+    USB->BTABLE = 0;
+    
+    // 4. Init EP0
+    USB_EP0_Init();
+    
+    // 5. Enable interrupts
+    USB->CNTR.WORD = USB_CNTR_CTRM | USB_CNTR_RESETM | USB_CNTR_SUSPM | USB_CNTR_WKUPM;
+    
+    // 6. Enable NVIC
+    HAL_NVIC_EnableIRQ(USB_LP_CAN1_RX0_IRQn);
+}
+```
+
+## Bước 6: Xử lý USB Event
+
+```c
+void USB_LP_CAN1_RX0_IRQHandler(void)
+{
+    // 1. USB Reset
+    if (USB->ISTR.BITS.RESET) {
+        USB_HandleReset();
+        USB->ISTR = ~USB_ISTR_RESET;  // Clear by writing 0
+    }
+    
+    // 2. Correct Transfer (CTR)
+    if (USB->ISTR.BITS.CTR) {
+        uint8_t ep_id = istr & USB_ISTR_EP_ID;
+        USB_HandleTransfer(ep_id);
+    }
+
+    // 3. Suspend
+    if (USB->ISTR.BITS.SUSP) {
+        USB->ISTR.BITS.SUSP = 0;
+    }
+    
+    // 4. Wakeup
+    if (USB->ISTR.BITS.WKUP) {
+        USB->ISTR.BITS.WKUP = 0;
+    }
+}
+
+void USB_HandleReset(void)
+{
+    USB->ISTR.BITS.RESET = 0x00;
+
+    USB->DADDR.BITS.EF = 0x01;
+    USB->DADDR.BITS.ADD = 0x00;
+
+    USB_EndpointInit(0x80, 0x00, 0x18, 0x40);
+    USB_EndpointInit(0x00, 0x00, 0x58, 0x40);
+
+    for (int i = 1; i < 8; i++) {
+        USB_SetRxStatus(i, EP_RX_DIS);
+        USB_SetTxStatus(i, EP_TX_DIS);
+    }
+}
+```
+
+## Bước 7: Xử lý Control Transfer
+
+```c
+void USB_HandleTransfer(void)
+{
+    uint8_t ep = 0;
+
+    while (USB->ISTR.BITS.CTR != RESET)
+    {
+        ep = USB->ISTR.BITS.EP_ID;
+        
+        /* Endpoint 0 */
+        if (ep == 0)
+        {
+            if (USB->ISTR.BITS.DIR != RESET)
+            {
+                if (USB->EPnRp[ep].BITS.SETUP != RESET)
+                {
+                    USB_EP0_HandleSetup();
+                }
+                else
+                {
+                    if (USB->EPnRp[ep].BITS.CTR_RX != RESET)
+                    {
+                        USB_EP0_HandleOut();
+                    }
+                }
+
+                USB_ClearRxFlag(ep);
+            }
+            else
+            { 
+                // In token
+                if (USB->EPnRp[ep].BITS.CTR_TX != RESET)
+                {
+                    // Clear bit CTR_TX
+                    USB_EP0_HandleIn();
+                    USB_ClearTxFlag(ep);
+                }
+            }
+        }
+        else
+        {
+            if (USB->ISTR.BITS.DIR != RESET) // Out token
+            {
+                if (USB->EPnRp[ep].BITS.CTR_RX != RESET)
+                {    
+                    switch (ep)
+                    {
+                        #ifdef USB_EP1_OUT_HANDLER
+                        case 1: USB_EP1_OUT_HANDLER(); break;
+                        #endif /* USB_EP1_OUT_HANDLER */
+
+                        #ifdef USB_EP2_OUT_HANDLER
+                        case 2: USB_EP2_OUT_HANDLER(); break;
+                        #endif /* USB_EP2_OUT_HANDLER */
+
+                        #ifdef USB_EP3_OUT_HANDLER
+                        case 3: USB_EP3_OUT_HANDLER(); break;
+                        #endif /* USB_EP3_OUT_HANDLER */
+
+                        #ifdef USB_EP4_OUT_HANDLER
+                        case 4: USB_EP4_OUT_HANDLER(); break;
+                        #endif /* USB_EP4_OUT_HANDLER */
+
+                        default: break;
+                    }
+
+                    USB_ClearRxFlag(USB, ep);
+                }
+            }
+            else                            // In token
+            {
+                if (USB->EPnRp[ep].BITS.CTR_TX != RESET)
+                {   
+                    switch (ep)
+                    {
+                        #ifdef USB_EP1_IN_HANDLER
+                        case 1: USB_EP1_IN_HANDLER(); break;
+                        #endif /* USB_EP1_OUT_HANDLER */
+
+                        #ifdef USB_EP2_IN_HANDLER
+                        case 2: USB_EP2_IN_HANDLER(); break;
+                        #endif /* USB_EP2_IN_HANDLER */
+
+                        #ifdef USB_EP3_IN_HANDLER
+                        case 3: USB_EP3_IN_HANDLER(); break;
+                        #endif /* USB_EP3_IN_HANDLER */
+
+                        #ifdef USB_EP4_IN_HANDLER
+                        case 4: USB_EP4_IN_HANDLER(); break;
+                        #endif /* USB_EP4_IN_HANDLER */
+
+                        default: break;
+                    }
+
+                    USB_ClearTxFlag(USB, ep);
+                }
+            }
+        }
+    }
+}
+```
+### 7.1. Xử lý SETUP Handler
+
+Định nghĩa một cấu trúc struct cho setup packet:
+
+```c
+typedef struct {
+    uint8_t  bmRequestType;
+    uint8_t  bRequest;
+    uint16_t wValue;
+    uint16_t wIndex;
+    uint16_t wLength;
+} __attribute__((packed)) USB_SetupPacket_t;
+```
+
+Định nghĩa các macro cho các loại request:
+
+```c
+#define USB_REQ_TYP_STANDARD    0x00
+#define USB_REQ_TYP_CLASS       0x20
+#define USB_REQ_TYP_VENDOR      0x40
+```
+
+Bắt đầu viết hàm xử lý SETUP handler:
+
+```c
+void USB_EP0_HandleSetup(void)
+{
+    USB_SetupPacket_t setup;
+
+    // Read setup packet    
+    USB_PMA_Read(EP0_RX_ADDR, (uint8_t *)&setup, 8);
+    
+    uint8_t type = setup.bmRequestType & 0x60;
+    switch (type) {
+        case USB_REQ_TYP_STANDARD: USB_HandleStandardRequest(&setup); break;
+        case USB_REQ_TYP_CLASS: USB_HandleClassRequest(&setup); break;
+        case USB_REQ_TYP_VENDOR: USB_HandleVendorRequest(&setup); break;
+        default: USB_EP0_Stall(); break;
+    }
+}
+```
+
+### 7.2. Xử lý Standard Request Handler
+
+Định nghĩa các macro cho standard request:
+
+```c
+#define USB_REQ_GET_STATUS          0x00
+#define USB_REQ_CLEAR_FEATURE       0x01
+#define USB_REQ_SET_FEATURE         0x03
+#define USB_REQ_SET_ADDRESS         0x05
+#define USB_REQ_GET_DESCRIPTOR      0x06
+#define USB_REQ_SET_DESCRIPTOR      0x07
+#define USB_REQ_GET_CONFIGURATION   0x08
+#define USB_REQ_SET_CONFIGURATION   0x09
+#define USB_REQ_GET_INTERFACE       0x0A
+#define USB_REQ_SET_INTERFACE       0x0B
+```
+
+Bắt đầu viết hàm xử lý standard request handler:
+
+```c
+void USB_EP0_SendData(const uint8_t *data, uint16_t len);
+
+void USB_HandleStandardRequest(USB_SetupPacket_t *setup)
+{
+    switch (setup->bRequest) {
+        case USB_REQ_GET_DESCRIPTOR:
+            USB_GetDescriptor(setup);
+            break;
+            
+        case USB_REQ_SET_ADDRESS:
+            // Chỉ save address, set SAU Status stage!
+            usb_address = setup->wValue & 0x7F;
+            USB_EP0_SendData(NULL, 0);  // Send ZLP
+            break;
+            
+        case USB_REQ_SET_CONFIGURATION:
+            usb_configuration = setup->wValue;
+            if (setup->wValue == 1) {
+                usb_state = USB_STATE_CONFIGURED;
+                USB_ConfigureEndpoints();
+            }
+            USB_EP0_SendData(NULL, 0);  // Send ZLP
+            break;
+            
+        default:
+            USB_EP0_Stall();
+            break;
+    }
+}
+```
+
+Tiếp theo, viết hàm xử lý cho `GET_DESCRIPTOR`:
+
+```c
+void USB_GetDescriptor(USB_SetupPacket_t *setup)
+{
+    uint8_t desc_type = setup->wValue >> 8;
+    const uint8_t *desc = NULL;
+    uint16_t len = 0;
+    
+    switch (desc_type) {
+        case USB_DESC_TYPE_DEVICE:
+            desc = DeviceDescriptor;
+            len = sizeof(DeviceDescriptor);
+            break;
+        case USB_DESC_TYPE_CONFIGURATION:
+            desc = ConfigDescriptor;
+            len = sizeof(ConfigDescriptor);
+            break;
+        // ... other types
+    }
+    
+    if (desc) {
+        if (len > setup->wLength) len = setup->wLength;
+        USB_EP0_SendData(desc, len);
+    } else {
+        USB_EP0_Stall();
+    }
+}
 ```
