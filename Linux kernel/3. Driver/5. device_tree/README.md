@@ -14,20 +14,51 @@ Ví dụ: Ta có một driver điều khiển led chân GPIO2. Làm thế nào �
 
 ## Khái niệm cốt lõi
 
-Device Tree là một cây dữ liệu mô tả phần cứng của hệ thống cho kernel, nơi phần cứng có thể thay đổi tùy theo board, SoC hoặc thiết kế tùy chỉnh.
+Device Tree giải quyết vấn đề bằng cách tách mô tả hardware ra khỏi kernel thành một file riêng — **Device Tree Source (.dts)** — compile thành binary **Device Tree Blob (.dtb)**. Bootloader (U-Boot) load DTB vào RAM và truyền pointer cho kernel khi boot. Kernel đọc DTB, tự cấu hình theo hardware hiện tại.
 
-DT được mô tả bằng các tệp nguồn có phần mở rộng `.dts` (Device Tree Source) và `.dtsi` (Device Tree Source Include).
+Flow tổng quát:
 
-Các file này sẽ được biên dịch thành file `.dtb` (Device Tree Blob), đây là một file nhị phân mà bootloader sẽ nạp cùng với kernel.
-
-```bash
-dtc -I dts -O dtb -o am335x-boneblack.dtb am335x-boneblack.dts
+```
+[board.dts]
+    │
+    ▼ dtc (compiler)
+[board.dtb]
+    │
+    ▼ U-Boot load vào RAM
+[Kernel] ← pointer đến DTB
+    │
+    ▼
+Parse DTB → probe drivers
 ```
 
-Ta cũng có thể dịch ngược file `.dtb` thành file source `.dts`:
+**Lợi ích 1 — Tránh hard-code, một kernel chạy nhiều board:**
 
-```bash
-dtc -I dtb -O dts -o bone_black.txt am335x-boneblack.dtb
+Cùng một kernel binary, chỉ cần thay DTB là chạy được trên board khác. Không cần rebuild kernel.
+
+**Lợi ích 2 — BSP modular, kế thừa theo dòng board:**
+
+DTS hỗ trợ include và override — cho phép tổ chức BSP theo tầng. Đây chính xác là cấu trúc của BeagleBone trong tài liệu của khóa học này:
+
+```
+am33xx.dtsi
+  └── am335x-bone-common.dtsi
+        └── am335x-boneblack-common.dtsi
+              └── am335x-boneblack.dts
+```
+
+Mỗi tầng chỉ mô tả những gì mới hoặc khác biệt so với tầng trên. Muốn support BeagleBone Blue hay BeagleBone WiFi? Chỉ cần viết thêm một file `.dts` mới, kế thừa từ `am335x-bone-common.dtsi`, override đúng những peripheral khác biệt. Không đụng đến kernel code.
+
+**Lợi ích 3 — Ngôn ngữ khai báo, mô tả được topology phần cứng:**
+
+DTS là ngôn ngữ **declarative** — mô tả *cái gì*, không mô tả *làm thế nào*. Điều này cho phép diễn đạt quan hệ giữa các thiết bị mà C rất khó biểu đạt mà không kèm logic điều kiện.
+
+Ví dụ: mô tả UART1 kết nối vào interrupt controller nào. Trong C, driver phải tự biết số IRQ theo từng board — dẫn đến `if (board_type == BOARD_BBB)` rải rác khắp nơi. Trong DTS, chỉ cần khai báo quan hệ:
+
+```dts
+uart1: serial@48022000 {
+    interrupt-parent = <&intc>;
+    interrupts = <73 IRQ_TYPE_LEVEL_HIGH>;
+};
 ```
 
 ## Driver liên kết với node như thế nào
@@ -60,7 +91,9 @@ Giả sử ta có cảm biến nhiệt độ I2C:
 
 ## Cú pháp device tree
 
-Một file .dts có 3 phần chính:
+### Cấu trúc tổng thể một file DTS
+
+Một file `.dts` có 3 phần chính:
 
 ```
 /dts-v1/;
@@ -89,10 +122,12 @@ Giải thích:
 
 ### Cấu trúc node
 
+Mỗi node đại diện cho một hardware component. Cú pháp:
+
 ```
 node-name@unit-address {
-    property-name = value;
-    subnode-name { ... };
+    /* properties */
+    /* child nodes */
 };
 ```
 
@@ -114,7 +149,9 @@ uart0: serial@44e09000 {
 };
 ```
 
-### Kiểu giá trị hợp lệ
+### Property và các kiểu dữ liệu
+
+Property là cặp name-value mô tả đặc tính của node. DTS hỗ trợ các kiểu dữ liệu sau:
 
 | Dạng          | Ví dụ	                        | Ý nghĩa |
 |---------------|-------------------------------|---------|
@@ -177,7 +214,7 @@ soc {
 
 → Kernel dùng `ranges` để quy đổi 0x20000 → 0x48020000 thực tế.
 
-### Thuộc tính label
+### Thuộc tính label và phandle
 
 `label` là tên tượng trưng dùng để tham chiếu đến node. Nó không xuất hiện trong file nhị phân `.dtb`.
 
@@ -226,6 +263,142 @@ i2c2: i2c@4802a000 {
     eeprom@50 {
         compatible = "atmel,24c02";
         reg = <0x50>;
+    };
+};
+```
+
+### .dts vs .dtsi
+
+DT được mô tả bằng các tệp nguồn có phần mở rộng `.dts` (Device Tree Source) và `.dtsi` (Device Tree Source Include).
+- `.dts` là file top-level, được compile trực tiếp thành `.dtb`. Mỗi board có đúng một file `.dts`.
+- `.dtsi` là file include, không compile độc lập mà được include bởi `.dts` hoặc `.dtsi` khác. Dùng để chia sẻ mô tả chung giữa nhiều board.
+
+Các file này sẽ được biên dịch thành file `.dtb` (Device Tree Blob), đây là một file nhị phân mà bootloader sẽ nạp cùng với kernel.
+
+Cú pháp include:
+
+```dts
+/dts-v1/;
+#include "am33xx.dtsi"
+#include "am335x-bone-common.dtsi"
+```
+
+`#include` hoạt động giống C preprocessor — nội dung file được include sẽ được chèn trực tiếp vào vị trí đó trước khi `dtc` compile.
+
+### Compile DTS thành DTB
+
+Công cụ compile là `dtc` — Device Tree Compiler:
+
+```bash
+# Compile DTS → DTB
+dtc -I dts -O dtb -o board.dtb board.dts
+
+# Decompile DTB → DTS (dùng khi debug)
+dtc -I dtb -O dts -o board.dts board.dtb
+```
+
+Trong kernel build system, DTB được build bằng:
+
+```bash
+make dtbs
+```
+
+File `.dtb` output nằm tại `arch/arm/boot/dts/`.
+
+## Interrupt trong DTS
+
+### Đặt vấn đề
+
+Trên MCU, developer thường hard-code số IRQ từ datasheet trực tiếp vào firmware. Driver biết trực tiếp mình dùng IRQ nào. Cách này ổn với MCU vì firmware và hardware gắn chặt với nhau.
+
+Trên Linux, driver phải hoạt động được trên nhiều board khác nhau — cùng một UART controller nhưng có thể được nối vào interrupt controller khác nhau, với số IRQ khác nhau tùy board. Driver không thể tự biết — thông tin này phải đến từ DTS.
+
+### Interrupt controller trong DTS
+
+Thiết bị nhận và xử lý interrupt được gọi là **interrupt controller**. Nó được khai báo trong DTS với hai property đặc trưng:
+
+- `interrupt-controller;` — empty property, đánh dấu node này là interrupt controller
+- `#interrupt-cells = <N>;` — khai báo số lượng cell cần dùng để mô tả một interrupt
+
+Ví dụ từ `am33xx.dtsi`, INTC của AM335x:
+
+```dts
+intc: interrupt-controller@48200000 {
+    compatible = "ti,am33xx-intc";
+    interrupt-controller;
+    #interrupt-cells = <1>;
+    reg = <0x48200000 0x1000>;
+};
+```
+
+`#interrupt-cells = <1>` nghĩa là mỗi interrupt chỉ cần 1 cell để mô tả — đó là số IRQ. Một số interrupt controller phức tạp hơn cần 2 hoặc 3 cell — ví dụ GIC của ARM dùng 3 cell (loại interrupt, số IRQ, trigger type).
+
+### Thiết bị sinh interrupt
+
+Thiết bị muốn khai báo interrupt cần hai property:
+
+- `interrupt-parent = <&label>` — trỏ đến interrupt controller mà thiết bị này kết nối vào
+- `interrupts = <...>` — mô tả interrupt, số lượng cell phải khớp với `#interrupt-cells` của controller
+
+Ví dụ UART1 trên BBB:
+
+```dts
+uart1: serial@48022000 {
+    compatible = "ti,am335x-uart";
+    reg = <0x48022000 0x1000>;
+    interrupt-parent = <&intc>;
+    interrupts = <73>;
+};
+```
+
+Vì `intc` có `#interrupt-cells = <1>`, nên `interrupts` chỉ cần 1 giá trị — số IRQ 73.
+
+### Interrupt controller phân cấp
+
+Thực tế hardware thường có nhiều tầng interrupt controller. Trên AM335x, GPIO controller vừa là **thiết bị sinh interrupt** (kết nối vào INTC), vừa là **interrupt controller** cho các GPIO pin bên dưới nó.
+
+Từ `am33xx.dtsi`:
+
+```dts
+gpio0: gpio@44e07000 {
+    compatible = "ti,omap4-gpio";
+    reg = <0x44e07000 0x1000>;
+
+    /* gpio0 là thiết bị, kết nối vào intc */
+    interrupt-parent = <&intc>;
+    interrupts = <96>;
+
+    /* gpio0 đồng thời là interrupt controller cho các pin */
+    interrupt-controller;
+    #interrupt-cells = <2>;
+};
+```
+
+Khi một button nối vào GPIO0_31 muốn dùng interrupt:
+
+```dts
+button {
+    interrupt-parent = <&gpio0>;
+    interrupts = <31 IRQ_TYPE_EDGE_FALLING>;
+};
+```
+
+Ở đây `#interrupt-cells = <2>` — cell đầu là GPIO pin number, cell thứ hai là trigger type.
+
+### `interrupt-parent` mặc định
+
+Việc khai báo `interrupt-parent` trên từng node riêng lẻ sẽ rất lặp lại nếu hầu hết thiết bị đều kết nối vào cùng một controller. DTS cho phép khai báo `interrupt-parent` ở node cha — các node con sẽ kế thừa nếu không tự khai báo:
+
+```dts
+/ {
+    interrupt-parent = <&intc>;  /* mặc định cho toàn bộ cây */
+
+    serial@48022000 {
+        interrupts = <73>;  /* kế thừa interrupt-parent = &intc */
+    };
+
+    i2c@44e0b000 {
+        interrupts = <70>;  /* kế thừa interrupt-parent = &intc */
     };
 };
 ```
@@ -281,7 +454,63 @@ Example:
 
 ## Debug
 
-### Xem device tree lúc runtime
+### Kiểm tra warning khi compile với `dtc -W`
+
+Trước khi flash DTB lên board, nên compile với flag kiểm tra warning để phát hiện lỗi sớm:
+
+```bash
+dtc -W no-unit_address_vs_reg \
+    -I dts -O dtb \
+    -o board.dtb board.dts
+```
+
+Các warning phổ biến mà `dtc` có thể phát hiện:
+
+- `unit_address_vs_reg` — unit-address trong tên node không khớp với giá trị đầu tiên trong `reg`
+- `node_name_chars` — tên node chứa ký tự không hợp lệ
+- `property_name_chars` — tên property chứa ký tự không hợp lệ
+- `interrupt_provider` — node có `interrupt-controller` nhưng thiếu `#interrupt-cells`
+
+### Dịch ngược DTB để kiểm tra kết quả compile
+
+Sau khi compile, cách nhanh nhất để kiểm tra DTB có đúng như mong muốn không là dịch ngược lại thành DTS:
+
+```bash
+dtc -I dtb -O dts -o result.dts board.dtb
+```
+
+File `result.dts` là kết quả sau khi `dtc` đã merge toàn bộ include, override, và node splitting — đây là thứ kernel thực sự nhìn thấy. Kiểm tra file này giúp phát hiện:
+
+- Override không có tác dụng — property vẫn giữ giá trị cũ từ file cha
+- Node splitting bị sai — property bị duplicate thay vì merge
+- Include bị thiếu — node không xuất hiện trong output
+
+### Inspect DTB binary với `fdtdump` và `fdtget`
+
+`fdtdump` — dump toàn bộ nội dung DTB ra dạng text:
+
+```bash
+fdtdump board.dtb | grep -A 10 "vinalinux-leds"
+```
+
+`fdtget` — đọc một property cụ thể từ DTB:
+
+```bash
+# Đọc compatible string của node
+fdtget board.dtb /vinalinux-leds@44e07000 compatible
+
+# Đọc giá trị reg
+fdtget -t u board.dtb /vinalinux-leds@44e07000 reg
+```
+
+Output ví dụ:
+
+```
+vinalinux,gpio-led-button
+0x44e07000 0x1000
+```
+
+### Xem device tree tại runtime
 
 Muốn xem device tree trong lúc runtime, ta sử dụng một trong hai câu lệnh sau:
 
@@ -295,7 +524,7 @@ Khi nhấn enter, nó sẽ hiển thị cây thư mục tương ứng file dtb:
 
 ![debug device tree](img/debug-devicetree-1.png)
 
-**Tìm một node bất kỳ**
+**Tìm một node**
 
 ```bash
 find /sys/firmware/devicetree/base -name "node@*"
@@ -315,7 +544,7 @@ find /sys/firmware/devicetree/base -name "i2c@*"
 /sys/firmware/devicetree/base/ocp/interconnect@44c00000/segment@200000/target-module@b000/i2c@0
 ```
 
-**Kiểm tra một node bất kỳ**
+**Kiểm tra một node**
 
 Đầu tiên, ta cần tìm node đấy nằm ở đâu trong `sys/firmware/devicetree/base`.
 
@@ -375,8 +604,6 @@ hexdump -C pinmux_spi0_pins/pinctrl-single,pins
 ```
 
 **Xem mỗi chân hiện đang được mux thành chức năng gì**
-
-Lệnh:
 
 ```bash
 grep PINX /sys/kernel/debug/pinctrl/44e10800.pinmux-pinctrl-single/pinmux-pins
