@@ -1,5 +1,58 @@
 # Misc driver
 
+## Misc device là gì?
+
+Thay vì đi qua toàn bộ quy trình đăng ký character driver thủ công — `alloc_chrdev_region`, `cdev_init`, `cdev_add`, `class_create`, `device_create` — kernel cung cấp một shortcut gọi là **misc device**.
+
+Misc device là một wrapper của character driver với một số đặc điểm cố định:
+- Major number luôn là **10** (xem trong `/proc/devices` với tên `misc`)
+- Minor number được kernel cấp động
+- Device file được tạo tự động trong `/dev`
+
+Toàn bộ quá trình đăng ký rút gọn xuống còn hai bước: khai báo `struct miscdevice` và gọi `misc_register()`.
+
+```c
+#include <linux/miscdevice.h>
+
+static struct miscdevice my_misc = {
+    .minor = MISC_DYNAMIC_MINOR,  // kernel tự cấp minor number
+    .name  = "mydevice",          // tạo ra /dev/mydevice
+    .fops  = &my_fops,            // file_operations đã định nghĩa
+};
+```
+
+## Sequence khởi tạo và cleanup
+
+**init:**
+
+```c
+static int __init my_init(void)
+{
+    int ret;
+
+    ret = misc_register(&my_misc);
+    if (ret) {
+        pr_err("misc_register failed: %d\n", ret);
+        return ret;
+    }
+
+    pr_info("mydevice registered at /dev/%s\n", my_misc.name);
+    return 0;
+}
+```
+
+**exit:**
+
+```c
+static void __exit my_exit(void)
+{
+    misc_deregister(&my_misc);
+    pr_info("mydevice unregistered\n");
+}
+```
+
+So sánh với character driver truyền thống — driver dùng misc tiết kiệm khoảng 20 dòng. Phần còn lại — implement `file_operations` — hoàn toàn giống nhau.
+
 ## Tại sao Linux kernel phải theo template driver?
 
 Khi ta muốn viết driver cho device nào đó thì ta cần phải biết được cách giao tiếp với nó. Tuy nhiên, có rất nhiều loại device, mỗi device lại có cách thức giao tiếp và vendor khác nhau. Ta không thể viết được hết cho các device này. Giả sử ta viết được hết thì trong tương lai thì vendor sẽ cập nhập lại giao thức kiểu khác -> Ta phải build lại kernel, rất phức tạp.
@@ -10,71 +63,44 @@ Vì vậy, tất cả device thuộc cùng một loại thì phải tuân theo m
 
 Nếu viết driver mà không theo đúng template thì kernel sẽ không hiểu driver mà ta muốn viết thuộc loại nào.
 
-## Sysfs
+## Quy tắc tư duy viết driver trên Linux
 
-Sysfs là một virtual filesystem trong linux kernel, được dùng để user space có thể tương tác với các đối tượng trong kernel như device, driver, subsystem và bus.
+Thói quen từ MCU development là nhận datasheet, mở IDE, bắt đầu gõ. Trên MCU điều này hoạt động vì môi trường đơn giản — một chương trình, một CPU, không có lớp trung gian.
 
-Sysfs giúp user:
-- Xem trạng thái của kernel, thiết bị, hoặc driver.
-- Điều khiển cấu hình phần cứng khi runtime
-- Debug
+Trên Linux, nhảy thẳng vào code driver mà không hiểu đủ context dẫn đến một vòng lặp quen thuộc: viết → build lỗi → sửa → kernel panic → reboot → lặp lại. Mỗi vòng lặp mất nhiều thời gian hơn MCU vì debug kernel khó hơn debug bare-metal.
 
-| Loại đối tượng   | Cấu trúc đại diện trong kernel  | Mô tả                                             |
-| ---------------- | ------------------------------- | ------------------------------------------------- |
-| **Device**       | `struct device`                 | Thiết bị vật lý hoặc logic                        |
-| **Driver**       | `struct device_driver`          | Trình điều khiển cho thiết bị                     |
-| **Bus**          | `struct bus_type`               | Kiểu bus kết nối (I2C, SPI, platform, PCI, …)     |
-| **Class**        | `struct class`                  | Nhóm logic của các thiết bị (net, leds, input, …) |
-| **Kobject/Kset** | `struct kobject`, `struct kset` | Hạ tầng quản lý sysfs                             |
+Quy tắc dưới đây giúp phá vỡ vòng lặp đó.
 
-Tất cả mọi đối tượng trong `/sys` đều bắt đầu từ `struct kobject`:
-- Khi kernel tạo ra một `kobject`, sysfs sẽ tự động sinh ra một thư mục tương ứng trong `/sys`.
-- Các file bên trong thư mục đó được gọi là attributes,
-- và được ánh xạ với các callback hàm `show`() và `store`() trong kernel.
+**Bước 1 — Đọc hiểu tài liệu phần cứng**
 
-👉 Kết luận:
-- kobject → tạo thư mục.
-- attribute → tạo file.
-- show()/store() → quy định cách đọc/ghi file đó.
+Output cần đạt: hiểu hardware đến mức có thể code được trên MCU nếu cần.
 
-### Cơ chế show/store hoạt động như thế nào
+Cụ thể: biết hardware giao tiếp qua giao thức gì (I2C, SPI, UART,...), biết các thanh ghi quan trọng và ý nghĩa từng bit, biết timing nếu có, biết interrupt hay polling.
 
-Khi user đọc file bằng `cat`, sysfs gọi:
+Nếu chưa đạt output này, mọi code driver viết ra chỉ là đoán mò.
 
-```
-show() → ghi dữ liệu vào buffer (buf)
-```
+**Bước 2 — Tìm hiểu quy tắc giao tiếp giữa app và hardware**
 
-Khi user ghi file bằng `echo`, sysfs gọi:
+Output cần đạt: biết cách test driver sau khi code xong — không cần viết application phức tạp.
 
-```
-store() → nhận buffer (buf) chứa dữ liệu
-```
+Cụ thể: hardware này thường được user space truy cập qua interface nào? `/dev/i2c-X` và `ioctl` với `I2C_RDWR`? `/dev/spidevX.Y` và `SPI_IOC_MESSAGE`? Hay một device file custom với read/write đơn giản?
 
-Ngoài ra:
-- Kích thước buffer mặc định ~ PAGE_SIZE (4KB).
-- Giá trị trả về là số byte đã đọc/ghi.
+Biết interface trước giúp developer viết driver với đúng API ngay từ đầu, đồng thời biết ngay câu lệnh test sau khi `insmod`.
 
-### Quản lý nhóm attribute
+**Bước 3 — Tìm template driver cho loại device đó**
 
-Khi có nhiều file, thay vì gọi `sysfs_create_file` nhiều lần, ta dùng nhóm:
+Output cần đạt: có một driver hoạt động được làm điểm xuất phát — không bắt đầu từ trang trắng.
 
-```c
-static struct attribute *my_attrs[] = {
-    &my_attribute1.attr,
-    &my_attribute2.attr,
-    NULL,
-};
+Cụ thể: tìm trong kernel source một driver của device khác cùng loại — cùng bus, cùng loại sensor, cùng class. Copy skeleton đó, giữ nguyên phần đăng ký template, chỉ thay phần logic hardware. Kernel source trên GitHub là nguồn tham khảo tốt nhất: `drivers/i2c/`, `drivers/spi/`, `drivers/char/`.
 
-static const struct attribute_group my_attr_group = {
-    .attrs = my_attrs,
-};
-```
+Đây là cách kernel developer thực tế làm — không ai viết driver từ đầu nếu đã có driver tương tự.
 
-Rồi đăng ký:
+**Bước 4 — Code driver**
 
-```c
-sysfs_create_group(my_kobj, &my_attr_group);
-```
+Chỉ đến bước này mới bắt đầu viết code thực sự. Lúc này developer đã có:
+- Hiểu biết đầy đủ về hardware
+- Biết interface cần implement
+- Có skeleton làm điểm xuất phát
+- Biết cách verify kết quả
 
-→ Tạo đồng loạt nhiều file.
+Code viết ra ở bước này thường đúng ngay lần đầu — hoặc ít nhất fail theo cách có thể debug được.
