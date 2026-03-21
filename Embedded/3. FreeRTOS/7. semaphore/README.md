@@ -9,16 +9,20 @@ Queue được giới thiệu trước đó có thể được sử dụng để
 Trong trường hợp này, ta có thể sử dụng semaphore, phương pháp này tiết kiệm bộ nhớ hơn.
 
 Semaphore là một queue đặc biệt nhưng nó không liên quan đến việc truyền dữ liệu. Semaphore hoạt động giống như một biến counter:
-- Counting Event - Đếm sự kiện
-  - Mỗi lần có sự kiện xảy ra, semaphore sẽ được "give", tăng giá trị counter.
-  - Mỗi lần sự kiện được xử lý, semaphore sẽ được "take", giảm giá trị counter.
-- Resource Management - quản lý tài nguyên:
-  - Để có thể sử dụng tài nguyên, task cần "take" semaphore, giảm counter đi 1.
-  - Sau khi dùng xong, task này sẽ phải "give" semaphore, tăng counter đi 1.
 
-  -> Điều này có nghĩa là:
-    - Khi counter khác 0: Tài nguyên sẵn sàng hoặc không có task nào sử dụng tài nguyên.
-    - Khi counter bằng 0: Tài nguyên bận hoặc có một task đang sử dụng tài nguyên.
+**Counting Event - Đếm sự kiện**
+
+- Mỗi lần có sự kiện xảy ra, semaphore sẽ được "give", tăng giá trị counter.
+- Mỗi lần sự kiện được xử lý, semaphore sẽ được "take", giảm giá trị counter.
+
+**Resource Management - quản lý tài nguyên:**
+
+- Để có thể sử dụng tài nguyên, task cần "take" semaphore, giảm counter đi 1.
+- Sau khi dùng xong, task này sẽ phải "give" semaphore, tăng counter đi 1.
+
+-> Điều này có nghĩa là:
+  - Khi counter khác 0: Tài nguyên sẵn sàng hoặc không có task nào sử dụng tài nguyên.
+  - Khi counter bằng 0: Tài nguyên bận hoặc có một task đang sử dụng tài nguyên.
 
 ![Counting semaphore](img/counting-semaphore.png)
 

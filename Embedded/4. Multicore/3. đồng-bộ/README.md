@@ -55,9 +55,42 @@ do {
 
 ## Spinlock
 
-Spinlock là một cơ chế mutual exclusion trong đó core liên tục kiểm tra (busy-wait hoặc spin) cho đến khi chiếm được quyền truy cập vào tài nguyên dùng chung. Khác với mutex, spinlock không nhường cpu hay bị block bởi bộ lập lịch.
+Mutex và semaphore khi block sẽ đưa task vào trạng thái block và chuyển CPU cho task khác. Điều này hợp lý khi thời gian chờ dài (khoảng ms trở lên). Nhưng nếu critical section chỉ mất vài µs, overhead của context switch (vài µs trên ESP32) có thể lâu hơn cả thời gian chờ. Đó là lúc spinlock có ý nghĩa.
 
+Spinlock hoạt động đơn giản: thay vì block và nhường CPU, task chạy vòng lặp liên tục kiểm tra (busy-wait hoặc spin) cho đến khi chiếm được quyền truy cập vào tài nguyên dùng chung.
+
+:::tip
 Spinlock hoạt động dựa trên atomic operation.
+:::
+
+Trên ESP32 dual-core, spinlock đặc biệt quan trọng khi cả hai core cùng truy cập một biến. FreeRTOS trên ESP32 cung cấp `portMUX_TYPE`:
+
+```c
+static portMUX_TYPE state_spinlock = portMUX_INITIALIZER_UNLOCKED;
+
+void update_machine_state(float new_temp) {
+    taskENTER_CRITICAL(&state_spinlock);
+    g_state.water_temp = new_temp;
+    g_state.last_update = esp_timer_get_time();
+    taskEXIT_CRITICAL(&state_spinlock);
+}
+```
+
+`taskENTER_CRITICAL` trên ESP32 làm hai việc: disable interrupt trên core hiện tại và acquire spinlock để core kia không vào được. Đây là cơ chế bảo vệ mạnh nhất nhưng cũng có chi phí cao nhất nếu dùng sai — vì khi interrupt bị disable, hệ thống không phản hồi được bất kỳ event nào.
+
+**Khác biệt giữa spinlock và mutex**
+
+Khi task A giữ spinlock, nếu task B trên core kia cũng muốn vào, task B sẽ quay vòng lặp while chờ, chiếm 100% CPU core đó và interrupt trên core A cũng bị tắt. Toàn bộ hệ thống gần như đóng băng trong thời gian spinlock được giữ.
+
+Khi task A giữ mutex, nếu task B muốn vào, RTOS đưa task B vào trạng thái ngủ, chuyển CPU cho task khác làm việc hữu ích, và đánh thức B khi A trả mutex. Hệ thống vẫn chạy bình thường.
+
+**Khi nào dùng spinlock thay vì mutex?**
+
+Khi tất cả các điều kiện sau đều đúng: critical section cực ngắn (dưới 10-20µs, chỉ gán vài biến), cần bảo vệ trên cả hai core đồng thời, và không có operation nào bên trong có thể block (không gọi I2C, không gọi malloc, không gọi bất kỳ API nào có thể chờ).
+
+:::tip Kết luận
+Khi phân vân giữa spinlock và mutex, ta nhìn vào code bên trong lock và xem đoạn code này xử lý trong bao lâu. Ngoài ra, nếu tắt toàn bộ interrupt trong khoảng thời gian lock thì sẽ xảy ra vấn đề gì?
+:::
 
 ## Memory barrier
 

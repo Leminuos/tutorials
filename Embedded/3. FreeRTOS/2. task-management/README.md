@@ -25,6 +25,140 @@ Mỗi task được cấp phát bộ nhớ ở phân vùng heap trong memory và
 
 ![Task allocate](img/task-allocate.png)
 
+## Trạng thái của task
+
+Trước đây, ta chỉ đơn giản chia trạng thái của một task thành hai loại: running và not running.
+
+Trạng thái not running có thể được chia nhỏ hơn nữa:
+- Trạng thái ready
+- Trạng thái blocked
+- Trạng thái suspended
+
+Sơ đồ state machine các trạng thái của task như sau:
+
+![Task state machine](img/task-state-machine.png)
+
+Tuy nhiên, tại một thời điểm, chỉ có một task ở trạng thái running chạy trên CPU.
+
+### Trạng thái ready
+
+Task này đã sẵn sàng và có thể được chạy bất cứ lúc nào.
+
+Nhiểu task có thể ở trạng thái ready cùng một lúc. Lúc này, bộ lập lịch sẽ là đứa chọn task ở trạng thái ready nào được phép chạy.
+
+### Trạng thái blocked
+
+Trong các sản phẩm thực tế, ta không nên để một task chạy liên tục mà thay vào đó, ta sử dụng phương pháp event driven để thực thi nó:
+- Một task phải chờ một sự kiện nhất định trước khi nó có thể được thực thi.
+- Nó không tiêu tốn tài nguyên CPU trong khi chờ đợi các sự kiện.
+- Trong khi chờ đợi một sự kiện, task sẽ ở trạng thái blocked.
+
+Một task ở trạng thái blocked có thể chờ hai loại sự kiện:
+- Các sự kiện liên quan đến thời gian
+  - Khi gọi hàm `vTaskDelay`,...
+- Sự kiện đồng bộ: Sự kiện này được tạo ra bởi một task khác hoặc một ISR.
+  - Ví dụ 1: Task A chờ task B gửi dữ liệu cho nó.
+  - Ví dụ 2: Task A chờ người dùng nhấn phím.
+
+### Trạng thái suspended
+
+Trong FreeRTOS, các task có thể chuyển sang trạng thái suspended, cách duy nhất là thông qua hàm `vTaskSuspend`. Prototype của hàm như sau:
+
+```c
+void vTaskSuspend( TaskHandle_t xTaskToSuspend );
+```
+
+Tham số `xTaskToSuspend` biểu thị task cần suspended; nếu nó là NULL, điều đó có nghĩa là task đang tự suspended.
+
+Để thoát khỏi trạng thái suspended, chỉ task khác hoặc ISR mới có thể thực hiện được:
+- Task khác: `vTaskResume`
+- ISR: `xTaskResumeFromISR`
+
+## Tick
+
+Con người có nhịp tim, và khoảng thời gian giữa các nhịp tim về cơ bản là không đổi.
+
+RTOS cũng có cơ chế nhịp tim, sử dụng systick timer để tạo ra các ngắt theo các khoảng thời gian cố định. Điều này được gọi là một "tick", ví dụ, ngắt tick xảy ra cứ sau 10ms.
+
+Như hình ảnh bên dưới cho thấy:
+- Giả sử các ngắt tick xảy ra tại các thời điểm t1, t2 và t3.
+- Khoảng thời gian giữa hai lần gián đoạn được gọi là một time slice.
+- Độ dài của time slice được xác định bởi `configTICK_RATE_HZ`. Giả sử `configTICK_RATE_HZ` là 100, thì độ dài time slice là 10ms.
+
+![Time tick](img/time-tick.png)
+
+Làm thế nào để chuyển đổi giữa các task có cùng mức độ ưu tiên? Vui lòng xem hình ảnh bên dưới:
+- Task 2 được thực hiện từ t1 đến t2.
+- Một ngắt tick xảy ra tại thời điểm t2, và hàm xử lý ngắt tick được gọi:
+  - Chọn task tiếp theo để thực hiện.
+  - Sau khi ISR được thực thi, hãy chuyển sang task mới: Task 1
+- Task 1 được thực hiện từ t2 đến t3.
+
+![Tick interrupts](img/tick-interrupts.png)
+
+Ta có thể sử dụng các tick này để đo thời gian, ví dụ:
+
+```c
+vTaskDelay(2);  // Chờ 2 tick，Giả sử configTICK_RATE_HZ=100 -> tick=10ms -> chờ 20ms
+
+// Sử dụng macro pdMS_TO_TICKS để chuyển ms sang tick
+vTaskDelay(pdMS_TO_TICKS(100));	 // Chờ 100ms
+```
+
+:::warning Lưu ý
+Delay dựa trên tick không chính xác. Ví dụ, nếu `vTaskDelay(2)` dự định delay 2 tick, nó có thể trả về sau hơn 1 tick.
+:::
+
+Như hình ảnh bên dưới cho thấy:
+
+![Task delay](img/task-delay.png)
+
+Khi sử dụng hàm `vTaskDelay`, nên sử dụng ms làm đơn vị và dùng macro `pdMS_TO_TICKS` để chuyển đổi ms sang tick.
+
+## Hàm delay
+
+Có hai hàm delay:
+- `vTaskDelay`: Chờ ít nhất một số lượng ngắt tick trước khi sẵn sàng.
+- `vTaskDelayUntil`: Chờ đến thời gian tuyệt đối được chỉ định trước khi sẵn sàng.
+
+Nguyên mẫu của hai hàm này như sau:
+
+```c
+void vTaskDelay( const TickType_t xTicksToDelay );
+
+/* pxPreviousWakeTime: Thời điểm wake cuối cùng
+ * Thời điểm kế tiếp: pxPreviousWakeTime + xTimeIncrement
+ * Đơn vị: Tick
+ */
+BaseType_t xTaskDelayUntil( TickType_t * const pxPreviousWakeTime,
+                            const TickType_t xTimeIncrement );
+```
+
+Sơ đồ sau đây minh họa điều này:
+
+![Delay functions](img/delay-functions.png)
+
+Sử dụng `vTaskDelay` hoặc `xTaskDelayUntil` để cho bộ lập lịch biết rằng task này đang rảnh trong khoảng thời gian này và từ đó nó có thể trao quyền điều khiển cho các task có mức ưu tiên thấp hơn trong khoảng thời gian đó.
+
+## Task idle
+
+Task idle được tạo ra bởi bộ lập lịch trong hàm `vTaskStartScheduler` để đảm bảo trong một thời điểm luôn có một task đang chạy, nghĩa là khi các task khác vào trạng thái blocked hoặc suspended. Đặc điểm của nó:
+- Task idle sẽ có mức ưu tiên thấp nhất - 0.
+- Task idle có nhiệm vụ giải phóng bộ nhớ khi có một task bị xóa.
+
+Task idle có độ ưu tiên là 0, điều này có nghĩa là khi task của người dùng sẵn sàng, task idle sẽ ngay lập tức nhường tài nguyên để cho phép task của người dùng đó chạy. Trong trường hợp này, chúng ta nói rằng task của người dùng đã "chiếm quyền" task nhàn rỗi, điều này được thực hiện bởi bộ lập lịch.
+
+Ngoài ra, ta có thể thêm một hàm hook cho task idle, hàm này sẽ được gọi một lần mỗi khi vòng lặp task idle thực thi. Hàm hook này có các chức năng sau:
+- Thực thi các chức năng background có mức độ ưu tiên thấp cần được chạy liên tục.
+- Đo thời gian idle của hệ thống: Các task idle có thể được thực thi nếu tất cả các task ưu tiên cao đã nhường quyền, vì vậy việc đo thời gian task idle chiếm dụng có thể được sử dụng để tính toán mức độ sử dụng bộ xử lý.
+- Đưa CPU vào trạng thái low power. Nếu các task idle vẫn có thể thực hiện được, điều đó có nghĩa là không có việc gì quan trọng cần làm, vì vậy ta có thể đưa nó vào chế độ low power.
+
+![Task idle hook](img/task-idle-hook.png)
+
+Những điểm hạn chế của hàm hook đối với các task idle:
+- Nó không thể khiến một task đang ở trạng thái ready chuyển sang trạng thái blocked hoặc suspended.
+- Nếu sử dụng nó với `vTaskDelete` để xóa các task, thì hàm hook cần phải được xử lý rất hiệu quả. Nếu task idle bị kẹt trong hàm hook, nó sẽ không thể giải phóng bộ nhớ.
+
 ## Tạo và xoá task
 
 ### Task trong FreeRTOS
@@ -248,139 +382,64 @@ Hiện tượng này có thể diễn ra như sau:
 
 ![Error example delete task](img/err-example-delete-tasl.png)
 
-## Trạng thái của task
+## Thiết kế task
 
-Trước đây, ta chỉ đơn giản chia trạng thái của một task thành hai loại: running và not running.
+Nhiều người mới dùng RTOS có xu hướng tạo task cho mọi thứ. Nhưng mỗi task có chi phí: RAM cho stack, context switch overhead, và quan trọng nhất là tăng độ phức tạp về synchronization. Vì vậy trước khi quyết định tạo task riêng cho một công việc nào đó, ta cần phải xem xét thật kỹ lưỡng xem công việc này có nhất thiết phải tạo task không
 
-Trạng thái not running có thể được chia nhỏ hơn nữa:
-- Trạng thái ready
-- Trạng thái blocked
-- Trạng thái suspended
+Khi tạo task thì ta cũng cần phải xem xét đến độ ưu tiên và kích thước stack của task.
 
-Sơ đồ state machine các trạng thái của task như sau:
+**Blocking I/O**
 
-![Task state machine](img/task-state-machine.png)
+"Blocking" nghĩa là đoạn code phải dừng lại và chờ một thứ gì đó bên ngoài mà nó không kiểm soát được thời điểm hoàn thành. Trong thời gian chờ, nếu nó nằm trong một task riêng, RTOS sẽ chuyển CPU sang task khác — không lãng phí thời gian. Nhưng nếu nó nằm chung với code khác trong cùng một task, thì mọi thứ phía sau đều phải chờ theo.
 
-Tuy nhiên, tại một thời điểm, chỉ có một task ở trạng thái running chạy trên CPU.
+Ví dụ: Máy pha cà phê thông minh
 
-### Trạng thái ready
+Hình dung một máy cà phê có: màn hình LCD hiển thị menu, cảm biến nhiệt độ nước, bơm nước, cối xay hạt, cân điện tử đo lượng cà phê, nút bấm chọn loại đồ uống, và module Wi-Fi gửi thống kê sử dụng lên server.
 
-Task này đã sẵn sàng và có thể được chạy bất cứ lúc nào.
+Máy cà phê đọc cảm biến nhiệt độ qua I2C mất vài ms mỗi lần, nhưng ta muốn đọc mỗi 500ms. Giữa các lần đọc, task này gọi `vTaskDelay(500ms)` và ngủ — đó là blocking có chủ đích. Nếu ta gộp việc đọc nhiệt độ vào cùng với điều khiển bơm nước, thì trong 500ms task ngủ chờ sensor, bơm nước cũng không được điều khiển.
 
-Nhiểu task có thể ở trạng thái ready cùng một lúc. Lúc này, bộ lập lịch sẽ là đứa chọn task ở trạng thái ready nào được phép chạy.
+Ngược lại, tính toán lượng nước cần dùng dựa trên loại đồ uống chỉ là một phép tính thuần túy — vài phép nhân, tra bảng, xong ngay trong vài ms, không chờ ai cả. Đoạn code này không cần task riêng, nó chỉ là một function call bình thường bên trong task nào đó.
 
-### Trạng thái blocked
+Tóm lại: nếu một công việc phải chờ I/O, chờ event, chờ data từ bên ngoài $\rightarrow$ Nó là ứng viên tốt cho task riêng. Nếu nó chỉ tính toán rồi xong $\rightarrow$ gọi nó như function bình thường là đủ.
 
-Trong các sản phẩm thực tế, ta không nên để một task chạy liên tục mà thay vào đó, ta sử dụng phương pháp event driven để thực thi nó:
-- Một task phải chờ một sự kiện nhất định trước khi nó có thể được thực thi.
-- Nó không tiêu tốn tài nguyên CPU trong khi chờ đợi các sự kiện.
-- Trong khi chờ đợi một sự kiện, task sẽ ở trạng thái blocked.
+**Deadline khác nhau**
 
-Một task ở trạng thái blocked có thể chờ hai loại sự kiện:
-- Các sự kiện liên quan đến thời gian
-  - Khi gọi hàm `vTaskDelay`,...
-- Sự kiện đồng bộ: Sự kiện này được tạo ra bởi một task khác hoặc một ISR.
-  - Ví dụ 1: Task A chờ task B gửi dữ liệu cho nó.
-  - Ví dụ 2: Task A chờ người dùng nhấn phím.
+Câu hỏi này giúp ta quyết định khi hai công việc đều blocking nhưng tần suất hoặc độ khẩn cấp khác nhau.
 
-### Trạng thái suspended
+Trong máy cà phê: điều khiển nhiệt độ nước cần phản hồi nhanh — nếu nhiệt vượt 96°C mà ta không tắt heater trong vòng 100-200ms, nước sẽ quá nóng, cà phê bị cháy vị. Trong khi đó, gửi thống kê lên Wi-Fi hoàn toàn có thể chậm 5-10 giây mà không ai quan tâm.
 
-Trong FreeRTOS, các task có thể chuyển sang trạng thái suspended, cách duy nhất là thông qua hàm `vTaskSuspend`. Prototype của hàm như sau:
+Nếu ta gộp hai việc này vào cùng một task, chuyện gì xảy ra? Khi task đang bận gửi HTTP request lên server (có thể mất 2-3 giây nếu mạng chậm), thì suốt thời gian đó việc kiểm soát nhiệt độ bị đình trệ. Đây chính là lý do tách: hai deadline khác nhau $\rightarrow$ hai priority khác nhau $\rightarrow$ hai task khác nhau.
 
-```c
-void vTaskSuspend( TaskHandle_t xTaskToSuspend );
-```
+Nhưng nếu cân lượng cà phê và điều khiển cối xay đều cần phản hồi trong khoảng 50-100ms và luôn hoạt động cùng lúc trong quá trình xay (cân đủ $\rightarrow$ dừng xay), thì chúng có cùng deadline $\rightarrow$ có thể gộp vào một task duy nhất.
 
-Tham số `xTaskToSuspend` biểu thị task cần suspended; nếu nó là NULL, điều đó có nghĩa là task đang tự suspended.
+## Phân loại task theo vai trò
 
-Để thoát khỏi trạng thái suspended, chỉ task khác hoặc ISR mới có thể thực hiện được:
-- Task khác: `vTaskResume`
-- ISR: `xTaskResumeFromISR`
+Trong một hệ thống embedded điển hình, task thường rơi vào các nhóm sau:
+- Event-driven task: Ngủ hầu hết thời gian, chỉ thức khi có event. Dùng queue hoặc task notification để đánh thức. Ví dụ: task xử lý touch input.
+- Periodic task: Task này cho các công việc cần được chạy theo đều đặn theo chu ký được xác định bởi các yêu cầu bên ngoài, và task chủ động ngủ chờ đến đúng thời điểm. Ví dụ: task đọc sensor mỗi 100ms, task cập nhật UI.
+- Continuous task: Task này cho các công việc hạy liên tục. Ví dụ: audio decode task liên tục đọc data từ queue, decode, rồi push sang I2S. Loại này cần đặc biệt cẩn thận về yield để tránh starve task khác.
 
-## Tick
+## Priority
 
-Con người có nhịp tim, và khoảng thời gian giữa các nhịp tim về cơ bản là không đổi.
+Nguyên tắc đơn giản nhất là: task nào cần phản hồi nhanh nhất thì có độ ưu tiên cao hơn. 
 
-RTOS cũng có cơ chế nhịp tim, sử dụng systick timer để tạo ra các ngắt theo các khoảng thời gian cố định. Điều này được gọi là một "tick", ví dụ, ngắt tick xảy ra cứ sau 10ms.
+"Phản hồi nhanh" ở đây nghĩa là deadline ngắn — khoảng thời gian tối đa từ lúc event xảy ra đến lúc hệ thống phải xử lý xong.
 
-Như hình ảnh bên dưới cho thấy:
-- Giả sử các ngắt tick xảy ra tại các thời điểm t1, t2 và t3.
-- Khoảng thời gian giữa hai lần gián đoạn được gọi là một time slice.
-- Độ dài của time slice được xác định bởi `configTICK_RATE_HZ`. Giả sử `configTICK_RATE_HZ` là 100, thì độ dài time slice là 10ms.
+Áp dụng vào máy cà phê:
+- Điều khiển heater (deadline ~100ms): Nếu nhiệt độ vượt ngưỡng mà không tắt heater kịp, có thể hư thiết bị hoặc gây nguy hiểm. Đây là deadline ngắn nhất $\rightarrow$ priority cao nhất.
+- Điều khiển bơm/xay (deadline ~200-500ms): Nếu chậm nửa giây, cà phê có thể hơi khác vị nhưng không nguy hiểm. Deadline trung bình $\rightarrow$ priority trung bình.
+- Cập nhật UI (deadline ~100-200ms): Người dùng nhìn thấy màn hình chậm một chút cũng không sao. Deadline thoải mái $\rightarrow$ priority thấp hơn.
+- Gửi Wi-Fi stats (deadline ~vài giây đến vài phút): Hoàn toàn không khẩn cấp. Chậm bao lâu cũng được $\rightarrow$ priority thấp nhất.
 
-![Time tick](img/time-tick.png)
+Kết quả sắp xếp tự nhiên: heater > bơm/xay > UI > Wi-Fi. Ta không cần thuộc công thức toán học nào — chỉ cần hỏi "nếu task này bị trễ thì hậu quả tệ đến đâu?" rồi xếp hạng theo mức độ nghiêm trọng.
 
-Làm thế nào để chuyển đổi giữa các task có cùng mức độ ưu tiên? Vui lòng xem hình ảnh bên dưới:
-- Task 2 được thực hiện từ t1 đến t2.
-- Một ngắt tick xảy ra tại thời điểm t2, và hàm xử lý ngắt tick được gọi:
-  - Chọn task tiếp theo để thực hiện.
-  - Sau khi ISR được thực thi, hãy chuyển sang task mới: Task 1
-- Task 1 được thực hiện từ t2 đến t3.
-
-![Tick interrupts](img/tick-interrupts.png)
-
-Ta có thể sử dụng các tick này để đo thời gian, ví dụ:
-
-```c
-vTaskDelay(2);  // Chờ 2 tick，Giả sử configTICK_RATE_HZ=100 -> tick=10ms -> chờ 20ms
-
-// Sử dụng macro pdMS_TO_TICKS để chuyển ms sang tick
-vTaskDelay(pdMS_TO_TICKS(100));	 // Chờ 100ms
-```
-
-:::warning Lưu ý
-Delay dựa trên tick không chính xác. Ví dụ, nếu `vTaskDelay(2)` dự định delay 2 tick, nó có thể trả về sau hơn 1 tick.
+:::warning
+Priority cao không có nghĩa là "chạy nhiều hơn". Task heater có priority cao nhất nhưng hầu hết thời gian nó đang ngủ chờ timer 100ms. Nó chỉ thức dậy, đọc sensor, quyết định bật/tắt heater, rồi ngủ tiếp — tổng cộng chỉ chiếm CPU vài trăm microsecond mỗi lần. Priority cao chỉ đảm bảo rằng khi nó cần chạy, nó được chạy ngay, không phải đợi task nào khác xong trước.
 :::
 
-Như hình ảnh bên dưới cho thấy:
+### Stack size
 
-![Task delay](img/task-delay.png)
-
-Khi sử dụng hàm `vTaskDelay`, nên sử dụng ms làm đơn vị và dùng macro `pdMS_TO_TICKS` để chuyển đổi ms sang tick.
-
-## Hàm delay
-
-Có hai hàm delay:
-- `vTaskDelay`: Chờ ít nhất một số lượng ngắt tick trước khi sẵn sàng.
-- `vTaskDelayUntil`: Chờ đến thời gian tuyệt đối được chỉ định trước khi sẵn sàng.
-
-Nguyên mẫu của hai hàm này như sau:
-
-```c
-void vTaskDelay( const TickType_t xTicksToDelay );
-
-/* pxPreviousWakeTime: Thời điểm wake cuối cùng
- * Thời điểm kế tiếp: pxPreviousWakeTime + xTimeIncrement
- * Đơn vị: Tick
- */
-BaseType_t xTaskDelayUntil( TickType_t * const pxPreviousWakeTime,
-                            const TickType_t xTimeIncrement );
-```
-
-Sơ đồ sau đây minh họa điều này:
-
-![Delay functions](img/delay-functions.png)
-
-Sử dụng `vTaskDelay` hoặc `xTaskDelayUntil` để cho bộ lập lịch biết rằng task này đang rảnh trong khoảng thời gian này và từ đó nó có thể trao quyền điều khiển cho các task có mức ưu tiên thấp hơn trong khoảng thời gian đó.
-
-## Task idle
-
-Task idle được tạo ra bởi bộ lập lịch trong hàm `vTaskStartScheduler` để đảm bảo trong một thời điểm luôn có một task đang chạy, nghĩa là khi các task khác vào trạng thái blocked hoặc suspended. Đặc điểm của nó:
-- Task idle sẽ có mức ưu tiên thấp nhất - 0.
-- Task idle có nhiệm vụ giải phóng bộ nhớ khi có một task bị xóa.
-
-Task idle có độ ưu tiên là 0, điều này có nghĩa là khi task của người dùng sẵn sàng, task idle sẽ ngay lập tức nhường tài nguyên để cho phép task của người dùng đó chạy. Trong trường hợp này, chúng ta nói rằng task của người dùng đã "chiếm quyền" task nhàn rỗi, điều này được thực hiện bởi bộ lập lịch.
-
-Ngoài ra, ta có thể thêm một hàm hook cho task idle, hàm này sẽ được gọi một lần mỗi khi vòng lặp task idle thực thi. Hàm hook này có các chức năng sau:
-- Thực thi các chức năng background có mức độ ưu tiên thấp cần được chạy liên tục.
-- Đo thời gian idle của hệ thống: Các task idle có thể được thực thi nếu tất cả các task ưu tiên cao đã nhường quyền, vì vậy việc đo thời gian task idle chiếm dụng có thể được sử dụng để tính toán mức độ sử dụng bộ xử lý.
-- Đưa CPU vào trạng thái low power. Nếu các task idle vẫn có thể thực hiện được, điều đó có nghĩa là không có việc gì quan trọng cần làm, vì vậy ta có thể đưa nó vào chế độ low power.
-
-![Task idle hook](img/task-idle-hook.png)
-
-Những điểm hạn chế của hàm hook đối với các task idle:
-- Nó không thể khiến một task đang ở trạng thái ready chuyển sang trạng thái blocked hoặc suspended.
-- Nếu sử dụng nó với `vTaskDelete` để xóa các task, thì hàm hook cần phải được xử lý rất hiệu quả. Nếu task idle bị kẹt trong hàm hook, nó sẽ không thể giải phóng bộ nhớ.
+Trên ESP-IDF, stack mặc định cho task thường cần ít nhất 2048 bytes. Nhưng thực tế phụ thuộc vào function call depth và local variables. Cách tiếp cận thực tế: bắt đầu rộng rãi (4096-8192), dùng `uxTaskGetStackHighWaterMark()` để đo thực tế trong runtime, rồi thu nhỏ lại với margin an toàn khoảng 20-30%.
 
 ## Tham khảo
 
