@@ -122,52 +122,32 @@ Không như giao thức UDP – giao thức có thể lập tức gửi bản ti
 
 ### 3-Way Handshake
 
+Đây là quá trình hai bên handshake để đồng ý mở kết nối. Gồm 3 bước:
+
 **Bước 1: SYN (Client → Server)**
 
-- Client gửi packet với cờ SYN=1 (synchronize).
+- Client gửi một gói tin với cờ SYN=1 (synchronize) đến server.
 - Kèm Sequence Number = x (số ngẫu nhiên ban đầu).
 - Nghĩa là: “Tôi muốn kết nối, đây là số thứ tự ban đầu của tôi.”
 
 **Bước 2: SYN-ACK (Server → Client)**
 
-- Server trả lời bằng packet có SYN=1, ACK=1.
-- Sequence Number = y (số ngẫu nhiên server chọn).
-- Acknowledgment Number = x+1 (xác nhận đã nhận SYN từ client).
+- Server nhận được, phản hồi bằng gói tin có SYN=1, ACK=1.
+- Kèm theo Sequence Number = y (số ngẫu nhiên server chọn).
+- Và Acknowledgment Number = x+1 (xác nhận đã nhận SYN từ client).
 - Nghĩa là: “Ok, tôi nhận được yêu cầu, tôi cũng muốn kết nối, số thứ tự ban đầu của tôi là y.”
 
 **Bước 3: ACK (Client → Server)**
 
-- Client gửi packet có ACK=1.
+- Client gửi lại gói tin có ACK=1.
 - Acknowledgment Number = y+1 (xác nhận đã nhận SYN từ server).
 - Nghĩa là: “Tôi xác nhận kết nối với bạn.”
 
 👉 Sau bước này, kết nối TCP được thiết lập, 2 bên bắt đầu truyền dữ liệu.
 
-### 4-Way Handshake
+### Truyền dữ liệu
 
-**Bước 1 – FIN (Client → Server)**
-
-- Client gửi gói với cờ FIN=1 (Finish).
-- Nghĩa là: “Tôi đã gửi xong dữ liệu, không gửi thêm nữa, nhưng vẫn sẵn sàng nhận.”
-- TCP vẫn có thể nhận dữ liệu từ server trong lúc này.
-
-**Bước 2 – ACK (Server → Client)**
-
-- Server nhận FIN, gửi ACK=1 để xác nhận.
-- Nghĩa là: “Tôi đã nhận biết là bạn gửi xong.”
-- Lúc này kênh gửi từ Client đóng, nhưng kênh gửi từ Server vẫn mở (server có thể gửi nốt phần còn lại).
-
-**Bước 3 – FIN (Server → Client)**
-
-- Khi server cũng gửi xong hết dữ liệu, nó gửi FIN=1 để nói:
-- “Tôi cũng xong rồi, tôi muốn đóng kết nối.”
-
-**Bước 4 – ACK (Client → Server)**
-
-- Client gửi ACK=1 xác nhận.
-- Sau đó Client bước vào trạng thái TIME_WAIT (thường khoảng 2 phút) để đảm bảo nếu gói cuối bị trễ, server vẫn nhận được ACK.
-
-### Các cơ chế đảm bảo độ tin cậy của TCP
+Sau khi kết nối được thiết lập, hai bên trao đổi dữ liệu. TCP đảm bảo độ tin cậy bằng một số cơ chế quan trọng:
 
 **Sequence number**
 
@@ -199,6 +179,46 @@ Nếu gói Seq=1003 đến trước, bên nhận vẫn đợi gói 1000, không 
 - Khi nhận, bên kia tính lại và so sánh:
   + Nếu sai → bỏ gói, không gửi ACK.
   + Bên gửi thấy không có ACK → tự retransmit.
+
+### 4-Way Handshake
+
+Khi một bên muốn kết thúc, quá trình đóng diễn ra qua 4 bước:
+
+**Bước 1 – FIN**
+
+- Bên A gửi gói tin với cờ FIN=1 (Finish).
+- Nghĩa là: “Tôi đã gửi xong dữ liệu, không gửi thêm nữa, nhưng vẫn sẵn sàng nhận.”
+- TCP vẫn có thể nhận dữ liệu từ server trong lúc này.
+
+**Bước 2 – ACK**
+
+- Bên B nhận FIN, gửi ACK=1 để xác nhận.
+- Nghĩa là: “Tôi đã nhận biết là bạn gửi xong.”
+- Lúc này kênh gửi từ Client đóng, nhưng kênh gửi từ Server vẫn mở (server có thể gửi nốt phần còn lại).
+
+**Bước 3 – FIN**
+
+- Khi bên A gửi xong hết dữ liệu, nó cũng gửi bản tin FIN=1 để nói:
+- “Tôi cũng xong rồi, tôi muốn đóng kết nối.”
+
+**Bước 4 – ACK**
+
+- Bên A gửi ACK=1 để xác nhận lần cuối.
+- Sau đó Bên A bước vào trạng thái `TIME_WAIT` (thường khoảng 2 phút) để đảm bảo nếu gói cuối bị trễ, Bên B vẫn nhận được ACK trong khoảng thời gian này.
+
+👉 Sau bước này, kết nối TCP đóng hoàn toàn.
+
+### TCP state machine
+
+Mỗi giai đoạn trên tương ứng với các trạng thái mà kết nối TCP đi qua. Trên linux, ta có thể xem trạng thái thực tế bằng lệnh `ss -tan` hoặc `netstat -tan`. Các trạng thái quan trọng nhất:
+- `LISTEN` — Server đang chờ kết nối đến
+- `SYN_SENT` — Client đã gửi SYN, đang chờ phản hồi
+- `SYN_RECEIVED` — Server nhận SYN, đã gửi SYN-ACK, chờ ACK cuối
+- `ESTABLISHED` — Kết nối thành công, đang truyền dữ liệu
+- `FIN_WAIT_1` / `FIN_WAIT_2` — Bên chủ động đóng, đang chờ xác nhận
+- `CLOSE_WAIT` — Bên bị động đã nhận FIN, chờ ứng dụng đóng socket
+- `TIME_WAIT` — Bên chủ động đóng chờ một khoảng thời gian (thường 2×MSL, khoảng 60 giây) để đảm bảo không còn gói tin cũ lưu lạc trên mạng
+- `CLOSED` — Kết nối đã kết thúc hoàn toàn
 
 ### Sự khác nhau giữa UDP và TCP
 
