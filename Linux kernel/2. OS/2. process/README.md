@@ -295,7 +295,7 @@ Exit status của process con có thể được process cha nhận thông qua `
 Ví dụ, khi chạy `ls` trong terminal thì terminal (shell) là process cha, và giá trị trả về từ `ls` có thể xem bằng `echo $?` ngay sau đó.
 :::
 
-### Hàm fork
+### 3.3. Hàm fork
 
 Hàm fork được sử dụng để tạo một process mới và được thực thi ngay khi được tạo, process này là bản sao của process hiện tại. Lúc này, process gọi hàm fork sẽ được gọi là process cha và process được tạo ra từ hàm fork sẽ được gọi là process con. Cả hai process này sẽ thực thi cùng một chương trình nhưng PID sẽ khác nhau.
 
@@ -354,7 +354,7 @@ Child: PID=1235, x=200
 Parent: PID=1234, x=100    ← x không bị ảnh hưởng bởi con
 ```
 
-### Hàm exec
+### 3.4. Hàm exec
 
 `exec` là hàm được sử dụng để thay thế chương trình của process hiện tại bằng một chương trình khác. Tức là, khi một process gọi một hàm trong nhóm exec, chương trình hiện tại sẽ bị thay thế hoàn toàn bởi chương trình mới, và mã của chương trình hiện tại sẽ không tiếp tục thực thi nữa.
 
@@ -372,7 +372,7 @@ Các hàm này khác nhau ở cách chúng nhận và truyền đối số cho c
 `execve()` là system call thực sự — tất cả các biến thể khác đều là wrapper trong C library, cuối cùng gọi `execve()`.
 :::
 
-### Kết hợp giữa fork và exec
+### 3.5. Kết hợp giữa fork và exec
 
 Trong lập trình hệ thống, hàm fork và exec thường được sử dụng kết hợp để tạo ra process con và thay thế mã của process đó bằng một chương trình khác.
 
@@ -398,7 +398,7 @@ Process cha (shell)
   Shell tiếp tục chờ lệnh mới
 ```
 
-## Hàm wait
+## 4. Hàm wait
 
 Hàm `wait` được process cha sử dụng để chờ process con kết thúc và nhận thông tin trạng thái kết thúc của nó, giúp process cha quản lý các process con của nó.
 
@@ -419,9 +419,9 @@ Ngoài ra, nếu process con bị kết thúc một cách bị động thì mã 
 
 Nếu trước khi gọi `wait` mà process cha sử dụng fork để tạo ra nhiều process con thì hàm `wait` sẽ đợi process con kết thúc sớm nhất.
 
-## Zombie process và orphan process
+## 5. Zombie process và orphan process
 
-**Zombie process:**
+### 5.1. Zombie process
  
 Khi process con kết thúc, nó không biến mất ngay lập tức. Kernel cần giữ lại `task_struct` của nó (chứa exit status, thống kê CPU...) cho đến khi process cha gọi `wait()` để đọc thông tin này. Trong khoảng thời gian chờ cha gọi `wait()`, process con ở trạng thái **zombie** (trạng thái `Z` trong `ps`).
  
@@ -443,7 +443,7 @@ Process con kết thúc
 Vì zombie thực chất đã kết thúc rồi — nó không chạy code, không chiếm CPU hay RAM (chỉ chiếm một entry nhỏ trong process table). `kill -9` không có tác dụng vì không có process nào đang chạy để nhận signal. Cách duy nhất để xoá zombie là buộc process cha gọi `wait()`, hoặc kill process cha (khi đó init sẽ nhận nuôi và gọi `wait()`).
 :::
 
-**Orphan process:**
+### 5.2. Orphan process
  
 Khi process cha kết thúc trước process con, process con trở thành **orphan**. Kernel tự động gán init (PID 1) làm cha mới. Init luôn gọi `wait()` cho các con của nó, nên orphan process sẽ được thu dọn sạch sẽ khi kết thúc — không bị zombie.
  
@@ -459,7 +459,7 @@ Process cha ──── exit() ──── biến mất
                          └── Con kết thúc → init gọi wait() → thu dọn sạch
 ```
 
-### Hàm exit
+### 6. Hàm exit
 
 Hàm exit được sử dụng để kết thúc một process và trả về mã trạng thái cho hệ điều hành hoặc process cha.
 
