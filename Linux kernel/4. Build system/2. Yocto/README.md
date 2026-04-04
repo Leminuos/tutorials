@@ -1052,7 +1052,7 @@ KMACHINE:beaglebone-yocto-smartfarm = "beaglebone"
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-yocto"
 ```
 
-## 9. Troubleshoot
+## 9. Troubleshoot & Debug
 
 ### 9.1. Vấn đề về tài nguyên
 
@@ -1107,9 +1107,7 @@ Lúc này ta sẽ build riêng recipe `binutils-cross` tùy thuộc vào kiến 
 bitbake binutils-cross-arm
 ```
 
-## 10. Debug
-
-### 10.1. Cách lấy log task của một recipe bất kỳ
+### 9.4. Cách lấy log task của một recipe bất kỳ
 
 Giả sử, ta muốn xem log task `do_configure` của recipe `qtbase` thì trước tiên, ta cần xác định `WORKDIR` của recipe: 
 
@@ -1125,7 +1123,7 @@ WORKDIR="/home/nguyenbui/tutorial/yocto/build/tmp/work/x86_64-linux/qtbase-nativ
 
 Sau đó, ta sẽ vào thư mục `WORKDIR\temp\log.do_<task>` và xem task log mong muốn.
 
-### 10.2. Công cụ `oe-pkgdata-util`
+### 9.5. Công cụ `oe-pkgdata-util`
 
 Đây là tool của Yocto dùng để tra cứu metadata của các package sau khi đã được build.
 
