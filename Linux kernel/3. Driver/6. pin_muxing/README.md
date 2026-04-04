@@ -1,6 +1,6 @@
 # Pin muxing
 
-## Bản chất của pin muxing
+## 1. Bản chất của pin muxing
 
 Trên các vi xử lý SoC (như TI AM335x, i.MX6, STM32MP1,…), mỗi chân pin có thể đảm nhiệm nhiều chức năng khác nhau.
 
@@ -9,18 +9,18 @@ Ví dụ trên AM335x (BeagleBone Black): Chân C18 có thể là:
 - mmc1_dat0
 - uart1_ctsn
 - spi0_cs1
-- …
+- ...
 
 Tùy cấu hình mode (Mode 0 → 7) mà phần cứng sẽ chọn chức năng tương ứng.
 
-👉 Vì vậy pinmux là cơ chế phần cứng cho phép chọn chức năng đầu ra của mỗi pin.
+$\rightarrow$ Vì vậy pinmux là cơ chế phần cứng cho phép chọn chức năng đầu ra của mỗi pin.
 
 Trong Linux, pinmux được quản lý bởi subsystem pinctr. Subsystem này đảm nhiệm:
 - Thiết lập pin cho đúng chức năng.
 - Thiết lập pull-up/pull-down.
 - Cho phép chuyển trạng thái pin theo chế độ (default, sleep,…).
 
-## Cấu trúc pin muxing trong device tree
+## 2. Cấu trúc pin muxing trong device tree
 
 ```
 / {
@@ -46,7 +46,7 @@ Trong Linux, pinmux được quản lý bởi subsystem pinctr. Subsystem này �
 };
 ```
 
-### Thuộc tính `pinctrl-single,pins`
+### 3. Thuộc tính `pinctrl-single,pins`
 
 Là danh sách các offset và giá trị cấu hình cho từng pin. Mỗi phần tử có dạng `<offset value>`.
 
@@ -63,13 +63,13 @@ Trong đó:
 - `0x180, 0x184`: offset thanh ghi control register của từng pin.
 - `(PIN_OUTPUT_PULLDOWN | MUX_MODE0)`: giá trị ghi vào thanh ghi tương ứng (thường được định nghĩa trong `include/dt-bindings/pinctrl/*.h`).
 
-### Thuộc tính `pinctrl-names`
+### 4. Thuộc tính `pinctrl-names`
 
 Khi kernel điều khiển các thiết bị (I2C, UART, GPIO, SPI,...), mỗi thiết bị có thể hoạt động trong nhiều trạng thái khác nhau.
 
-👉 Mỗi trạng thái đó có thể cần cấu hình pin khác nhau. Ví dụ khi ngủ thì cần disable pin để tránh rò điện.
+$\rightarrow$ Mỗi trạng thái đó có thể cần cấu hình pin khác nhau. Ví dụ khi ngủ thì cần disable pin để tránh rò điện.
 
-👉 `pinctrl-names` sẽ xác định các trạng thái pin mà device có thể dùng. Thông thường có các trạng thái như "default", "sleep", "idle", "active".
+$\rightarrow$ `pinctrl-names` sẽ xác định các trạng thái pin mà device có thể dùng. Thông thường có các trạng thái như "default", "sleep", "idle", "active".
 
 **Ví dụ**
 
@@ -81,7 +81,7 @@ pinctrl-names = "default", "sleep";
 - default: khi hoạt động bình thường.
 - sleep: khi vào trạng thái suspend.
  
-### Thuộc tính `pinctrl-0`, `pinctrl-1`, ...
+### 5. Thuộc tính `pinctrl-0`, `pinctrl-1`, ...
 
 Mỗi thuộc tính này trỏ tới một nhóm pin được định nghĩa trước thông qua `phandle`.
 
@@ -98,7 +98,7 @@ pinctrl-1 = <&uart1_pins_sleep>;
 | default        | `<&uart1_pins_default>` |cấu hình pin khi thiết bị hoạt động bình thường |
 | sleep          | `<&uart1_pins_sleep>`   | cấu hình pin khi suspend hoặc shutdown |
 
-## Ví dụ PWM
+## 6. Ví dụ PWM
 
 - Copy file dts [am335x-boneblack](./example/led_dimmy/am335x-boneblack.dts) vào thư mục dts trong source kernel.
 - Trở về thư mục `KERNEL` và build dts.
@@ -123,3 +123,79 @@ pinctrl-1 = <&uart1_pins_sleep>;
   ```bash
   echo 1 > /sys/class/pwm/pwmchipX/enable
   ```
+
+## 7. Debug
+
+### 7.1. Kiểm tra device tree runtime
+
+Muốn xem các pinmux hiện có trong device tree lúc runtime ta sử dụng:
+
+``` bash
+find /sys/firmware/devicetree/base -name "pinmux@*"
+# Output: /sys/firmware/devicetree/base/ocp/interconnect@44c00000/segment@200000/target-module@10000/scm@0/pinmux@800
+
+cd /sys/firmware/devicetree/base/ocp/interconnect@44c00000/segment@200000/target-module@10000/scm@0/pinmux@800
+ls
+```
+
+Ví dụ output:
+
+![Debug devicetree](img/debug-devicetree2.png)
+
+Từ đây, ta có thể kiểm tra pinmux mong muốn, ví dụ:
+
+```bash
+hexdump -C pinmux_spi0_pins/pinctrl-single,pins
+```
+
+### 7.2. Xem mỗi chân hiện đang được mux thành chức năng gì?
+
+```bash
+grep PINX /sys/kernel/debug/pinctrl/44e10800.pinmux-pinctrl-single/pinmux-pins
+```
+
+Ví dụ:
+
+```bash
+grep PIN0 /sys/kernel/debug/pinctrl/44e10800.pinmux-pinctrl-single/pinmux-pins
+```
+
+-> Output:
+
+```bash
+pin 0 (PIN0): 481d8000.mmc (GPIO UNCLAIMED) function pinmux_emmc_pins group pinmux_emmc_pins
+```
+
+-> Cách này giúp xác định xem chân ta muốn dùng đang bị peripheral nào claim hay chưa.
+
+### 7.3. Xem raw register của từng pin
+
+Lệnh:
+
+```bash
+grep PINX /sys/kernel/debug/pinctrl/44e10800.pinmux-pinctrl-single/pins
+```
+
+Ví dụ:
+
+```bash
+grep PIN0 /sys/kernel/debug/pinctrl/44e10800.pinmux-pinctrl-single/pins
+```
+
+-> Output:
+
+```bash
+pin 0 (PIN0) 0:gpio-0-31 44e10800 00000031 pinctrl-single
+```
+
+Với AM335x pin register layout như sau:
+
+```
+bit 5: Pull-disable
+bit 4: Pull-up/down select (0=pulldown, 1=pullup)
+bit 3: Receiver enable (input enabled)
+bit 2: Slew fast/slow
+bit 0-2: Mode (0-7)
+```
+
+-> Từ đây, có thể xác định chân pin có được config đúng như mình mong muốn hay không.
