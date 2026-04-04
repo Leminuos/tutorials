@@ -1082,7 +1082,7 @@ ls /sys/firmware/devicetree/base
 
 Khi nhấn enter, nó sẽ hiển thị cây thư mục tương ứng file dtb:
 
-![debug device tree](img/debug-devicetree-1.png)
+![debug device tree](img/debug-devicetree.png)
 
 #### 7.5.1. Tìm một node
 
