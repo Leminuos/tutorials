@@ -30,11 +30,11 @@ Khi custom board mới: đổi kernel/device tree, thêm hoặc tắt feature li
 **Distro (Chính sách vận hành OS)**
 
 Distro là bộ chính sách quy định cách OS hoạt động. Distro không gắn với image hay hardware cụ thể nào, mà quyết định:
-- **Init system:** Cơ chế khởi động và quản lý service — ví dụ: `systemd`, `sysvinit`.
-- **libc:** Thư viện nền tảng — ví dụ: `glibc`, `musl`.
-- **Package manager:** `apt`, `apk`,…
-- **Security policy:** strict, moderate,…
-- **Distribution features:** Tập hợp các feature mà hệ thống hỗ trợ.
+- Init system: Cơ chế khởi động và quản lý service — ví dụ: `systemd`, `sysvinit`.
+- libc: Thư viện nền tảng — ví dụ: `glibc`, `musl`.
+- Package manager: `apt`, `apk`,...
+- Security policy: strict, moderate,...
+- Distribution features: Tập hợp các feature mà hệ thống hỗ trợ.
 
 **Image (Sản phẩm cuối cùng)**
 
@@ -59,7 +59,40 @@ Metadata là tập hợp tất cả các file mà BitBake đọc để biết c�
 | **Layer configuration**     | `layer.conf`                      | Khai báo phạm vi và ưu tiên của layer                            |
 | **Distro & Machine config** | `distro/*.conf`, `machine/*.conf` | Định nghĩa đặc trưng của bản phân phối và phần cứng mục tiêu     |
 
-## 3. Khởi tạo môi trường build
+## 3. Setup môi trường build
+
+### 3.1. Yêu cầu về host
+
+| Resource   | Minimum | Recommended |
+| --- | --- | --- |
+| Disk space | 50GB    | 100 GB+     |
+| RAM        | 8GB     | 16 GB+      | 
+| CPU cores  | 4       | 8+          |
+| OS         | Ubuntu 22.04 LTS   | Ubuntu 22.04 LTS   |
+| First build time  | 2 đến 4 giờ (4 cores)   | 1 đến 2 giờ (hơn 8 core) |
+
+### 3.2. Cài các package
+
+```bash
+sudo apt update
+sudo apt install gawk wget git diffstat unzip texinfo gcc build-essential \
+    chrpath socat cpio python3 python3-pip python3-pexpect xz-utils \
+    debianutils iputils-ping python3-git python3-jinja2 python3-subunit \
+    zstd liblz4-tool file locales libacl1
+sudo locale-gen en_US.UTF-8
+```
+
+### 3.3. Clone poky
+
+Clone repo poky với nhánh Scarthgap (5.0 LTS):
+
+```bash
+mkdir -p ~/yocto && cd ~/yocto
+git clone -b scarthgap git://git.yoctoproject.org/poky.git
+cd poky
+```
+
+### 3.4. Khởi tạo môi trường build
 
 Trước khi sử dụng bất kỳ lệnh BitBake nào, ta bắt buộc phải khởi tạo môi trường build:
 
@@ -174,7 +207,7 @@ tmp/work/
  └── <something>/                       ← Thư mục kiến trúc
       └── <package>/                    ← Thư mục package hoặc recipe
           └── <version>-r<revision>/
-               ├── temp/                ← log từng task (do_compile, do_install…)
+               ├── temp/                ← log từng task (do_compile, do_install...)
                │   └── log.do_<task>    ← log.do_fetch, log.do_unpack, log.do_patch,...
                ├── build/               ← Nơi biên dịch source
                └── image/               ← File sẽ cài vào rootfs
@@ -245,7 +278,7 @@ find sstate-cache/ -name "sstate-*" -mtime +30 -delete
 
 BitBake là một build engine cốt lõi của Yocto. Nếu ví Yocto như một nhà máy sản xuất Linux thì BitBake chính là người quản đốc — nó không tự viết code hay compile, nhưng nó điều phối mọi thứ: đọc công thức (recipe), kiểm tra nguyên vật liệu (dependency), sắp xếp thứ tự sản xuất (task graph), và phân công công nhân (parallel build).
 
-**So sánh với `make`:** Cả hai đều là build system, nhưng `make` chỉ xử lý được một project đơn lẻ (compile file C $\rightarrow$ binary). BitBake được thiết kế để quản lý hàng nghìn package cùng lúc, với dependency chằng chịt giữa chúng, và mỗi package có thể lấy source từ nguồn khác nhau (git, tarball, file local,…).
+**So sánh với `make`:** Cả hai đều là build system, nhưng `make` chỉ xử lý được một project đơn lẻ (compile file C $\rightarrow$ binary). BitBake được thiết kế để quản lý hàng nghìn package cùng lúc, với dependency chằng chịt giữa chúng, và mỗi package có thể lấy source từ nguồn khác nhau (git, tarball, file local,...).
 
 **Quy trình làm việc của BitBake:**
  
@@ -278,7 +311,7 @@ Trong đó:
 | `bitbake -c clean <target>`         | Xóa kết quả build recipe (trong `tmp/work`)          | Muốn build lại sạch                         |
 | `bitbake -c listtasks <target>`     | Liệt kê toàn bộ task mà recipe hỗ trợ                | Xem recipe có những task nào                |
 | `bitbake -c cleansstate <target>`   | Xóa cả shared-state cache lẫn kết quả build          | Khi `clean` chưa đủ, cần xóa triệt để      |
-| `bitbake -e <target>`               | In toàn bộ biến môi trường sau khi parse recipe      | Debug giá trị biến, tìm WORKDIR, S, D,…    |
+| `bitbake -e <target>`               | In toàn bộ biến môi trường sau khi parse recipe      | Debug giá trị biến, tìm WORKDIR, S, D,...    |
 | `bitbake -p <target>`               | Chỉ parse metadata, không build                      | Kiểm tra cú pháp recipe có lỗi không        |
 | `bitbake -f <target>`               | Force rebuild, bỏ qua check sstate                   | Khi sửa source trực tiếp trong tmp/work     |
 | `bitbake -c devshell <target>`      | Mở một shell trong môi trường build của recipe       | Debug compile, chạy thử lệnh trong env build |
@@ -306,6 +339,16 @@ Recipe nói cho BitBake biết:
 **Nói cách khác:**
 - Recipe = công thức build cho 1 package
 - Image = tập hợp của nhiều recipe ghép lại thành 1 hệ thống Linux hoàn chỉnh.
+
+**Cấu trúc tên file recipe:**
+
+```
+<tên-package>_<version>.bb
+
+ví dụ:
+hello-world_1.0.bb
+myapp_2.3.1.bb
+```
 
 ### 6.2. Cấu trúc của một recipe
 
@@ -345,7 +388,7 @@ do_install() {
 Mỗi recipe đi qua một chuỗi task chuẩn theo thứ tự:
 
 ```
-fetch → unpack → patch → configure → compile → install → package → deploy
+fetch → unpack → patch → configure → compile → install → package
 ```
 
 #### 6.3.1. `do_fetch` — Tải source code
@@ -415,54 +458,110 @@ do_install() {
     install -m 0644 myapp.conf ${D}${sysconfdir}/myapp.conf
 }
 ```
- 
+
 :::warning Chú ý
 Mọi file muốn xuất hiện trong rootfs đều phải được copy vào `${D}` trong `do_install()`. Nếu quên copy, file sẽ không có trong image cuối cùng dù đã compile thành công.
 :::
- 
-#### 6.3.7. `do_package` — Chia output thành các sub-package
 
-BitBake lấy toàn bộ file trong `${D}` và chia thành các sub-package dựa trên biến `PACKAGES` và `FILES:${PN}`. Mặc định, mỗi recipe tạo ra nhiều sub-package:
+#### 6.3.7. `do_package` — Chia output thành các package con
+
+Sau khi `do_install` chạy xong, `${D}` chứa tất cả mọi thứ của một recipe:
+
+```
+${D}/
+├── usr/bin/myapp
+├── usr/lib/libmyapp.so
+├── usr/lib/libmyapp.so.1
+├── usr/include/myapp.h
+└── usr/share/doc/myapp/README
+```
+
+Vấn đề là không phải lúc nào ta cũng muốn đưa tất cả vào image. Ví dụ:
+- Board production $\rightarrow$ chỉ cần binary, không cần header hay doc
+- Board development $\rightarrow$ cần thêm header để compile
+
+Vì vậy `do_package` lấy toàn bộ file trong `${D}` và chia thành các package nhỏ hơn.
+
+BitBake có sẵn quy tắc mặc định:
+
+```bitbake
+FILES:${PN}        = "${bindir}/*"                  # myapp       ← binary
+FILES:${PN}-lib    = "${libdir}/lib*.so.*"          # myapp-lib   ← shared lib
+FILES:${PN}-dev    = "${libdir}/*.so ${includedir}" # myapp-dev   ← header file, .so symlink
+FILES:${PN}-doc    = "${docdir}/*"                  # myapp-doc   ← documentation
+FILES:${PN}-dbg    = "${bindir}/.debug/*"           # myapp-dbg   ← debug symbols
+```
+
+Kết quả sau do_package:
+
+```
+myapp        → usr/bin/myapp
+myapp-lib    → usr/lib/libmyapp.so.1
+myapp-dev    → usr/lib/libmyapp.so usr/include/myapp.h
+myapp-doc    → usr/share/doc/myapp/README
+```
+
+BitBake lấy toàn bộ file trong `${D}` và chia thành các package con dựa trên biến `PACKAGES` và `FILES:${PN}`.
+${D}/usr/bin/myapp        → package: myapp
+${D}/usr/lib/libmyapp.so  → package: myapp-dev  (hoặc myapp-lib)
+${D}/usr/share/doc/       → package: myapp-doc
+```
+
+Mặc định, mỗi recipe tạo ra nhiều sub-package:
 - `${PN}` — Package chính chứa binary và file runtime.
 - `${PN}-dev` — Header files và `.so` symlink (dùng khi compile package khác).
 - `${PN}-dbg` — Debug symbols.
 - `${PN}-doc` — Man pages, documentation.
 - `${PN}-staticdev` — Static libraries (`.a`).
- 
-#### 6.3.8. `do_package_write_*` — Đóng gói thành định dạng package
 
-Đóng gói các sub-package thành file `.ipk`, `.deb`, hoặc `.rpm` tùy theo `PACKAGE_CLASSES` trong `local.conf`.
+#### 6.3.8. `do_rootfs` - Đưa package vào root filesystem
 
-#### 6.3.9. `do_deploy` — Copy output đến thư mục deploy
+Khi ta build image với config:
 
-Copy kết quả cuối cùng vào `tmp/deploy/`. Không phải recipe nào cũng có task này — chủ yếu dùng cho kernel, bootloader, và image recipe.
+```bitbake
+# core-image-minimal.bb
+IMAGE_INSTALL += "myapp"
+```
 
-#### 6.3.10. Tổng kết Task Graph dưới dạng bảng
+BitBake chạy `do_rootfs`, lấy package `myapp` và các dependency của nó, giải nén/merge tất cả vào một thư mục rootfs duy nhất:
 
-| Task                   | Chạy ở đâu    | Input                  | Output                            |
-| ---------------------- | ------------- | ---------------------- | --------------------------------- |
-| `do_fetch`             | —             | `SRC_URI`              | File tải về trong `${DL_DIR}`     |
-| `do_unpack`            | `${WORKDIR}`  | File từ `${DL_DIR}`    | Source code trong `${S}`          |
-| `do_patch`             | `${S}`        | Source + file `.patch` | Source đã patch                   |
-| `do_configure`         | `${B}`        | Source đã patch        | Makefile / build config           |
-| `do_compile`           | `${B}`        | Makefile + source      | Binary, library, object file      |
-| `do_install`           | `${D}`        | Binary từ `${B}`       | File sắp xếp theo cấu trúc rootfs |
-| `do_package`           | —             | File trong `${D}`      | Các sub-package                   |
-| `do_package_write_*`   | —             | Sub-package            | File `.ipk` / `.deb` / `.rpm`     |
-| `do_deploy`            | `tmp/deploy/` | Kết quả build          | File image, kernel, bootloader    |
+```
+build/tmp/work/.../core-image-minimal/rootfs/
+├── usr/
+│   └── bin/
+│       └── myapp        ← từ package myapp
+│       └── bash         ← từ package bash
+├── etc/
+│   └── myapp.conf       ← từ package myapp
+│   └── passwd           ← từ package base-files
+└── lib/
+    └── ...
+```
+
+#### 6.3.9. `do_image` - Đóng gói thành image file
+
+Rootfs đó được đóng gói thành file image tùy format:
+
+```
+core-image-minimal.ext4    ← ext4 filesystem
+core-image-minimal.wic     ← disk image có partition table
+core-image-minimal.tar.gz  ← tarball
+```
+
+Rồi flash lên board, khi board boot lên thì rootfs đó chính là `/` của hệ thống.
 
 ### 6.4. Từ khóa `inherit`
- 
+
 `inherit` dùng để import một class (`.bbclass`) vào trong recipe `.bb`.
- 
+
 Ví dụ:
- 
+
 ```bitbake
 inherit cmake_qt5
 ```
- 
+
 Khi gặp dòng này, BitBake sẽ:
-1. Tìm file `cmake_qt5.bbclass` trong các layer đã khai báo (`BBLAYERS`).
+1. Tìm file `cmake_qt5.bbclass` trong thư mục `classes/` nằm bên trong mỗi layer được khai báo (`bblayers.conf`).
 2. Đọc toàn bộ nội dung file class đó.
 3. Gộp nội dung vào recipe hiện tại.
 4. Tích hợp vào pipeline build — các task `do_configure`, `do_compile`,... sẽ kế thừa logic từ class.
@@ -474,6 +573,22 @@ cmake \
    -DCMAKE_BUILD_TYPE=Release \
    -DCMAKE_TOOLCHAIN_FILE=...
 ```
+
+Ngoài ra, ta có thể override task sau khi inherit:
+
+```bitbake
+inherit cmake
+
+# Override do_install của cmake, viết lại theo ý mình
+do_install() {
+    install -d ${D}${bindir}
+    install -m 0755 myapp ${D}${bindir}/
+}
+```
+
+:::warning Chú ý
+Nếu 2 layer cùng có một file `.bbclass` trùng tên thì sẽ lấy file `.bbclass` của layer có priority cao hơn.
+:::
 
 ### 6.5. Các biến quan trọng
 
@@ -491,7 +606,7 @@ cmake \
 
 | Biến        | Vai trò                                                                 | Ví dụ                                                            |
 | ----------- | -----------------------------------------------------------------       | ---------------------------------------------------------------- |
-| `SRC_URI`   | Danh sách URL nơi lấy source code, patch, file config,…                 | `"git://github.com/user/app.git;branch=main;protocol=https"`     |
+| `SRC_URI`   | Danh sách URL nơi lấy source code, patch, file config,...                 | `"git://github.com/user/app.git;branch=main;protocol=https"`     |
 | `SRCREV`    | Commit hash cụ thể khi dùng git                                         | `"abcdef1234567890abcdef1234567890abcdef12"`                     |
 | `SRC_URI[sha256sum]` | Checksum của tarball để xác minh tính toàn vẹn file tải về     | `"a1b2c3d4e5f6..."`                                              |
 
@@ -552,7 +667,7 @@ Ví dụ: App dùng `libmosquitto.so` $\rightarrow$ cần cả `DEPENDS = "mosqu
 | `libdir`          | `/usr/lib`        | Thư viện (`.so`)                |
 | `includedir`      | `/usr/include`    | Header files                    |
 | `sysconfdir`      | `/etc`            | File config                     |
-| `datadir`         | `/usr/share`      | Data (icons, fonts, qml,…)      |
+| `datadir`         | `/usr/share`      | Data (icons, fonts, qml,...)      |
 | `localstatedir`   | `/var`            | Data runtime                    |
  
 :::tip
@@ -796,12 +911,12 @@ Khi bắt đầu dùng Yocto, mọi thứ thường được cấu hình trong `
 - Không version control: `local.conf` thường nằm trong `.gitignore` vì chứa path đặc thù của từng máy. Vậy các cấu hình quan trọng như "dùng systemd" hay "cài nano vào image" sẽ không được track trong git.
 - Khó maintain: Khi team có 5 developer, mỗi người phải tự nhớ thêm đúng dòng cấu hình vào `local.conf`. Ai quên thì build ra image khác.
 - Không tự động hóa CI/CD: Server CI cần biết chính xác cấu hình để build. Nếu cấu hình nằm trong `local.conf` thì phải copy file thủ công.
- 
+
 **Giải pháp:** Phân loại cấu hình theo bản chất của chúng, rồi chuyển vào đúng nơi trong layer. Chỉ giữ lại trong `local.conf` những gì đặc thù theo máy build.
 
 Dưới đây là hướng dẫn phân loại và chuyển cấu hình vào đúng nơi:
 
-#### 7.6.1. Cấu hình môi trường build**
+#### 7.6.1. Cấu hình môi trường build
 
 Đây là các cấu hình đặc thù theo máy build — mỗi developer hoặc mỗi server CI sẽ có giá trị khác nhau:
 
@@ -1052,9 +1167,260 @@ KMACHINE:beaglebone-yocto-smartfarm = "beaglebone"
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-yocto"
 ```
 
-## 9. Troubleshoot & Debug
+## 9 Công cụ devtool
 
-### 9.1. Vấn đề về tài nguyên
+### 9.1 devtool là gì?
+
+`devtool` là công cụ dòng lệnh đi kèm với Yocto, được thiết kế để giúp developer làm việc với recipe nhanh hơn mà không cần phải chỉnh sửa trực tiếp vào layer gốc hay chạy lại toàn bộ quá trình build.
+
+Nó nằm trong extensible SDK (eSDK) và cả trong môi trường Yocto build bình thường.
+
+### 9.2. Workspace layer
+
+Khi dùng `devtool`, mọi thứ được quản lý trong workspace layer:
+
+```
+build/
+└── workspace/
+    ├── conf/
+    │   └── layer.conf
+    ├── sources/
+    │   └── myapp/          <- source code được extract ra đây
+    │       ├── src/
+    │       └── CMakeLists.txt
+    └── recipes/
+        └── myapp/
+            └── myapp.bb    <- recipe tạm thời
+```
+
+Workspace này tự động được thêm vào `bblayers.conf` với priority cao nhất, nên nó override layer gốc.
+
+### 9.3. Các lệnh chính
+
+**1. `devtool modify` — chỉnh sửa recipe có sẵn**
+
+```bash
+devtool modify myapp
+```
+
+Lệnh này:
+- Extract source code của `myapp` ra `workspace/sources/myapp/`
+- Apply tất cả patch có sẵn
+- Tạo recipe tạm trong workspace
+- Init git repo trong thư mục source
+
+```bash
+# Sau đó vào sửa code thoải mái
+cd build/workspace/sources/myapp/
+vim src/main.c
+```
+
+**2. `devtool build` — build sau khi sửa**
+
+```bash
+devtool build myapp
+```
+
+Chỉ rebuild những gì thay đổi, nhanh hơn bitbake nhiều.
+
+**3. `devtool deploy-target` — đẩy lên board**
+
+```bash
+devtool deploy-target myapp root@192.168.1.100
+```
+
+Copy binary/lib mới nhất lên board qua SSH mà không cần flash lại image. Đây là bước tiết kiệm thời gian nhất.
+
+```bash
+# Sau khi deploy, SSH vào board test luôn
+ssh root@192.168.1.100
+/usr/bin/myapp
+```
+
+:::warning Điều kiện tiên quyết
+Board phải có SSH server và được kết nối mạng với máy host. Phải thêm package `openssh` vào image.
+:::
+
+**4. `devtool undeploy-target` — gỡ khỏi board**
+
+```bash
+devtool undeploy-target myapp root@192.168.1.100
+```
+
+Xóa những file đã deploy, trả board về trạng thái ban đầu.
+
+**5. `devtool add` — tạo recipe mới từ source**
+
+```bash
+# Từ thư mục source local
+devtool add myapp /path/to/myapp-source
+
+# Từ git repo
+devtool add myapp https://github.com/example/myapp.git
+
+# Từ tarball
+devtool add myapp https://example.com/myapp-1.0.tar.gz
+```
+
+`devtool` sẽ tự động detect build system (CMake, autotools, meson...) và sinh ra recipe tạm trong workspace. Rất hữu ích khi thêm package mới.
+
+**6. `devtool finish` — đưa thay đổi về layer gốc**
+
+```bash
+devtool finish myapp meta-mylayer
+```
+
+Lệnh này:
+- Tạo patch từ những thay đổi mà ta đã commit trong git
+- Cập nhật `SRC_URI` trong recipe gốc để thêm patch đó
+- Xóa recipe tạm trong workspace
+
+```
+workspace/sources/myapp/  -> meta-mylayer/recipes-myapp/myapp/
+                               ├── myapp_1.0.bb        (cập nhật SRC_URI)
+                               └── files/
+                                   └── fix-bug.patch   (patch mới)
+```
+
+**7. `devtool reset` — hủy bỏ, quay về trạng thái ban đầu**
+
+```bash
+devtool reset myapp
+```
+
+Xóa recipe tạm trong workspace, trả lại quyền kiểm soát cho layer gốc. Source code trong `workspace/sources/myapp/` vẫn còn nếu muốn giữ lại.
+
+**8. `devtool status` — xem đang modify recipe nào**
+
+```bash
+devtool status
+
+# Output:
+# myapp: /home/user/build/workspace/sources/myapp
+```
+
+### 9.4. Vấn đề devtool giải quyết
+
+#### 9.4.1. Tình huống 1
+
+Giả sử ta đang làm dự án thực tế:
+- Board: Raspberry Pi 4 (ARM)
+- Có một ứng dụng `myapp` đang chạy trên board bị lỗi
+- Ta cần fix bug và test
+
+**Workflow thông thường không có `devtool`:**
+
+```bash
+# 1. Tìm source code của myapp trong layer
+# 2. Sửa code
+vim meta-mylayer/recipes-myapp/myapp/files/main.c
+
+# 3. Build lại toàn bộ
+bitbake myapp
+
+# 4. Build lại image
+bitbake core-image-minimal
+
+# 5. Flash image lên board
+dd if=core-image-minimal.wic of=/dev/sdX
+
+# 6. Boot board lên test
+# 7. Phát hiện vẫn còn bug -> quay lại bước 2
+```
+
+Ta thấy rằng mỗi lần build xong ta lại phải flash lại image lên board, việc này rất mất thời gian.
+
+**Workflow có `devtool`:**
+
+```bash
+# 1. Bắt đầu modify
+devtool modify myapp
+
+# 2. Vào sửa code
+cd build/workspace/sources/myapp
+vim src/main.c
+
+# 3. Build thử
+devtool build myapp
+
+# 4. Deploy lên board test
+devtool deploy-target myapp root@192.168.1.100
+
+# 5. Test trên board
+ssh root@192.168.1.100 "/usr/bin/myapp"
+
+# 6. Commit thay đổi (bắt buộc nếu muốn devtool finish tạo patch)
+git add .
+git commit -m "fix issue: ..."
+
+# 7. Nếu OK, đưa về layer chính thức
+devtool finish myapp meta-mylayer
+
+# 8. Nếu muốn hủy
+devtool reset myapp
+```
+
+#### 9.4.1. Tình huống 2
+
+Board của ta đang chạy image `core-image-minimal`, image này không có ứng dụng `myapp`. Ta muốn thêm và test thử mà không cần build lại image.
+
+```bash
+# 1. Tạo recipe mới
+
+# Từ source local
+devtool add myapp /path/to/myapp-source
+
+# Hoặc từ git
+devtool add myapp https://github.com/example/myapp.git
+
+# Hoặc từ tarball
+devtool add myapp https://example.com/myapp-1.0.tar.gz
+
+# 2. Build recipe
+devtool build myapp
+
+# 3. Deploy lên board test
+devtool deploy-target myapp root@192.168.1.100
+
+# 4. Test trên board
+ssh root@192.168.1.100 "/usr/bin/myapp"
+
+# 7. Nếu OK, đưa về layer chính thức
+devtool finish myapp meta-mylayer
+
+# 8. Nếu muốn hủy
+
+# Gỡ khỏi board
+devtool undeploy-target myapp root@192.168.1.100
+
+# Xóa khỏi workspace
+devtool reset myapp
+```
+
+:::warning Lưu ý quan trọng
+Nếu `myapp` phụ thuộc vào thư viện mà image không có sẵn, ta sẽ gặp lỗi:
+
+```bash
+# Trên board
+/usr/bin/myapp
+# error while loading shared libraries: libfoo.so.1: cannot open shared object file
+```
+
+Lúc này cần deploy cả dependency:
+
+```bash
+# Trên máy host
+devtool build libfoo
+devtool deploy-target libfoo root@192.168.1.100
+
+# Rồi mới deploy myapp
+devtool deploy-target myapp root@192.168.1.100
+```
+:::
+
+## 10. Troubleshoot & Debug
+
+### 10.1. Vấn đề về tài nguyên
 
 Điều kiện bộ nhớ tối thiểu mà một máy build có thể dùng yocto là:
 - RAM 8GB
@@ -1076,7 +1442,7 @@ sudo gparted
 
 `GParted` là một ứng dụng GUI nên ta không thể sử dụng ssh để cài đặt mà cần màn hình đồ họa.
 
-### 9.2. Vấn đề về luồng thực thi
+### 10.2. Vấn đề về luồng thực thi
 
 Khi build, yocto có xu hướng dùng hết các luồng mà SoC hỗ trợ → Điều này sẽ dẫn đến làm máy build bị lag → Do đó ta cần giảm số luồng mà yocto có thể sử dụng. Để làm được điều này, ta sẽ cần thêm hai cấu hình vào file `build/conf/local.conf`. Ví dụ như sau:
 
@@ -1087,7 +1453,7 @@ PARALLEL_MAKE = "-j8"
 
 → Yocto chỉ sử dụng tối đa 8 luồng để build.
 
-### 9.3. Vấn đề vể recipe
+### 10.3. Vấn đề về recipe
 
 Khi build yocto mà gặp lỗi kiểu như sau:
 
@@ -1099,7 +1465,7 @@ binutils-cross-testsuite
 binutils-cross-arm
 ```
 
-Thì là do `binutils-cross` không phải là recipe để gọi trực tiếp. Trong Yocto, recipe cross binutils sẽ đổi tên theo kiến trúc target: `binutils-cross-${TARGET_ARCH}`. Ví dụ: `binutils-cross-arm`, `binutils-cross-aarch6`4,…
+Thì là do `binutils-cross` không phải là recipe để gọi trực tiếp. Trong Yocto, recipe cross binutils sẽ đổi tên theo kiến trúc target: `binutils-cross-${TARGET_ARCH}`. Ví dụ: `binutils-cross-arm`, `binutils-cross-aarch6`4,...
 
 Lúc này ta sẽ build riêng recipe `binutils-cross` tùy thuộc vào kiến trúc target. Ví dụ như kiến trúc arm thì ta làm như sau:
 
@@ -1107,7 +1473,34 @@ Lúc này ta sẽ build riêng recipe `binutils-cross` tùy thuộc vào kiến 
 bitbake binutils-cross-arm
 ```
 
-### 9.4. Cách lấy log task của một recipe bất kỳ
+### 10.4. Thêm print debug vào recipe
+
+```bash
+# In giá trị biến khi parse
+python () {
+    bb.warn("SRC_URI = %s" % d.getVar('SRC_URI'))
+    bb.warn("WORKDIR = %s" % d.getVar('WORKDIR'))
+}
+
+# Hoặc trong task shell
+do_compile() {
+    bbwarn "Đang compile với CC=${CC}"
+    bbdebug 1 "CFLAGS = ${CFLAGS}"
+    ${CC} hello.c -o hello
+}
+```
+
+Các hàm log theo mức độ:
+
+```
+bb.fatal()   → dừng build, in lỗi
+bb.error()   → in lỗi, tiếp tục
+bb.warn()    → in warning
+bb.note()    → in thông tin
+bb.debug()   → chỉ hiện khi dùng -D flag
+```
+
+### 10.5. Cách lấy log task của một recipe bất kỳ
 
 Giả sử, ta muốn xem log task `do_configure` của recipe `qtbase` thì trước tiên, ta cần xác định `WORKDIR` của recipe: 
 
@@ -1123,7 +1516,7 @@ WORKDIR="/home/nguyenbui/tutorial/yocto/build/tmp/work/x86_64-linux/qtbase-nativ
 
 Sau đó, ta sẽ vào thư mục `WORKDIR\temp\log.do_<task>` và xem task log mong muốn.
 
-### 9.5. Công cụ `oe-pkgdata-util`
+### 10.6. Công cụ `oe-pkgdata-util`
 
 Đây là tool của Yocto dùng để tra cứu metadata của các package sau khi đã được build.
 
