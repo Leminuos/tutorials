@@ -112,7 +112,7 @@ add_subdirectory(utils)
 
 CMake sẽ đi vào từng thư mục và chạy `CMakeLists.txt` ở trong đó.
 
-## 2.4. Target
+### 2.4. Target
 
 Trong CMake, target là một đơn vị build - đại diện cho một "thứ cần được build" hoặc một "tập hợp thông tin build".
 
@@ -172,7 +172,7 @@ set_target_properties(mylib PROPERTIES
 )
 ```
 
-Cách 3 — Đọc property bằng get_target_property
+**Cách 3 — Đọc property bằng get_target_property**
 
 ```cmake
 get_target_property(my_sources mylib SOURCES)
@@ -449,7 +449,7 @@ find_library(CRYPTO_LIB crypto)
 target_link_libraries(app PRIVATE ${SSL_LIB} ${CRYPTO_LIB})
 ```
 
-### 5. find_package
+## 5. find_package
 
 `find_package` tìm và load một package cmake hoàn chỉnh, chứa: include directories, libraries, imported targets,...
 
