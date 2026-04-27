@@ -2,8 +2,6 @@
 
 ## 1. Giới thiệu Yocto project
 
-### 1.1. Yocto Project là gì?
-
 Trước khi có Yocto Project (hoặc Buildroot), việc tạo một bản Linux cho hệ thống nhúng hoàn toàn thủ công như sau: tự tải kernel, rootfs và toolchain rồi build từng phần. Cách này rất dễ lỗi và khó bảo trì.
 
 Yocto Project là một framework giúp xây dựng hệ điều hành Linux tùy biến cho hệ thống nhúng — hay nói ngắn gọn: Embedded Linux Distro Builder.
@@ -11,40 +9,6 @@ Yocto Project là một framework giúp xây dựng hệ điều hành Linux tù
 :::warning Yocto không phải là một Linux distro
 Nó là bộ công cụ giúp tạo ra một bộ image hoàn chỉnh gồm: U-Boot, kernel, rootfs và SDK cross-compiler cho thiết bị target.
 :::
-
-### 1.2. Ba khái niệm nền tảng: Machine — Distro — Image
-
-Trước khi đi sâu vào các thành phần kỹ thuật, cần phân biệt rõ ba khái niệm cốt lõi mà Yocto xoay quanh:
-
-**Machine (Phần cứng mục tiêu)**
-
-Machine mô tả phần cứng để Yocto biết cần build cho board nào. Cụ thể, machine xác định:
-- Kiến trúc CPU (ARM, x86,...).
-- Kernel và bootloader sẽ sử dụng là gì?
-- Sử dụng device tree nào, có hỗ trợ GPU không, RAM bao nhiêu,...
-
-:::tip Khi nào cần sửa machine?
-Khi custom board mới: đổi kernel/device tree, thêm hoặc tắt feature liên quan đến phần cứng.
-:::
-
-**Distro (Chính sách vận hành OS)**
-
-Distro là bộ chính sách quy định cách OS hoạt động. Distro không gắn với image hay hardware cụ thể nào, mà quyết định:
-- Init system: Cơ chế khởi động và quản lý service — ví dụ: `systemd`, `sysvinit`.
-- libc: Thư viện nền tảng — ví dụ: `glibc`, `musl`.
-- Package manager: `apt`, `apk`,...
-- Security policy: strict, moderate,...
-- Distribution features: Tập hợp các feature mà hệ thống hỗ trợ.
-
-**Image (Sản phẩm cuối cùng)**
-
-Image là kết quả cuối cùng của quá trình build, nó đóng gói ba thành phần chính: **rootfs + kernel + bootloader**.
-
-Các cấu hình liên quan đến image (trong `local.conf` hoặc image recipe) sẽ thêm feature hoặc package vào rootfs. Ví dụ, thêm package vào image:
-
-```conf
-IMAGE_INSTALL += " nano htop i2c-tools"
-```
 
 ## 2. Metadata — Các loại file cấu hình trong Yocto
 
@@ -143,28 +107,6 @@ build/
 | --------------- | -------------------------------------------------------------------------------------------------------------------- |
 | `local.conf`    | Cấu hình build cụ thể: chọn `MACHINE`, `DISTRO`, đường dẫn `DL_DIR`, `SSTATE_DIR`, số luồng build, image feature,... |
 | `bblayers.conf` | Liệt kê các layer mà BitBake sẽ load (meta, meta-poky, meta-ti, meta-custom,...).                                    |
-
-Một số cấu hình quan trọng trong file `local.conf`:
-
-**1. IMAGE_INSTALL**
-
-Định nghĩa danh sách các package sẽ được cài vào rootfs khi build.
-
-Ví dụ:
-
-```bash
-IMAGE_INSTALL:append = " systemd"
-```
-
-:::warning Chú ý
-Ta phải thêm dấu cách trước tên package vì `IMAGE_INSTALL` đã được định nghĩa sẵn trong image recipe (ví dụ `core-image-minimal`), cho nên `IMAGE_INSTALL` trong file `local.conf` chỉ là mở rộng của nó.
-:::
-
-**2. TOOLCHAIN_TARGET_TASK**
-
-Định nghĩa các package target sẽ được đưa vào SDK Toolchain khi build `meta-toolchain` hoặc `populate-sdk`.
-
--> Nếu muốn thêm package vào trong sdk ta cần thêm nó vào trong cấu hình này và build lại.
 
 ### 4.2. `cache/` — Cache metadata
 
@@ -272,9 +214,218 @@ find sstate-cache/ -name "sstate-*" -mtime +30 -delete
 ```
 :::
 
-## 5. BitBake — Build Engine của Yocto
+## 5. Một số cấu hình quan trọng trong file `.conf`
 
-### 5.1. BitBake là gì?
+### 5.1. Machine - Chọn phần cứng target
+
+Machine xác định phần cứng target ta đang build. Giá trị này quyết định:
+- Kiến trúc CPU (ARM, x86, MIPS, ...)
+- Kernel và bootloader sẽ sử dụng là gì?
+- Device tree nào được compile
+
+Một số giá trị phổ biến:
+
+```bash
+MACHINE ?= "qemux86-64"        # QEMU giả lập x86
+MACHINE ?= "qemuarm64"         # QEMU giả lập ARM64
+MACHINE ?= "raspberrypi4-64"   # Raspberry Pi 4 (cần meta-raspberrypi)
+MACHINE ?= "beaglebone"        # BeagleBone Black
+```
+
+:::tip Khi nào cần sửa machine?
+Khi custom board mới: đổi kernel/device tree, thêm hoặc tắt feature liên quan đến phần cứng.
+:::
+
+### 5.2. Distribution policy
+
+Distro là các policy quy định cách OS hoạt động:
+- Init system: systemd, SysVinit,...
+- C library: glibc, musl, uclibc,...
+- Package manager: `rpm`, `deb`, `ipk`,...
+- Các feature mặc định của hệ thống
+
+```bash
+DISTRO = "poky"           # distro mặc định của Yocto, dùng SysVinit
+DISTRO = ""               # không dùng distro, tự cấu hình hoàn toàn
+```
+
+Để xem distro đang hỗ trợ những feature nào, ta dùng lệnh:
+
+```bash
+bitbake -e | grep "^DISTRO_FEATURES="
+```
+
+Danh sách feature phổ biến:
+
+```bash
+DISTRO_FEATURES = " \
+    acl          \   # Access Control List
+    alsa         \   # Sound (ALSA)
+    bluetooth    \   # Bluetooth stack
+    ext2         \   # ext2/3/4 filesystem support
+    ipv4         \   # IPv4 networking
+    ipv6         \   # IPv6 networking
+    wifi         \   # WiFi support
+    systemd      \   # Systemd init system
+    wayland      \   # Wayland display protocol
+    x11          \   # X11 display server
+    opengl       \   # OpenGL support
+"
+```
+
+Cách thêm/bớt feature đúng cách:
+
+```bash
+# Thêm vào cuối (chú ý dấu cách đầu)
+DISTRO_FEATURES:append = " systemd pam seccomp"
+
+# Bỏ feature không cần
+DISTRO_FEATURES:remove = "x11 wayland bluetooth pcmcia"
+
+# Override hoàn toàn (không khuyến khích trong local.conf)
+DISTRO_FEATURES = "ipv4 ipv6 wifi alsa systemd"
+```
+
+:::warning Chú ý
+`DISTRO_FEATURES` ảnh hưởng đến compile-time — tức là feature bị remove sẽ không được compile vào binary, không chỉ đơn giản là ẩn đi.
+:::
+
+Ví dụ, nếu muốn dùng systemd:
+
+```bash
+DISTRO ?= "poky"
+
+DISTRO_FEATURES:append = " systemd"
+DISTRO_FEATURES:remove = "sysvinit"
+VIRTUAL-RUNTIME_init_manager = "systemd"
+VIRTUAL-RUNTIME_initscripts = "systemd-compat-units"
+DISTRO_FEATURES_BACKFILL_CONSIDERED:append = " sysvinit"
+```
+
+### 5.3. Định dạng package
+
+Xác định format package được tạo ra khi build:
+
+```bash
+# Chọn 1 trong 3 loại
+PACKAGE_CLASSES = "package_rpm"    # RPM — phổ biến nhất
+PACKAGE_CLASSES = "package_deb"    # Debian package
+PACKAGE_CLASSES = "package_ipk"    # nhẹ hơn, dùng cho embedded
+```
+
+Ảnh hưởng đến package manager nào được dùng trên image nếu bật `package-management`.
+
+### 5.4. Tối ưu tốc độ build
+
+```bash
+BB_NUMBER_THREADS ?= "8"    # Số task BitBake chạy song song
+PARALLEL_MAKE ?= "-j 8"     # Số job của make (truyền vào make -j)
+```
+
+Thông thường set bằng số CPU core:
+
+```bash
+BB_NUMBER_THREADS ?= "${@oe.utils.cpu_count()}"
+PARALLEL_MAKE ?= "-j ${@oe.utils.cpu_count()}"
+```
+
+### 5.5. Cache để tăng tốc
+
+```bash
+# Nơi lưu source đã download
+DL_DIR = "/opt/yocto/downloads"
+
+# Shared State Cache — cache kết quả build
+SSTATE_DIR = "${TOPDIR}/../sstate-cache"
+```
+
+Nếu ta có `sstate-cache` từ build trước, build lần sau nhanh hơn rất nhiều vì BitBake chỉ build những gì thay đổi.
+
+Nên đặt `DL_DIR` và `SSTATE_DIR` ra ngoài thư mục build để dùng chung giữa nhiều build:
+
+```bash
+DL_DIR ?= "/opt/yocto/downloads"
+SSTATE_DIR ?= "/opt/yocto/sstate-cache"
+```
+
+### 5.6. Thêm package vào image
+
+Ta có thể thêm package vào image mà không cần sửa recipe image như sau:
+
+```bash
+IMAGE_INSTALL:append = " vim curl python3 myapp"
+```
+
+Tuy nhiên, thay vì liệt kê từng package, ta có thể tạo một packagegroup như sau:
+
+```bash
+# packagegroup-myapp.bb
+inherit packagegroup
+
+RDEPENDS:${PN} = " \
+    vim \
+    curl \
+    python3 \
+    myapp \
+"
+```
+
+Rồi ta chỉ cần:
+
+```bash
+IMAGE_INSTALL = "packagegroup-myapp"
+```
+
+Đây là cách các image lớn như `core-image-full-cmdline` tổ chức packages.
+
+:::warning Chú ý
+Ta phải thêm dấu cách trước tên package vì `IMAGE_INSTALL` đã được định nghĩa sẵn trong image recipe (ví dụ `core-image-minimal`), cho nên `IMAGE_INSTALL` trong file `local.conf` chỉ là mở rộng của nó.
+
+```bash
+IMAGE_INSTALL:append = " openssh"   # ✓ đúng
+IMAGE_INSTALL:append = "openssh"    # ✗ sai
+```
+:::
+
+### 5.7. Thêm package vào target sysroot
+
+`TOOLCHAIN_TARGET_TASK` là biến quyết định những package được cài vào phần target sysroot của SDK.
+
+Khi ta chạy:
+
+```bash
+bitbake <image> -c populate_sdk
+```
+
+SDK được tạo ra gồm 2 phần:
+
+```
+SDK/
+├── sysroots/
+│   ├── x86_64-pokysdk-linux/        ← HOST sysroot   (cross-compiler, tools)
+│   └── aarch64-poky-linux/          ← TARGET sysroot (libraries, headers của board)
+```
+
+**Tình huống thực tế:**
+
+Ta build image cho board BBB, image có `mosquitto`. Nhưng khi developer dùng SDK để compile app cần link với `mosquitto`, họ bị lỗi:
+
+```
+error: mosquitto.h: No such file or directory
+```
+
+Nguyên nhân: `mosquitto-dev` (chứa headers) chưa có trong target sysroot của SDK.
+
+Giải pháp lúc này là:
+
+```bash
+# Thêm vào local.conf hoặc distro config
+TOOLCHAIN_TARGET_TASK:append = " mosquitto-dev"
+```
+
+## 6. BitBake — Build Engine của Yocto
+
+### 6.1. BitBake là gì?
 
 BitBake là một build engine cốt lõi của Yocto. Nếu ví Yocto như một nhà máy sản xuất Linux thì BitBake chính là người quản đốc — nó không tự viết code hay compile, nhưng nó điều phối mọi thứ: đọc công thức (recipe), kiểm tra nguyên vật liệu (dependency), sắp xếp thứ tự sản xuất (task graph), và phân công công nhân (parallel build).
 
@@ -291,7 +442,7 @@ Khi ta gõ `bitbake core-image-minimal`, BitBake sẽ thực hiện theo trình 
 6. Thực thi song song: BitBake chạy các task song song (theo `BB_NUMBER_THREADS`) nếu chúng không phụ thuộc nhau. Ví dụ: `do_compile` của `busybox` và `do_compile` của `nano` có thể chạy cùng lúc.
 7. Đóng gói image: Sau khi tất cả recipe đã build xong, BitBake chạy các task tạo rootfs, đóng gói thành file image cuối cùng.
 
-### 5.2. Cú pháp lệnh
+### 6.2. Cú pháp lệnh
 
 ```
 bitbake [options] <target>
@@ -302,7 +453,7 @@ Trong đó:
 - `<target>` là recipe hoặc image cần build, ví dụ: `core-image-minimal`, `meta-toolchain`.
 - `[options]` là các tham số điều khiển hành vi của Bitbake.
 
-### 5.3. Bảng tổng hợp các lệnh BitBake
+### 6.3. Bảng tổng hợp các lệnh BitBake
 
 | Lệnh                                | Mô tả                                                | Khi nào dùng?                              |
 | ----------------------------------- | ---------------------------------------------------- | ------------------------------------------ |
@@ -323,9 +474,9 @@ Trong đó:
 Dùng `cleansstate` khi nghi ngờ cache bị stale hoặc corrupt.
 :::
 
-## 6. Recipe — Công thức build
+## 7. Recipe — Công thức build
 
-### 6.1. Recipe là gì?
+### 7.1. Recipe là gì?
 
 Mỗi recipe (file `.bb`) là một công thức build mô tả toàn bộ cách build một gói phần mềm cụ thể. Nếu BitBake là quản đốc nhà máy thì recipe chính là bản vẽ kỹ thuật cho từng sản phẩm.
 
@@ -350,7 +501,7 @@ hello-world_1.0.bb
 myapp_2.3.1.bb
 ```
 
-### 6.2. Cấu trúc của một recipe
+### 7.2. Cấu trúc của một recipe
 
 Cấu trúc cơ bản của một recipe sẽ gồm các thành phần sau:
 
@@ -383,7 +534,7 @@ do_install() {
 }
 ```
 
-### 6.3. Vòng đời của một recipe (Task Graph)
+### 7.3. Vòng đời của một recipe (Task Graph)
 
 Mỗi recipe đi qua một chuỗi task chuẩn theo thứ tự:
 
@@ -391,7 +542,7 @@ Mỗi recipe đi qua một chuỗi task chuẩn theo thứ tự:
 fetch → unpack → patch → configure → compile → install → package
 ```
 
-#### 6.3.1. `do_fetch` — Tải source code
+#### 7.3.1. `do_fetch` — Tải source code
 
 Task đầu tiên trong vòng đời recipe, chịu trách nhiệm tải source code hoặc patch cần thiết từ các vị trí được định nghĩa trong biến `SRC_URI`.
 
@@ -408,11 +559,11 @@ Với mỗi loại URI sẽ được xử lý theo cách thức khác nhau.
 
 Khi `do_fetch` hoàn thành, BitBake tạo file `.done_fetch` trong `${WORKDIR}` để đánh dấu task đã xong. Nhờ đó, lần build sau sẽ bỏ qua bước fetch nếu source không thay đổi.
 
-#### 6.3.2. `do_unpack` — Giải nén source
+#### 7.3.2. `do_unpack` — Giải nén source
  
 Giải nén source code từ `${DL_DIR}` vào `${WORKDIR}`. Nếu source là git repo, BitBake checkout đúng commit được chỉ định bởi `SRCREV`. Nếu là tarball, giải nén vào thư mục con trong `${WORKDIR}`.
 
-#### 6.3.3. `do_patch` — Apply patch vào source
+#### 7.3.3. `do_patch` — Apply patch vào source
 
 Trong yocto, kernel source không nằm cố định ở một nơi, mà nó được tải động thông qua recipe có thể là `linux-yocto.bb`, `linux-ti-staging.bb` hoặc các recipe tương tự khác. Do đó, sau mỗi lần build image thì yocto sẽ unpack lại source mới -> Bởi vì nguyên nhân này mà khi thay đổi source code thì ta cần force compile để không bị mất code:
 
@@ -424,7 +575,7 @@ Tuy nhiên, điều này chỉ có thể làm trên máy local, ta không thể 
 
 Task này sẽ apply các file `.patch` được liệt kê trong `SRC_URI` vào source code. Đây là cơ chế quan trọng để custom source code hoặc fix bug trước khi compile. Thứ tự apply patch đúng theo thứ tự liệt kê trong `SRC_URI`.
  
-#### 6.3.4. `do_configure` — Cấu hình trước khi compile
+#### 7.3.4. `do_configure` — Cấu hình trước khi compile
 
 Chạy bước cấu hình cho project, ví dụ:
 - Với CMake project $\rightarrow$ chạy `cmake` để generate Makefile.
@@ -433,7 +584,7 @@ Chạy bước cấu hình cho project, ví dụ:
 
 Task này thường được cung cấp dưới dạng class kế thừa (`inherit cmake`, `inherit autotools`,...). Nếu recipe không inherit class nào, ta có thể tự viết `do_configure()`.
 
-#### 6.3.5. `do_compile` — Biên dịch source code
+#### 7.3.5. `do_compile` — Biên dịch source code
 
 Chạy lệnh compile. Mặc định chạy `oe_runmake` (tương đương `make`), nhưng ta có thể override hoàn toàn:
 
@@ -445,7 +596,7 @@ do_compile() {
 
 Quá trình compile diễn ra trong thư mục `${B}` (Build directory).
  
-#### 6.3.6. `do_install` — Cài đặt vào staging directory
+#### 7.3.6. `do_install` — Cài đặt vào staging directory
 
 Copy các file cần thiết (binary, library, config, header,...) vào staging directory `${D}`. Đây không phải rootfs thật — chỉ là thư mục tạm để BitBake biết recipe muốn cài gì.
 
@@ -463,7 +614,7 @@ do_install() {
 Mọi file muốn xuất hiện trong rootfs đều phải được copy vào `${D}` trong `do_install()`. Nếu quên copy, file sẽ không có trong image cuối cùng dù đã compile thành công.
 :::
 
-#### 6.3.7. `do_package` — Chia output thành các package con
+#### 7.3.7. `do_package` — Chia output thành các package con
 
 Sau khi `do_install` chạy xong, `${D}` chứa tất cả mọi thứ của một recipe:
 
@@ -480,9 +631,9 @@ Vấn đề là không phải lúc nào ta cũng muốn đưa tất cả vào im
 - Board production $\rightarrow$ chỉ cần binary, không cần header hay doc
 - Board development $\rightarrow$ cần thêm header để compile
 
-Vì vậy `do_package` lấy toàn bộ file trong `${D}` và chia thành các package nhỏ hơn.
+Vì vậy `do_package` lấy toàn bộ file trong `${D}` và chia thành các package con:
 
-BitBake có sẵn quy tắc mặc định:
+BitBake có sẵn quy tắc mặc định theo `${PN}`:
 
 ```bitbake
 FILES:${PN}        = "${bindir}/*"                  # myapp       ← binary
@@ -492,7 +643,7 @@ FILES:${PN}-doc    = "${docdir}/*"                  # myapp-doc   ← documentat
 FILES:${PN}-dbg    = "${bindir}/.debug/*"           # myapp-dbg   ← debug symbols
 ```
 
-Kết quả sau do_package:
+Kết quả sau `do_package`:
 
 ```
 myapp        → usr/bin/myapp
@@ -501,20 +652,24 @@ myapp-dev    → usr/lib/libmyapp.so usr/include/myapp.h
 myapp-doc    → usr/share/doc/myapp/README
 ```
 
-BitBake lấy toàn bộ file trong `${D}` và chia thành các package con dựa trên biến `PACKAGES` và `FILES:${PN}`.
-${D}/usr/bin/myapp        → package: myapp
-${D}/usr/lib/libmyapp.so  → package: myapp-dev  (hoặc myapp-lib)
-${D}/usr/share/doc/       → package: myapp-doc
-```
-
-Mặc định, mỗi recipe tạo ra nhiều sub-package:
+Trong đó:
 - `${PN}` — Package chính chứa binary và file runtime.
 - `${PN}-dev` — Header files và `.so` symlink (dùng khi compile package khác).
 - `${PN}-dbg` — Debug symbols.
 - `${PN}-doc` — Man pages, documentation.
 - `${PN}-staticdev` — Static libraries (`.a`).
 
-#### 6.3.8. `do_rootfs` - Đưa package vào root filesystem
+Ngoài ra, ta cũng có thể tự định nghĩa lại package thay vì dùng mặc định dựa trên biến `PACKAGES`:
+
+```bash
+# Tạo package con hoàn toàn mới
+PACKAGES =+ "myapp-plugins"
+FILES:myapp-plugins = "${libdir}/myapp/plugins/*"
+```
+
+Tức là ta có thể đặt tên package tùy ý, không bắt buộc phải theo pattern `${PN}-dev`, `${PN}-lib`,...
+
+#### 7.3.8. `do_rootfs` - Đưa package vào root filesystem
 
 Khi ta build image với config:
 
@@ -538,7 +693,7 @@ build/tmp/work/.../core-image-minimal/rootfs/
     └── ...
 ```
 
-#### 6.3.9. `do_image` - Đóng gói thành image file
+#### 7.3.9. `do_image` - Đóng gói thành image file
 
 Rootfs đó được đóng gói thành file image tùy format:
 
@@ -550,7 +705,7 @@ core-image-minimal.tar.gz  ← tarball
 
 Rồi flash lên board, khi board boot lên thì rootfs đó chính là `/` của hệ thống.
 
-### 6.4. Từ khóa `inherit`
+### 7.4. Từ khóa `inherit`
 
 `inherit` dùng để import một class (`.bbclass`) vào trong recipe `.bb`.
 
@@ -590,9 +745,9 @@ do_install() {
 Nếu 2 layer cùng có một file `.bbclass` trùng tên thì sẽ lấy file `.bbclass` của layer có priority cao hơn.
 :::
 
-### 6.5. Các biến quan trọng
+### 7.5. Các biến quan trọng
 
-#### 6.5.1. Nhóm thông tin cơ bản
+#### 7.5.1. Nhóm thông tin cơ bản
 
 | Biến                 | Vai trò                                                                                      | Ví dụ                                                  |
 | -------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
@@ -602,7 +757,7 @@ Nếu 2 layer cùng có một file `.bbclass` trùng tên thì sẽ lấy file `
 | `LICENSE`            | Loại license của source code                                                                 | `"MIT"`, `"GPLv2"`, `"Apache-2.0"`                     |
 | `LIC_FILES_CHKSUM`   | Đường dẫn đến file license kèm checksum MD5 — BitBake dùng để **xác minh** license không bị thay đổi | `"file://LICENSE;md5=abc123..."`               |
 
-#### 6.5.2. Nhóm source code
+#### 7.5.2. Nhóm source code
 
 | Biến        | Vai trò                                                                 | Ví dụ                                                            |
 | ----------- | -----------------------------------------------------------------       | ---------------------------------------------------------------- |
@@ -610,7 +765,7 @@ Nếu 2 layer cùng có một file `.bbclass` trùng tên thì sẽ lấy file `
 | `SRCREV`    | Commit hash cụ thể khi dùng git                                         | `"abcdef1234567890abcdef1234567890abcdef12"`                     |
 | `SRC_URI[sha256sum]` | Checksum của tarball để xác minh tính toàn vẹn file tải về     | `"a1b2c3d4e5f6..."`                                              |
 
-#### 6.5.3. Nhóm WORKDIR — Các thư mục build
+#### 7.5.3. Nhóm WORKDIR — Các thư mục build
 
 Đây là nhóm biến mà BitBake tự tính toán dựa trên tên recipe, version và kiến trúc target. Ta thường dùng chúng trong `do_compile()` và `do_install()`.
 
@@ -632,7 +787,7 @@ Nếu 2 layer cùng có một file `.bbclass` trùng tên thì sẽ lấy file `
 - Nếu `SRC_URI` chỉ có `file://main.c` (file đơn lẻ) $\rightarrow$ file nằm ngay `${WORKDIR}`, nên cần: `S = "${WORKDIR}"`
 :::
 
-#### 6.5.4. Nhóm Dependency
+#### 7.5.4. Nhóm Dependency
 
 | Biến       | Vai trò                                                                                   | Ví dụ                                   |
 | ---------- | ----------------------------------------------------------------------------------------- | --------------------------------------- |
@@ -646,7 +801,7 @@ Nếu 2 layer cùng có một file `.bbclass` trùng tên thì sẽ lấy file `
 Ví dụ: App dùng `libmosquitto.so` $\rightarrow$ cần cả `DEPENDS = "mosquitto"` (để compile) lẫn `RDEPENDS:${PN} = "libmosquitto1"` (để chạy trên target).
 :::
  
-#### 6.5.5. Nhóm output và packaging
+#### 7.5.5. Nhóm output và packaging
  
 | Biến        | Vai trò                                                                                                 | Ví dụ                                                |
 | ----------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
@@ -654,7 +809,7 @@ Ví dụ: App dùng `libmosquitto.so` $\rightarrow$ cần cả `DEPENDS = "mosqu
 | `FILES:${PN}` | Danh sách file/thư mục thuộc về package chính                                                         | `FILES:${PN} = "${bindir}/myapp ${sysconfdir}/myapp.conf"` |
 | `PROVIDES`  | Khai báo virtual name mà recipe này cung cấp — cho phép recipe khác dùng tên ảo để reference            | `PROVIDES = "virtual/kernel"`                        |
 
-#### 6.5.6. Nhóm Filesystem — Dùng trong `do_install()`
+#### 7.5.6. Nhóm Filesystem — Dùng trong `do_install()`
 
 Đây là các biến chuẩn trỏ đến đường dẫn trong Linux filesystem. Dùng chúng thay vì hardcode path để đảm bảo recipe hoạt động đúng trên mọi kiến trúc.
 
@@ -685,9 +840,9 @@ do_install() {
 Sau đó BitBake sẽ lấy nội dung từ `${D}` để đóng gói thành package.
 :::
 
-## 7. Layer — Module hóa metadata
+## 8. Layer — Module hóa metadata
 
-### 7.1. Layer là gì?
+### 8.1. Layer là gì?
  
 Layer là nơi gom nhóm các metadata(recipe, class, config, patch, device tree) nhằm mở rộng hoặc tùy biến Linux distro.
 
@@ -703,7 +858,7 @@ Nhờ layer, Yocto giải quyết hết bằng cách tách metadata thành các 
 - Các layer chồng lên nhau theo priority — layer nào priority cao hơn sẽ "thắng" khi xung đột.
 - Update Yocto core? Chỉ cần update layer `meta` — layer custom của bạn không bị ảnh hưởng.
 
-### 7.2. Cấu trúc bên trong một layer
+### 8.2. Cấu trúc bên trong một layer
  
 ```
 meta-custom/
@@ -750,7 +905,7 @@ BBFILE_PRIORITY_meta-custom = "7"
 LAYERSERIES_COMPAT_meta-custom = "kirkstone scarthgap"
 ```
 
-### 7.3. Các loại layer
+### 8.3. Các loại layer
 
 | Loại Layer                         | Vai trò                                                       |
 | ---------------------------------- | ------------------------------------------------------------- |
@@ -765,7 +920,7 @@ File quan trọng nhất trong mỗi layer là `conf/layer.conf`:
 - Thiết lập priority
 - Chỉ ra nơi bitbake phải tìm recipes
 
-### 7.4. Layer Priority
+### 8.4. Layer Priority
 
 Khi hai layer có cùng recipe hoặc cùng file `.bbappend`: **Layer có priority cao hơn sẽ override layer thấp hơn.**
 
@@ -777,7 +932,7 @@ Ví dụ:
 | meta-yocto     | 6        | Ghi đè được `meta`  |
 | meta-yourboard | 9        | Ghi đè tất cả       |
 
-### 7.5. Mở rộng recipe bằng `.bbappend`
+### 8.5. Mở rộng recipe bằng `.bbappend`
 
 Một layer có thể mở rộng recipe của layer khác mà không cần phải sửa file gốc.
 
@@ -808,7 +963,7 @@ Giải thích:
 - `FILESEXTRAPATHS`: Thêm đường dẫn chứa file patch vào danh sách tìm kiếm.
 - `SRC_URI +=`: Thêm patch vào recipe gốc.
 
-### 7.6. Các bước tạo layer mới
+### 8.6. Các bước tạo layer mới
 
 **Bước 1: Khởi tạo môi trường build**
 
@@ -904,7 +1059,7 @@ Build image:
 bitbake <image-name>
 ```
 
-### 7.6. Chuyển cấu hình từ `local.conf` sang Layer để tự động hóa build
+### 8.7. Chuyển cấu hình từ `local.conf` sang Layer để tự động hóa build
 
 Khi bắt đầu dùng Yocto, mọi thứ thường được cấu hình trong `local.conf` vì đơn giản và nhanh. Nhưng khi dự án phát triển, `local.conf` sẽ phình to với đủ loại cấu hình lẫn lộn: machine, distro policy, image package, biến môi trường,...Điều này gây ra nhiều vấn đề:
 - Không tái sử dụng: File `local.conf` gắn với máy build cụ thể. Developer A có `local.conf` khác developer B. Khi clone repo, mỗi người phải tự tạo lại.
@@ -916,7 +1071,7 @@ Khi bắt đầu dùng Yocto, mọi thứ thường được cấu hình trong `
 
 Dưới đây là hướng dẫn phân loại và chuyển cấu hình vào đúng nơi:
 
-#### 7.6.1. Cấu hình môi trường build
+#### 8.7.1. Cấu hình môi trường build
 
 Đây là các cấu hình đặc thù theo máy build — mỗi developer hoặc mỗi server CI sẽ có giá trị khác nhau:
 
@@ -940,7 +1095,7 @@ PARALLEL_MAKE = "-j8"
 
 **Tại sao giữ trong `local.conf`?** Vì đây là thông tin cá nhân/máy: developer A có ổ cứng mount ở `/opt/yocto`, developer B mount ở `/home/b/yocto`. Server CI có 32 core nên dùng `-j32`, laptop developer chỉ có 4 core nên dùng `-j4`. Không nên commit những giá trị này vào git.
 
-#### 7.6.2. Cấu hình distro/policy
+#### 8.7.2. Cấu hình distro/policy
 
 Đây là các cấu hình quy định cách OS hoạt động — không phụ thuộc vào board hay máy build nào:
 
@@ -979,7 +1134,7 @@ DISTRO = "my-distro"
 
 **Tại sao chuyển?** Vì quyết định dùng systemd là chính sách chung cho cả dự án, không phụ thuộc ai build hay build trên máy nào. Mọi developer và CI đều phải dùng cùng chính sách. Đặt vào layer $\rightarrow$ commit vào git $\rightarrow$ ai clone repo cũng có.
 
-#### 7.6.3. Cấu hình image
+#### 8.7.3. Cấu hình image
 
 Đây là các cấu hình quy định image chứa gì — package nào được cài vào rootfs:
 
@@ -1021,7 +1176,7 @@ bitbake my-image
 
 **Tại sao chuyển?** Vì danh sách package trong image là đặc tả sản phẩm — nó định nghĩa image chứa gì. Đây là thông tin cần track trong git. Nếu để trong `local.conf`, developer A có thể quên thêm `mosquitto`, build ra image thiếu component.
 
-#### 7.6.4. Cấu hình machine
+#### 8.7.4. Cấu hình machine
 
 Đây là các cấu hình liên quan đến cấu hình hardware cụ thể:
 
@@ -1053,7 +1208,7 @@ MACHINE = "my-board"
 
 **Tại sao chuyển?** Vì cấu hình hardware là **đặc tả board** — nó không thay đổi giữa các developer hay các lần build. Board nào thì device tree đó, kernel param đó.
 
-#### 7.6.5. Tổng kết
+#### 8.7.5. Tổng kết
 
 Sau khi chuyển hết cấu hình vào đúng nơi, `local.conf` sẽ rất gọn — chỉ còn lại những gì đặc thù theo máy build:
 
@@ -1075,9 +1230,9 @@ PARALLEL_MAKE     = "-j8"
 
 Mỗi developer clone repo $\rightarrow$ chỉ cần tạo `local.conf` với 6–7 dòng trên (sửa path và số thread cho phù hợp máy mình) $\rightarrow$ build $\rightarrow$ ra image giống nhau. Mọi cấu hình quan trọng đều nằm trong layer, được track trong git.
 
-## 8. Thao tác với source kernel
+## 9. Thao tác với source kernel
 
-### 8.1. Virtual Provider — `virtual/kernel`
+### 9.1. Virtual Provider — `virtual/kernel`
 
 Trong Yocto, `virtual/kernel` là một **virtual recipe** — alias trỏ tới recipe kernel cụ thể. Cơ chế này cho phép nhiều layer cung cấp kernel khác nhau, và Yocto sẽ tự chọn đúng recipe phù hợp cho `MACHINE`-> Đây là cơ chế Virtual Provider.
 
@@ -1108,7 +1263,7 @@ PREFERRED_PROVIDER_virtual/kernel="linux-yocto"
 
 hoặc một provider khác (vd: linux-stable, linux-bb.org, linux-custom,... tuỳ distro/BSP).
 
-### 8.2. Các thao tác phổ biến với kernel
+### 9.2. Các thao tác phổ biến với kernel
 
 **Mở kernel menuconfig:**
 
@@ -1144,7 +1299,7 @@ bitbake -e virtual/kernel | grep ^S=
 bitbake -e virtual/kernel | grep ^PN=
 ```
 
-### 8.3. Custom machine sử dụng kernel mới
+### 9.3. Custom machine sử dụng kernel mới
  
 Khi tạo machine mới, cần nói cho Yocto biết kernel sẽ dùng BSP nào. Nếu không, sẽ gặp lỗi:
 
@@ -1166,257 +1321,6 @@ KMACHINE:beaglebone-yocto-smartfarm = "beaglebone"
 # Đảm bảo chọn đúng provider
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-yocto"
 ```
-
-## 9 Công cụ devtool
-
-### 9.1 devtool là gì?
-
-`devtool` là công cụ dòng lệnh đi kèm với Yocto, được thiết kế để giúp developer làm việc với recipe nhanh hơn mà không cần phải chỉnh sửa trực tiếp vào layer gốc hay chạy lại toàn bộ quá trình build.
-
-Nó nằm trong extensible SDK (eSDK) và cả trong môi trường Yocto build bình thường.
-
-### 9.2. Workspace layer
-
-Khi dùng `devtool`, mọi thứ được quản lý trong workspace layer:
-
-```
-build/
-└── workspace/
-    ├── conf/
-    │   └── layer.conf
-    ├── sources/
-    │   └── myapp/          <- source code được extract ra đây
-    │       ├── src/
-    │       └── CMakeLists.txt
-    └── recipes/
-        └── myapp/
-            └── myapp.bb    <- recipe tạm thời
-```
-
-Workspace này tự động được thêm vào `bblayers.conf` với priority cao nhất, nên nó override layer gốc.
-
-### 9.3. Các lệnh chính
-
-**1. `devtool modify` — chỉnh sửa recipe có sẵn**
-
-```bash
-devtool modify myapp
-```
-
-Lệnh này:
-- Extract source code của `myapp` ra `workspace/sources/myapp/`
-- Apply tất cả patch có sẵn
-- Tạo recipe tạm trong workspace
-- Init git repo trong thư mục source
-
-```bash
-# Sau đó vào sửa code thoải mái
-cd build/workspace/sources/myapp/
-vim src/main.c
-```
-
-**2. `devtool build` — build sau khi sửa**
-
-```bash
-devtool build myapp
-```
-
-Chỉ rebuild những gì thay đổi, nhanh hơn bitbake nhiều.
-
-**3. `devtool deploy-target` — đẩy lên board**
-
-```bash
-devtool deploy-target myapp root@192.168.1.100
-```
-
-Copy binary/lib mới nhất lên board qua SSH mà không cần flash lại image. Đây là bước tiết kiệm thời gian nhất.
-
-```bash
-# Sau khi deploy, SSH vào board test luôn
-ssh root@192.168.1.100
-/usr/bin/myapp
-```
-
-:::warning Điều kiện tiên quyết
-Board phải có SSH server và được kết nối mạng với máy host. Phải thêm package `openssh` vào image.
-:::
-
-**4. `devtool undeploy-target` — gỡ khỏi board**
-
-```bash
-devtool undeploy-target myapp root@192.168.1.100
-```
-
-Xóa những file đã deploy, trả board về trạng thái ban đầu.
-
-**5. `devtool add` — tạo recipe mới từ source**
-
-```bash
-# Từ thư mục source local
-devtool add myapp /path/to/myapp-source
-
-# Từ git repo
-devtool add myapp https://github.com/example/myapp.git
-
-# Từ tarball
-devtool add myapp https://example.com/myapp-1.0.tar.gz
-```
-
-`devtool` sẽ tự động detect build system (CMake, autotools, meson...) và sinh ra recipe tạm trong workspace. Rất hữu ích khi thêm package mới.
-
-**6. `devtool finish` — đưa thay đổi về layer gốc**
-
-```bash
-devtool finish myapp meta-mylayer
-```
-
-Lệnh này:
-- Tạo patch từ những thay đổi mà ta đã commit trong git
-- Cập nhật `SRC_URI` trong recipe gốc để thêm patch đó
-- Xóa recipe tạm trong workspace
-
-```
-workspace/sources/myapp/  -> meta-mylayer/recipes-myapp/myapp/
-                               ├── myapp_1.0.bb        (cập nhật SRC_URI)
-                               └── files/
-                                   └── fix-bug.patch   (patch mới)
-```
-
-**7. `devtool reset` — hủy bỏ, quay về trạng thái ban đầu**
-
-```bash
-devtool reset myapp
-```
-
-Xóa recipe tạm trong workspace, trả lại quyền kiểm soát cho layer gốc. Source code trong `workspace/sources/myapp/` vẫn còn nếu muốn giữ lại.
-
-**8. `devtool status` — xem đang modify recipe nào**
-
-```bash
-devtool status
-
-# Output:
-# myapp: /home/user/build/workspace/sources/myapp
-```
-
-### 9.4. Vấn đề devtool giải quyết
-
-#### 9.4.1. Tình huống 1
-
-Giả sử ta đang làm dự án thực tế:
-- Board: Raspberry Pi 4 (ARM)
-- Có một ứng dụng `myapp` đang chạy trên board bị lỗi
-- Ta cần fix bug và test
-
-**Workflow thông thường không có `devtool`:**
-
-```bash
-# 1. Tìm source code của myapp trong layer
-# 2. Sửa code
-vim meta-mylayer/recipes-myapp/myapp/files/main.c
-
-# 3. Build lại toàn bộ
-bitbake myapp
-
-# 4. Build lại image
-bitbake core-image-minimal
-
-# 5. Flash image lên board
-dd if=core-image-minimal.wic of=/dev/sdX
-
-# 6. Boot board lên test
-# 7. Phát hiện vẫn còn bug -> quay lại bước 2
-```
-
-Ta thấy rằng mỗi lần build xong ta lại phải flash lại image lên board, việc này rất mất thời gian.
-
-**Workflow có `devtool`:**
-
-```bash
-# 1. Bắt đầu modify
-devtool modify myapp
-
-# 2. Vào sửa code
-cd build/workspace/sources/myapp
-vim src/main.c
-
-# 3. Build thử
-devtool build myapp
-
-# 4. Deploy lên board test
-devtool deploy-target myapp root@192.168.1.100
-
-# 5. Test trên board
-ssh root@192.168.1.100 "/usr/bin/myapp"
-
-# 6. Commit thay đổi (bắt buộc nếu muốn devtool finish tạo patch)
-git add .
-git commit -m "fix issue: ..."
-
-# 7. Nếu OK, đưa về layer chính thức
-devtool finish myapp meta-mylayer
-
-# 8. Nếu muốn hủy
-devtool reset myapp
-```
-
-#### 9.4.1. Tình huống 2
-
-Board của ta đang chạy image `core-image-minimal`, image này không có ứng dụng `myapp`. Ta muốn thêm và test thử mà không cần build lại image.
-
-```bash
-# 1. Tạo recipe mới
-
-# Từ source local
-devtool add myapp /path/to/myapp-source
-
-# Hoặc từ git
-devtool add myapp https://github.com/example/myapp.git
-
-# Hoặc từ tarball
-devtool add myapp https://example.com/myapp-1.0.tar.gz
-
-# 2. Build recipe
-devtool build myapp
-
-# 3. Deploy lên board test
-devtool deploy-target myapp root@192.168.1.100
-
-# 4. Test trên board
-ssh root@192.168.1.100 "/usr/bin/myapp"
-
-# 7. Nếu OK, đưa về layer chính thức
-devtool finish myapp meta-mylayer
-
-# 8. Nếu muốn hủy
-
-# Gỡ khỏi board
-devtool undeploy-target myapp root@192.168.1.100
-
-# Xóa khỏi workspace
-devtool reset myapp
-```
-
-:::warning Lưu ý quan trọng
-Nếu `myapp` phụ thuộc vào thư viện mà image không có sẵn, ta sẽ gặp lỗi:
-
-```bash
-# Trên board
-/usr/bin/myapp
-# error while loading shared libraries: libfoo.so.1: cannot open shared object file
-```
-
-Lúc này cần deploy cả dependency:
-
-```bash
-# Trên máy host
-devtool build libfoo
-devtool deploy-target libfoo root@192.168.1.100
-
-# Rồi mới deploy myapp
-devtool deploy-target myapp root@192.168.1.100
-```
-:::
 
 ## 10. Troubleshoot & Debug
 
