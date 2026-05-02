@@ -472,7 +472,18 @@ Thêm nhóm pin PWM vào pin controller:
 };
 ```
 
-### 5.2. Build và deploy
+### 5.2. Bật subsystem PWM
+
+Toàn bộ PWM subsystem trong kernel đang tắt, nên khi boot vào kernel sẽ không thấy có `/sys/class/pwm/`, driver ehrpwm không tồn tại nên DTS dù đúng cũng không có gì bind vào. Cần bật thêm các symbol sau:
+
+```
+CONFIG_PWM=y
+CONFIG_PWM_SYSFS=y
+CONFIG_PWM_TIEHRPWM=y    # cho P9_14 / P9_16 (EHRPWM1A/B)
+CONFIG_PWM_TIECAP=y      # tuỳ chọn, nếu sau dùng ECAP
+```
+
+### 5.3. Build và deploy
 
 - Copy file DTS vào thư mục `arch/arm/boot/dts/` trong source kernel.
 - Build device tree blob:
@@ -484,7 +495,7 @@ make -j2 ARCH=arm LOCALVERSION=-bone69 CROSS_COMPILE=$CC dtbs
 - Copy file `.dtb` sang board và verify bằng `md5sum`.
 - Reboot board.
 
-### 5.3. Sử dụng PWM từ userspace
+### 5.4. Test PWM từ userspace
 
 ```bash
 # Export PWM channel
