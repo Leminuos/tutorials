@@ -81,18 +81,18 @@ Sau khi khởi tạo môi trường và chạy build, thư mục `build/` sẽ c
 
 ```
 build/
-├── cache/                          ← Cache metadata đã parse
-├── conf/                           ← Cấu hình người dùng
+├── cache/                          <- Cache metadata đã parse
+├── conf/                           <- Cấu hình người dùng
 │   ├── bblayers.conf
 │   └── local.conf
-├── downloads/                      ← Source code tải về
-├── sstate-cache/                   ← Cache kết quả build
-├── tmp/                            ← Toàn bộ output
+├── downloads/                      <- Source code tải về
+├── sstate-cache/                   <- Cache kết quả build
+├── tmp/                            <- Toàn bộ output
 │   ├── deploy/
-│   │   ├── images/                 ← Image cuối cùng
-│   │   ├── sdk/                    ← SDK (nếu build)
-│   │   └── licenses/               ← License của package
-│   ├── work/                       ← Thư mục làm việc của từng recipe
+│   │   ├── images/                 <- Image cuối cùng
+│   │   ├── sdk/                    <- SDK (nếu build)
+│   │   └── licenses/               <- License của package
+│   ├── work/                       <- Thư mục làm việc của từng recipe
 │   ├── sysroots/
 │   ├── log/
 │   └── pkgdata/
@@ -214,7 +214,7 @@ find sstate-cache/ -name "sstate-*" -mtime +30 -delete
 ```
 :::
 
-## 5. Một số cấu hình quan trọng trong file `.conf`
+## 5. Một số cấu hình quan trọng
 
 ### 5.1. Machine - Chọn phần cứng target
 
@@ -423,6 +423,243 @@ Giải pháp lúc này là:
 TOOLCHAIN_TARGET_TASK:append = " mosquitto-dev"
 ```
 
+### 5.8. Cấu hình `FILESEXTRAPATHS`
+
+Khi BitBake xử lý một file, nó cần phải biết tìm file đó ở đâu. Nó sẽ tìm theo một danh sách thư mục được định nghĩa sẵn gọi là `FILESPATH`.
+
+Mặc định `FILESPATH` trông như sau:
+
+```
+<recipe-dir>/files/
+<recipe-dir>/<PN>/
+<recipe-dir>/<PN>-<PV>/
+<recipe-dir>/           <- thư mục chứa file .bb
+```
+
+$\rightarrow$ `FILESEXTRAPATHS` cho phép ta thêm thư mục tìm kiếm vào danh sách này.
+
+**Tại sao cần `FILESEXTRAPATHS`**
+
+Một tình huống thực tế, ta có recipe gốc:
+
+```
+meta-example/
+└── recipes-example/
+    └── netlogger/
+        ├── netlogger_1.0.bb
+        └── files/
+            └── netlogger.c
+```
+
+Khi ta muốn thêm một file config từ layer của mình qua `.bbappend` mà không đụng vào layer gốc:
+
+```
+meta-myproduct/
+└── recipes-example/
+    └── netlogger/
+        ├── netlogger_%.bbappend
+        └── myfiles/              <- thư mục riêng của bạn
+            └── netlogger.conf
+```
+
+Vấn đề ở đây là BitBake mặc định sẽ không biết cách tìm trong `myfiles/` của ta, cho nên ta cần phải khai báo qua `FILESEXTRAPATHS.`
+
+Cú pháp
+
+```bash
+# Thêm thư mục vào đầu danh sách tìm kiếm
+FILESEXTRAPATHS:prepend := "${THISDIR}/myfiles:"
+```
+
+Hai điểm quan trọng:
+1. Dùng `:=` thay vì `=`
+
+    ```bash
+    FILESEXTRAPATHS:prepend := "${THISDIR}/myfiles:"   # đúng
+    FILESEXTRAPATHS:prepend  = "${THISDIR}/myfiles:"   # sai
+    ```
+
+2. Phải có dấu `:` ở cuối
+
+    ```bash
+    FILESEXTRAPATHS:prepend := "${THISDIR}/myfiles:"   # đúng — có dấu :
+    FILESEXTRAPATHS:prepend := "${THISDIR}/myfiles"    # sai — thiếu dấu :
+    ```
+
+    Dấu `:` là ký tự phân cách giữa các path trong danh sách.
+
+**prepend và append**
+
+Có hai operator cho `FILESEXTRAPATHS` là prepend và append, mỗi cái sẽ báo cho bitbake phải tìm file như thế nào khác nhau.
+
+```bash
+# Danh sách tìm kiếm mặc định (FILESPATH):
+# [files/] [<PN>/] [<PN>-<PV>/] [<recipe-dir>/]
+#  ←──────────────────────────────── tìm từ trái qua phải
+
+FILESEXTRAPATHS:prepend := "${THISDIR}/myfiles:"
+# Kết quả: [myfiles/] [files/] [<PN>/] [<PN>-<PV>/] [<recipe-dir>/]
+# Nghĩa là file được thêm vào đầu -> được tìm đầu tiên
+
+FILESEXTRAPATHS:append := ":${THISDIR}/myfiles"
+# Kết quả: [files/] [<PN>/] [<PN>-<PV>/] [<recipe-dir>/] [myfiles/]
+# Nghĩa là file được thêm vào CUỐI -> tìm cuối cùng
+```
+
+Giả sử cả `files/` và `myfiles/` đều có file netlogger.conf:
+
+```
+files/netlogger.conf      <- file gốc từ recipe
+myfiles/netlogger.conf    <- file ta muốn override
+```
+
+```bash
+# Dùng :prepend -> myfiles/ được tìm trước -> dùng file của ta
+FILESEXTRAPATHS:prepend := "${THISDIR}/myfiles:"
+
+# Dùng :append -> files/ được tìm trước -> vẫn dùng file gốc
+FILESEXTRAPATHS:append := ":${THISDIR}/myfiles"
+```
+
+:::warrning Kết luận
+Trong `.bbappend` luôn dùng operator `prepend` thay vì `append` để nó override file gốc.
+:::
+
+### 5.9. Placeholder trong file template
+
+Đầu tiên, ta cần hiểu rằng placeholder là ký hiệu giữ chỗ được thay thế bằng giá trị thực tế tại thời điểm build. Trong Yocto có nhiều loại placeholder khác nhau tùy ngữ cảnh. Tuy nhiên, trong phần này ta chỉ nói về placeholder trong file template/script.
+
+**Tại sao cần file template?**
+
+Giả sử ta có file config `/etc/netlogger.conf` cần được cài lên board, nhưng nội dung của nó phụ thuộc vào môi trường build:
+
+```ini
+# Vấn đề: các giá trị này khác nhau tùy MACHINE, DISTRO, version,...
+[netlogger]
+binary  = /usr/bin/netlogger     # bindir có thể là /bin trên poky-tiny
+version = 1.0                    # thay đổi theo PV
+logdir  = /var/log/netlogger     # localstatedir có thể khác
+```
+
+Ta không thể hardcode vì:
+- `bindir` có thể là `/usr/bin` hoặc `/bin` tùy distro
+- `PV` thay đổi mỗi khi nâng version
+- `sysconfdir` có thể khác nhau tùy cấu hình
+
+Giải pháp ở đây là dùng file template với placeholder, để build system điền. Một file template sẽ có đuôi là `.in`.
+
+Để có thể thay thế placeholder trong file template thì cách đơn giản nhất là sử dụng `sed` trong task `do_install`.
+
+```bash
+sed 's|pattern|replacement|flags'
+# hoặc
+sed 's#pattern#replacement#flags'
+```
+
+**Ví dụ**
+
+File template `netlogger.conf.in`:
+
+```ini
+[netlogger]
+binary      = @BINDIR@/netlogger
+version     = @VERSION@
+logdir      = @LOCALSTATEDIR@/log/netlogger
+sysconfdir  = @SYSCONFDIR@/netlogger
+num_threads = @NUM_THREADS@
+```
+
+Trong recipe:
+
+```bash
+SRC_URI = " \
+    file://netlogger.c \
+    file://netlogger.conf.in \
+"
+
+do_install() {
+    # Bước 1 — thay thế placeholder
+    sed -e 's|@BINDIR@|${bindir}|g' \
+        -e 's|@VERSION@|${PV}|g' \
+        -e 's|@LOCALSTATEDIR@|${localstatedir}|g' \
+        -e 's|@SYSCONFDIR@|${sysconfdir}|g' \
+        -e 's|@NUM_THREADS@|4|g' \
+        ${WORKDIR}/netlogger.conf.in > ${WORKDIR}/netlogger.conf
+
+    # Bước 2 — install file đã được điền vào
+    install -d ${D}${sysconfdir}/netlogger
+    install -m 0644 ${WORKDIR}/netlogger.conf ${D}${sysconfdir}/netlogger/netlogger.conf
+}
+```
+
+Kết quả file trên board:
+
+```ini
+[netlogger]
+binary      = /usr/bin/netlogger
+version     = 1.0
+logdir      = /var/log/netlogger
+sysconfdir  = /etc/netlogger
+num_threads = 4
+```
+
+Tuy nhiên, không phải lúc nào việc thay thế placeholder cũng đơn giản như vậy, một số trường hợp cần logic phực tạp hơn thì ta sẽ sử dung python inline.
+
+Ví dụ file template `netlogger.conf.in`:
+
+```ini
+[netlogger]
+binary   = @BINDIR@/netlogger
+loglevel = @LOGLEVEL@
+features = @FEATURES@
+```
+
+Trong recipe — dùng Python để build chuỗi features:
+
+```bash
+# Hàm Python tính toán giá trị trước khi thay thế
+def get_features(d):
+    features = []
+    packageconfig = d.getVar('PACKAGECONFIG') or ''
+
+    if 'json' in packageconfig:
+        features.append('json')
+    if 'syslog' in packageconfig:
+        features.append('syslog')
+    if 'compress' in packageconfig:
+        features.append('compress')
+
+    # Trả về dạng "json,syslog" hoặc "none"
+    return ','.join(features) if features else 'none'
+
+do_install() {
+    FEATURES="${@get_features(d)}"
+    LOGLEVEL="${@'debug' if d.getVar('DEBUG_BUILD') == '1' else 'info'}"
+
+    sed -e "s|@BINDIR@|${bindir}|g" \
+        -e "s|@LOGLEVEL@|${LOGLEVEL}|g" \
+        -e "s|@FEATURES@|${FEATURES}|g" \
+        ${WORKDIR}/netlogger.conf.in \
+        > ${WORKDIR}/netlogger.conf
+
+    install -d ${D}${sysconfdir}/netlogger
+    install -m 0644 ${WORKDIR}/netlogger.conf ${D}${sysconfdir}/netlogger/
+}
+```
+
+Kết quả nếu bật `json` và `syslog`:
+
+```ini
+[netlogger]
+binary   = /usr/bin/netlogger
+loglevel = info
+features = json,syslog
+```
+
+:::tip Bổ sung
+Ta cũng có thể sử dụng CMake hoặc autotools để thực hiện thay placeholder trong file template.
+:::
+
 ## 6. BitBake — Build Engine của Yocto
 
 ### 6.1. BitBake là gì?
@@ -603,11 +840,32 @@ Copy các file cần thiết (binary, library, config, header,...) vào staging 
 ```bash
 do_install() {
     install -d ${D}${bindir}
-    install -m 0755 myapp ${D}${bindir}/myapp
+    install -m 0755 ${WORKDIR}/myapp ${D}${bindir}/myapp
  
     install -d ${D}${sysconfdir}
-    install -m 0644 myapp.conf ${D}${sysconfdir}/myapp.conf
+    install -m 0644 ${WORKDIR}/myapp.conf ${D}${sysconfdir}/myapp.conf
 }
+```
+
+Trong đó:
+- `${WORKDIR}` : thư mục làm việc tạm thời trong quá trình build chứa source files, patches, và files từ SRC_URI. Ví dụ: `tmp/work/cortexa8hf-.../swupdate/2021.11/`
+- `${D}` : destination directory, thư mục giả lập root filesystem, mọi thứ install vào đây sẽ được đóng gói vào image. Ví dụ: `tmp/work/cortexa8hf-.../swupdate/2021.11/image/`
+
+Lệnh `install` là lệnh Unix copy file nhưng có thêm khả năng set permission ngay lúc copy hoặc tạo thư mục đích nếu cần.
+- `-d`: tạo thư mục, không copy file (lệnh này tạo đệ quy, tương đương `mkdir -p` nên không báo lỗi nếu thư mục đã tồn tại)
+- `-m 0644`: Set permission cho file được install
+
+Để dễ hiểu hơn, ta xem luồng hoạt động của ví dụ trên:
+
+```
+WORKDIR                     D (destination)
+──────────                  ─────────────────────
+myapp         ──install──►  /bindir/myapp
+myapp.conf    ──install──►  /sysconfdir/myapp.cfg
+                                    ↓
+                            đóng gói vào rootfs image
+                                    ↓
+                            thiết bị thấy tại /bin/ và /etc/
 ```
 
 :::warning Chú ý
