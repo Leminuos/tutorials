@@ -144,7 +144,7 @@ WantedBy=multi-user.target
 - `Type=simple`: ExecStart là tiến trình chính, systemd theo dõi PID này (mặc định, dùng cho hầu hết các service hiện đại)
 - `Type=forking`: Process sẽ fork rồi exit process cha (dành cho daemon kiểu cũ như Apache, Nginx)
 - `Type=oneshot`: Process chạy một lần rồi thoát (dùng cho script khởi tạo)
-- `Type=notify`: Process tự báo cho systemd khi đã sẵn sàng qua `sd_notify()`
+- `Type=notify`: Process phải thông báo cho systemd khi đã sẵn sàng qua `sd_notify()`
 - `Type=dbus`: Sẵn sàng khi đã đăng ký tên trên D-Bus
 - `Type=idle`: Chờ tất cả job khác xong mới chạy
 

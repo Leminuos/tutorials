@@ -78,6 +78,7 @@ grep [tùy chọn] "chuỗi_cần_tìm" [tên_file]
 ```
 
 | Tùy chọn | Mô tả |
+| -------- | ----- |
 | `-i`     | Không phân biệt chữ hoa/thường |
 | `-n`     | Hiển thị số dòng |
 | `-H`     | In tên file |
@@ -226,3 +227,132 @@ apt [tùy_chọn] [chức_năng] [tên_gói]
 | `sudo apt autoremove`         | Xóa các gói không cần thiết    |
 | `apt search <từ_khóa>`        | Tìm kiếm gói trong kho         |
 | `apt show <tên_gói>`          | Xem thông tin về một gói       |
+
+## 9. Các device file đặc biệt
+
+Trên Linux, thư mục `/dev` chứa các **device file**. Đây không phải là file lưu trên ổ cứng mà chúng là phương thức để ta giao tiếp với kernel. Khi ta đọc hoặc ghi vào các file này, kernel sẽ xử lý theo logic riêng của từng device.
+ 
+Phần này giới thiệu các device file đặc biệt khi ta làm việc với terminal trong linux
+
+### 9.1. `/dev/null`
+
+Mọi dữ liệu ghi vào file này đều biến mất, không lưu ở đâu cả. Đọc từ file thì lập tức nhận EOF (end-of-life), tức không có gì để đọc. Ta có thể hình dung `/dev/null` như một thùng rác vô đáy — bỏ gì vào cũng mất, nhìn vào thì trống rỗng.
+ 
+**Ví dụ thực tế: Ta muốn chạy một lệnh nhưng không muốn thấy thông báo lỗi trên terminal**
+
+```bash
+find / -name "*.log" 2>/dev/null
+```
+
+Ở đây `2>` chuyển hướng `stderr` vào `/dev/null`. Khi `find` quét vào các thư mục không có quyền đọc, nó sẽ phát sinh hàng loạt lỗi "Permission denied" — nhưng tất cả đều bị nuốt bởi `/dev/null`, nên terminal chỉ hiện ra những kết quả tìm thấy hợp lệ.
+
+:::tip Mẹo hay
+Ta có thể dùng `/dev/null` để xóa nội dung một file mà không xóa chính file đó: `cat /dev/null > logfile.txt`. File vẫn tồn tại nhưng nội dung bên trong bị xóa sạch — rất hữu ích khi muốn làm trống file log mà không ảnh hưởng đến các chương trình đang ghi vào nó.
+:::
+
+### 9.2. `/dev/zero`
+
+Đọc file này sẽ nhận được một dòng byte `0x00` (null byte) vô tận, không bao giờ dừng. Ghi vào file thì giống `/dev/null`, dữ liệu biến mất.
+
+**Ví dụ thực tế: Tạo một file có kích thước đúng 1GB, chứa toàn số 0**
+
+```bash
+dd if=/dev/zero of=disk.img bs=1M count=1024
+```
+
+Lệnh này đọc từ `/dev/zero` (input file), mỗi lần đọc 1MB (`bs=1M`), lặp lại 1024 lần (`count=1024`), ghi ra file `disk.img`. Kết quả là một file 1GB toàn null byte. Kỹ thuật này thường dùng để tạo file image cho máy ảo, tạo swap space, hoặc xóa sạch dữ liệu trên ổ đĩa (ghi đè toàn bộ bằng số 0).
+
+:::warning Cẩn thận với `dd`
+Lệnh `dd` rất mạnh và không có xác nhận trước khi ghi đè. Nếu ta nhầm `of=` thành tên ổ đĩa thật (ví dụ `of=/dev/sda`), toàn bộ dữ liệu trên ổ đĩa sẽ bị xóa sạch không thể khôi phục. Luôn kiểm tra kỹ lệnh trước khi nhấn Enter.
+:::
+
+### 9.3. `/dev/random`
+
+Đọc từ file này sẽ nhận các byte ngẫu nhiên, được tạo ra từ **entropy pool** của kernel. Ghi vào file thì sẽ thêm dữ liệu vào entropy pool.
+
+Entropy ở đây là độ bất ngờ mà kernel thu thập được từ các sự kiện phần cứng khó đoán như thời điểm nhấn phím, di chuột, interrupt của đĩa cứng, nhiễu mạng...
+
+Trên các phiên bản kernel cũ (trước Linux 5.6), nếu entropy pool cạn kiệt, `/dev/random` sẽ dừng lại chờ cho đến khi có đủ entropy mới. Điều này đảm bảo chất lượng ngẫu nhiên luôn ở mức cao nhất.
+ 
+**Ví dụ thực tế: Tạo một khóa mã hóa 256-bit (32 byte) có chất lượng ngẫu nhiên cao:**
+ 
+```bash
+head -c 32 /dev/random | xxd
+```
+
+Lệnh `head -c 32` đọc đúng 32 byte ngẫu nhiên, sau đó `xxd` chuyển thành dạng hex để hiển thị trên màn hình. Kết quả là một chuỗi 64 ký tự hex hoàn toàn ngẫu nhiên, đủ chất lượng để dùng làm khóa mật mã. Đây là cách các hệ thống sinh SSL certificate, GPG key, hay SSH key lấy entropy.
+ 
+:::tip Khi nào dùng `/dev/random`?
+Chỉ cần dùng `/dev/random` khi ta cần tạo khóa mật mã cực kỳ quan trọng. Với hầu hết trường hợp khác, `/dev/urandom` là đủ tốt và tiện hơn.
+:::
+ 
+### 9.4. `/dev/urandom`
+ 
+Giống `/dev/random`, trả về byte ngẫu nhiên. Điểm khác biệt là nó không bao giờ dừng lại chờ. Nếu entropy pool cạn, nó dùng thuật toán mật mã để tiếp tục sinh byte ngẫu nhiên dựa trên những gì đã có.
+
+Chữ "u" trong urandom nghĩa là "unlimited" (không giới hạn) hoặc "unblocking" (không chặn).
+
+**Ví dụ thực tế: Sinh mật khẩu ngẫu nhiên 20 ký tự:**
+ 
+```bash
+head -c 15 /dev/urandom | base64
+```
+
+Đọc 15 byte ngẫu nhiên rồi mã hóa base64, cho ra chuỗi khoảng 20 ký tự gồm chữ hoa, chữ thường, số và +/=. Dùng `/dev/urandom` thay vì `/dev/random` vì ta không muốn lệnh phải treo chờ entropy — với việc sinh password, mức ngẫu nhiên của `urandom` là quá đủ.
+ 
+:::warning `random` vs `urandom` — chọn cái nào?
+Trên Linux hiện đại (phiên bản kernel 5.6 trở lên), cả hai gần như giống nhau về chất lượng ngẫu nhiên sau khi hệ thống đã khởi động xong. Sự khác biệt chỉ thực sự quan trọng trên kernel cũ hoặc trong giai đoạn hệ thống mới bật lên (early boot) khi entropy pool chưa có đủ dữ liệu.
+:::
+ 
+### 9.5. `/dev/full` — Ổ đĩa luôn đầy
+
+Đọc từ nó thì giống `/dev/zero` (trả về null byte). Nhưng khi ghi vào nó, luôn trả về lỗi `ENOSPC` (No space left on device) — giả lập tình trạng ổ đĩa hết dung lượng.
+
+**Ví dụ thực tế: Kiểm tra xem script của ta có xử lý đúng khi ghi file thất bại không:**
+
+```bash
+echo "dữ liệu test" > /dev/full
+# Kết quả: bash: echo: write error: No space left on device
+```
+
+Điều này cực kỳ hữu ích khi ta viết script backup hoặc logging và muốn test xem chương trình có crash hay mất dữ liệu khi đĩa đầy không, mà không cần thực sự lấp đầy ổ đĩa.
+
+:::tip Dùng `/dev/full` để test phần mềm
+Nếu ta viết ứng dụng có ghi file, hãy thử chuyển hướng output sang `/dev/full` để xem ứng dụng có bắt được lỗi hay không. Nhiều bug nghiêm trọng trong phần mềm xảy ra vì lập trình viên quên kiểm tra lỗi khi ghi file.
+:::
+ 
+### 9.6. `/dev/tty`
+
+Luôn trỏ đến terminal đang điều khiển tiến trình hiện tại. Ghi vào nó thì nội dung hiện ra trên terminal, đọc từ nó thì lấy input từ bàn phím.
+ 
+**Ví dụ thực tế: Giả sử ta có script nhận dữ liệu qua pipe, nhưng vẫn cần hỏi mật khẩu từ bàn phím:**
+ 
+```bash
+# Gọi script với dữ liệu qua pipe
+echo "dữ liệu đầu vào" | ./my_script.sh
+```
+ 
+Bên trong `my_script.sh`:
+ 
+```bash
+#!/bin/bash
+# Lúc này stdin là pipe, KHÔNG phải bàn phím
+# Nhưng /dev/tty luôn kết nối đến bàn phím thật
+
+read -p "Nhập mật khẩu: " password < /dev/tty
+ 
+echo "Đã nhận mật khẩu, đang xử lý..."
+```
+
+Dù `stdin` đã bị chiếm bởi pipe, `/dev/tty` vẫn kết nối trực tiếp đến terminal thật nên `read` vẫn đọc được input từ bàn phím. Các lệnh như `ssh`, `sudo`, `gpg` đều dùng kỹ thuật này để hỏi mật khẩu.
+
+:::warning Lưu ý khi dùng `/dev/tty`
+`/dev/tty` chỉ hoạt động khi tiến trình có terminal thật (ví dụ người dùng đang mở cửa sổ dòng lệnh). Nếu script chạy tự động trong nền (cron job, systemd service...), không có terminal nào gắn liền, và việc đọc từ `/dev/tty` sẽ gây lỗi.
+:::
+ 
+### 9.7. Kết luận
+
+Các device file trong `/dev` là một phần thiết kế cốt lõi của Linux — triết lý **"mọi thứ đều là file"**. Nhờ có chúng, ta có thể dùng các công cụ dòng lệnh quen thuộc (`cat`, `echo`, `dd`, `head`...) để tương tác với phần cứng và các tính năng đặc biệt của kernel mà không cần viết chương trình phức tạp.
+ 
+Hiểu rõ các device file này sẽ giúp ta viết script hiệu quả hơn, xử lý lỗi tốt hơn, và hiểu sâu hơn cách Linux vận hành ở phía sau.
+
