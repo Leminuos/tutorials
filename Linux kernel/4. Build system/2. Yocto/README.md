@@ -255,25 +255,18 @@ DISTRO = ""               # không dùng distro, tự cấu hình hoàn toàn
 bitbake -e | grep "^DISTRO_FEATURES="
 ```
 
-Danh sách feature phổ biến:
+`DISTRO_FEATURES` định nghĩa các feature mà cả distro hỗ trợ. Nó là một khai báo mang tính chính sách — nói cho toàn bộ các recipe biết rằng distro này có hỗ trợ feature X hay không.
+
+Trong `local.conf` hoặc distro config:
 
 ```bash
-DISTRO_FEATURES = " \
-    acl          \   # Access Control List
-    alsa         \   # Sound (ALSA)
-    bluetooth    \   # Bluetooth stack
-    ext2         \   # ext2/3/4 filesystem support
-    ipv4         \   # IPv4 networking
-    ipv6         \   # IPv6 networking
-    wifi         \   # WiFi support
-    systemd      \   # Systemd init system
-    wayland      \   # Wayland display protocol
-    x11          \   # X11 display server
-    opengl       \   # OpenGL support
-"
+# Bỏ những feature không cần cho hệ thống embedded
+DISTRO_FEATURES:remove = "x11 wayland bluetooth wifi pulseaudio"
 ```
 
-Cách thêm/bớt feature đúng cách:
+Chỉ một dòng này có thể khiến hàng chục package liên quan không được build hoặc được build mà không có phần hỗ trợ tương ứng, giảm đáng kể kích thước image.
+
+**Cách thêm/bớt feature đúng cách:**
 
 ```bash
 # Thêm vào cuối (chú ý dấu cách đầu)
@@ -289,18 +282,6 @@ DISTRO_FEATURES = "ipv4 ipv6 wifi alsa systemd"
 :::warning Chú ý
 `DISTRO_FEATURES` ảnh hưởng đến compile-time — tức là feature bị remove sẽ không được compile vào binary, không chỉ đơn giản là ẩn đi.
 :::
-
-Ví dụ, nếu muốn dùng systemd:
-
-```bash
-DISTRO ?= "poky"
-
-DISTRO_FEATURES:append = " systemd"
-DISTRO_FEATURES:remove = "sysvinit"
-VIRTUAL-RUNTIME_init_manager = "systemd"
-VIRTUAL-RUNTIME_initscripts = "systemd-compat-units"
-DISTRO_FEATURES_BACKFILL_CONSIDERED:append = " sysvinit"
-```
 
 ### 5.3. Định dạng package
 
@@ -423,7 +404,105 @@ Giải pháp lúc này là:
 TOOLCHAIN_TARGET_TASK:append = " mosquitto-dev"
 ```
 
-### 5.8. Cấu hình `FILESEXTRAPATHS`
+### 5.8. Bật/tắt feature của một recipe cụ thể
+
+`PACKAGECONFIG` là một cơ chế trong Yocto cho phép ta bật/tắt các feature tùy chọn của một recipe mà không cần sửa trực tiếp recipe đó. Nó hoạt động bằng cách ánh xạ mỗi feature thành các tham số build tương ứng (configure flags, dependency, ...).
+
+Nguyên tắc cốt lõi về `PACKAGECONFIG`:
+- Định nghĩa feature -> khai báo arg bật/tắt
+- Bật feature bằng cách đưa tên vào `PACKAGECONFIG`
+- BitBake tự gom arg -> gán vào `EXTRA_OECMAKE` (cmake) hoặc `EXTRA_OECONF` (autotools)
+
+Ngoài việc truyền arg vào build system, `PACKAGECONFIG` còn tự động điều chỉnh `DEPENDS` và `RDEPENDS`:
+
+```bash
+PACKAGECONFIG[compress] = "-DENABLE_COMPRESS=ON, -DENABLE_COMPRESS=OFF, zlib, zlib"
+```
+
+Nghĩa là khi ta bật feature `compress`:
+
+```
+Bật compress
+    ├── cmake nhận -DENABLE_COMPRESS=ON      <- ảnh hưởng compile
+    ├── DEPENDS += "zlib"                    <- zlib phải có trước khi build
+    └── RDEPENDS:${PN} += "zlib"             <- zlib được kéo vào image
+```
+
+**Mỗi feature được định nghĩa theo dạng:**
+
+```bash
+PACKAGECONFIG[feature] = " \
+    <arg nếu bật>, \    # truyền vào configure option khi bật feature
+    <arg nếu tắt>, \    # truyền vào configure option khi tắt feature 
+    <build deps>, \     # DEPENDS thêm vào khi bật feature
+    <runtime deps>, \   # RDEPENDS thêm vào khi tắt feature
+    <build deps khi tắt>, \   # hiếm dùng
+    <runtime deps khi tắt>"   # hiếm dùng
+```
+
+**Ví dụ thực tế:**
+
+Giả sử recipe `curl` có định nghĩa:
+
+```bash
+PACKAGECONFIG[ssl] = "--with-ssl, --without-ssl, openssl"
+PACKAGECONFIG[zlib] = "--with-zlib, --without-zlib, zlib"
+PACKAGECONFIG[ipv6] = "--enable-ipv6, --disable-ipv6"
+```
+
+Mặc định recipe có thể bật sẵn:
+
+```bash
+PACKAGECONFIG ?= "ssl zlib"
+```
+
+Nghĩa là `ssl` và `zlib` được bật, `ipv6` bị tắt. Khi build, Yocto sẽ tự động thêm `--with-ssl`, `--with-zlib`, `--disable-ipv6` vào lệnh configure, đồng thời kéo `openssl` và `zlib` trước khi build.
+
+Trong file `.bbappend` hoặc `local.conf`, ta có thể thực hiện tùy chỉnh:
+
+```bash
+# Ghi đè hoàn toàn — chỉ bật ssl, tắt hết còn lại
+PACKAGECONFIG:pn-curl = "ssl"
+
+# Thêm feature vào danh sách hiện có
+PACKAGECONFIG:append:pn-curl = " ipv6"
+
+# Bỏ feature khỏi danh sách hiện có
+PACKAGECONFIG:remove:pn-curl = "zlib"
+```
+
+**Hiểu về `PACKAGECONFIG` có thể giúp ta tối ưu dung lượng**
+
+Khi ta tắt một feature qua `PACKAGECONFIG`, hai điều xảy ra:
+- Phần code liên quan không được biên dịch vào binary -> binary nhỏ hơn
+- Dependency của feature đó không bị kéo vào image. Ví dụ tắt `ssl` thì `openssl` không cần cài nữa -> tiết kiệm vài MB
+
+Nói ngắn gọn, `PACKAGECONFIG` là cách yocto cho cho phép ta chỉ bật đúng những gì cần, bỏ phần thừa, từ đó giảm kích thước binary lẫn số lượng dependency trong image.
+
+**Cách xem recipe hỗ trợ những feature nào**
+
+```bash
+# Xem giá trị PACKAGECONFIG hiện tại của một recipe
+bitbake -e <recipe> | grep ^PACKAGECONFIG=
+```
+
+**Điểm khác biệt với `DISTRO_FEATURES`**
+
+`DISTRO_FEATURES` mang tính toàn cục, ảnh hưởng đến nhiều recipe cùng lúc. Khi ta thêm hay bỏ một giá trị trong `DISTRO_FEATURES`, hàng chục recipe có thể thay đổi hành vi theo. Ngược lại, `PACKAGECONFIG` chỉ tác động lên đúng một recipe.
+
+Ví dụ cụ thể: khi ta bỏ bluetooth khỏi `DISTRO_FEATURES`, tất cả recipe kiểm tra feature này (như systemd, bluez5...) đều tự động tắt phần hỗ trợ bluetooth của chúng. Ta không cần sửa từng recipe một.
+
+**Cơ chế liên kết giữa `DISTRO_FEATURES` và `PACKAGECONFIG`**
+
+Các recipe thường dùng `DISTRO_FEATURES` để tự điều chỉnh `PACKAGECONFIG`. Trong recipe, ta sẽ thấy dạng như:
+
+```bash
+PACKAGECONFIG = "${@bb.utils.filter('DISTRO_FEATURES', 'bluetooth wifi', d)}"
+```
+
+Dòng này nghĩa là: Nếu `DISTRO_FEATURES` chứa bluetooth thì bật `PACKAGECONFIG[bluetooth]`, nếu chứa wifi thì bật `PACKAGECONFIG[wifi]`. Vậy `DISTRO_FEATURES` đóng vai trò đầu vào, còn `PACKAGECONFIG` là nơi thực thi cụ thể ở từng recipe.
+
+### 5.9. Cấu hình `FILESEXTRAPATHS`
 
 Khi BitBake xử lý một file, nó cần phải biết tìm file đó ở đâu. Nó sẽ tìm theo một danh sách thư mục được định nghĩa sẵn gọi là `FILESPATH`.
 
@@ -525,7 +604,7 @@ FILESEXTRAPATHS:append := ":${THISDIR}/myfiles"
 Trong `.bbappend` luôn dùng operator `prepend` thay vì `append` để nó override file gốc.
 :::
 
-### 5.9. Placeholder trong file template
+### 5.10. Placeholder trong file template
 
 Đầu tiên, ta cần hiểu rằng placeholder là ký hiệu giữ chỗ được thay thế bằng giá trị thực tế tại thời điểm build. Trong Yocto có nhiều loại placeholder khác nhau tùy ngữ cảnh. Tuy nhiên, trong phần này ta chỉ nói về placeholder trong file template/script.
 
@@ -1052,12 +1131,18 @@ Nếu 2 layer cùng có một file `.bbclass` trùng tên thì sẽ lấy file `
 | `DEPENDS`  | Build-time dependency — các package cần có khi compile. BitBake sẽ build chúng trước.     | `"qtbase qtmqtt mosquitto"`             |
 | `RDEPENDS` | Runtime dependency — các package cần có khi chạy trên target. Sẽ được cài cùng vào image. | `RDEPENDS:${PN} = "mosquitto libcurl"`  |
 
-:::warning `DEPENDS` vs `RDEPENDS` — phân biệt rõ
-- `DEPENDS` = "Tôi cần library X **lúc compile**" $\rightarrow$ BitBake đảm bảo build X trước recipe này. Kết quả: header và `.so` của X có sẵn trong sysroot khi compile.
-- `RDEPENDS` = "App của tôi cần library X **lúc chạy** trên board" $\rightarrow$ BitBake đảm bảo package X cũng được cài vào rootfs cùng app.
+`DEPENDS` hoạt động ở cấp recipe, còn `RDEPENDS` hoạt động ở cấp package. Một recipe có thể sinh ra nhiều package, nên `RDEPENDS` luôn cần chỉ rõ package nào đang được nói đến, vì vậy ta hay thấy cú pháp `RDEPENDS:${PN}` thay vì chỉ `RDEPENDS`.
 
-Ví dụ: App dùng `libmosquitto.so` $\rightarrow$ cần cả `DEPENDS = "mosquitto"` (để compile) lẫn `RDEPENDS:${PN} = "libmosquitto1"` (để chạy trên target).
-:::
+Ví dụ recipe `curl` có thể sinh ra các package: `curl` (binary), `libcurl` (shared library), `curl-dev` (header). Mỗi package có thể có `RDEPENDS` riêng:
+
+```bash
+RDEPENDS:${PN} = "libcurl"                      # binary curl cần libcurl để chạy
+RDEPENDS:libcurl = "openssl ca-certificates"    # libcurl cần openssl lúc runtime
+```
+
+Ngoài ra, `DEPENDS` không trực tiếp ảnh hưởng đến kích thước image vì nó chỉ tồn tại trên máy build. Nhưng `RDEPENDS` ảnh hưởng rất lớn, bởi vì mọi package trong `RDEPENDS` sẽ tự động bị kéo vào image. Và mỗi package đó lại có `RDEPENDS` của riêng nó, tạo thành một chuỗi phụ thuộc dây chuyền.
+
+Ví dụ thực tế: ta thêm một ứng dụng nhỏ 200KB vào image, nhưng nó `RDEPENDS` lên `python3`, mà `python3` lại `RDEPENDS` lên hàng loạt module khác. Kết quả image phình thêm 30-40MB chỉ vì một ứng dụng nhỏ.
  
 #### 7.5.5. Nhóm output và packaging
  
@@ -1635,7 +1720,47 @@ Lúc này ta sẽ build riêng recipe `binutils-cross` tùy thuộc vào kiến 
 bitbake binutils-cross-arm
 ```
 
-### 10.4. Thêm print debug vào recipe
+### 10.4. Giảm dung lượng bộ nhớ sau build
+
+Khi build Yocto xong, ta có thể xóa một số thư mục lớn mà vẫn giữ được cache giúp rebuild nhanh:
+- Thư mục `tmp/work/` chiếm phần lớn dung lượng. Ta có thể xóa nó vì khi rebuild, Yocto sẽ dùng sstate-cache để khôi phục nhanh mà không cần compile lại từ đầu. Folder này thường chiếm dung lượng hàng chục đến hàng trăm GB.
+-Thư mục `tmp/deploy/` (trừ tmp/deploy/images/ nếu ta cần giữ image cuối cùng) cũng có thể xóa — đặc biệt `tmp/deploy/rpm/`, `tmp/deploy/deb/`, hoặc `tmp/deploy/ipk/` chứa các package đã build.
+- Thư mục `tmp/buildstats/` chứa thống kê build, xóa không ảnh hưởng gì.
+- Thư mục `tmp/log/` chứa log cũ, cũng xóa được.
+
+```bash
+# Xóa work directory (tiết kiệm nhiều nhất)
+rm -rf tmp/work/*
+
+# Xóa package output
+rm -rf tmp/deploy/rpm tmp/deploy/deb tmp/deploy/ipk
+
+# Xóa log và buildstats
+rm -rf tmp/log tmp/buildstats
+
+# Không xóa:
+# sstate-cache/
+# downloads/
+# tmp/stamps/
+```
+
+Khi ta sửa một recipe rồi build lại, Yocto tính hash mới cho các task bị ảnh hưởng (do input thay đổi). Các file sstate cũ (với hash cũ) vẫn nằm đó, và file sstate mới (với hash mới) được tạo thêm. Yocto không tự động xóa bản cũ, nên thư mục sstate-cache cứ phình ra dần.
+
+Yocto cung cấp script `sstate-cache-management.sh` nằm trong `poky/scripts/` giúp dọn sstate-cache mà không ảnh hưởng build:
+
+```bash
+# Xóa các sstate entry không còn hợp lệ với config hiện tại
+./scripts/sstate-cache-management.sh \
+    --cache-dir=$(pwd)/build/sstate-cache \
+    --remove-duplicated \
+    -d
+```
+
+Tùy chọn `--remove-duplicated` giữ lại bản mới nhất của mỗi task và xóa các bản cũ trùng lặp. Cờ `-d` là chạy thử (dry-run) để xem trước sẽ xóa gì.
+
+Nếu ta chỉ sửa nhỏ trong một recipe (ví dụ thêm config), thì chỉ vài task của recipe đó và các recipe phụ thuộc tạo hash mới — tăng không nhiều. Nhưng nếu ta sửa recipe ở tầng thấp như glibc, gcc, hoặc base-files, gần như toàn bộ task phía trên bị tính hash lại, khiến sstate-cache gần như nhân đôi.
+
+### 10.5. Thêm print debug vào recipe
 
 ```bash
 # In giá trị biến khi parse
@@ -1662,7 +1787,7 @@ bb.note()    → in thông tin
 bb.debug()   → chỉ hiện khi dùng -D flag
 ```
 
-### 10.5. Cách lấy log task của một recipe bất kỳ
+### 10.6. Cách lấy log task của một recipe bất kỳ
 
 Giả sử, ta muốn xem log task `do_configure` của recipe `qtbase` thì trước tiên, ta cần xác định `WORKDIR` của recipe: 
 
@@ -1678,7 +1803,7 @@ WORKDIR="/home/nguyenbui/tutorial/yocto/build/tmp/work/x86_64-linux/qtbase-nativ
 
 Sau đó, ta sẽ vào thư mục `WORKDIR\temp\log.do_<task>` và xem task log mong muốn.
 
-### 10.6. Công cụ `oe-pkgdata-util`
+### 10.7. Công cụ `oe-pkgdata-util`
 
 Đây là tool của Yocto dùng để tra cứu metadata của các package sau khi đã được build.
 

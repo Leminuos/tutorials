@@ -62,18 +62,18 @@ flowchart LR
 Với MMC layout như sau:
 
 ```
-┌─────────────────────┐ 0x0
-│   MBR/GPT           │
-├─────────────────────┤ 0x20000
-│   MLO (SPL)         │
-├─────────────────────┤ 0x40000
-│   u-boot.img        │
-├─────────────────────┤ 0x260000 
-│   ENV RAW           │
-├─────────────────────┤
-│   Partition 1 (FAT) │
-│   Partition 2 (ext4)│
-└─────────────────────┘
++-------------------------+ 0x0
+|   MBR/GPT               |
++-------------------------+ 0x20000
+|   MLO (SPL)             |
++-------------------------+ 0x40000
+|   u-boot.img            |
++-------------------------+ 0x260000 
+|   ENV RAW               |
++-------------------------+
+|   Partition 1 (FAT)     |
+|   Partition 2 (ext4)    |
++-------------------------+
 ```
 
 ## 1. Boot rom
@@ -411,12 +411,12 @@ load mmc 0:1 0x82000000 /boot/zImage
 ```
 
 ```
-MMC (partition 1)           RAM
-┌─────────────────┐        ┌──────────────────────────┐
-│ /boot/zImage    │ ──────►│ 0x82000000               │
-│ (compressed     │        │ [zImage data]            │
-│  kernel)        │        │                          │
-└─────────────────┘        └──────────────────────────┘
+MMC (partition 1)              RAM
++-----------------+            +-----------------+
+| /boot/zImage    | ------->   | 0x82000000      |
+| (compressed     |            | [zImage data]   |
+|  kernel)        |            |                 |
++-----------------+            +-----------------+
 ```
 
 ### 5.4. Load DTB vào RAM
@@ -431,19 +431,19 @@ Trong đó: địa chỉ `0x88000000` là địa chỉ RAM cho DTB (`fdtaddr`).
 RAM layout sau khi load:
 
 ```
-┌──────────────────────────┐ 0x80000000
-│   boot.scr               │
-├──────────────────────────┤ 0x82000000  <- loadaddr
-│   zImage                 │
-│   (kernel compressed)    │
-│                          │
-├──────────────────────────┤ 0x88000000  <- fdtaddr
-│   am335x-boneblack.dtb   │
-│                          │
-├──────────────────────────┤
-│   (free)                 │
-│                          │
-└──────────────────────────┘
++--------------------------+ 0x80000000
+|   boot.scr               |
++--------------------------+ 0x82000000  <- loadaddr
+|   zImage                 |
+|   (kernel compressed)    |
+|                          |
++--------------------------+ 0x88000000  <- fdtaddr
+|   am335x-boneblack.dtb   |
+|                          |
++--------------------------+
+|   (free)                 |
+|                          |
++--------------------------+
 ```
 
 **Quan trọng:** `loadaddr` và `fdtaddr` phải đủ xa nhau để kernel không bị DTB ghi đè.
@@ -483,55 +483,55 @@ bootz 0x82000000 - 0x88000000
 ```
 bootz được gọi
       │
-      ▼
-┌─────────────────────────────────┐
-│ 1. Verify zImage magic number   │
-│    tại loadaddr + 0x24          │
-└─────────────────────────────────┘
-      │
-      ▼
-┌─────────────────────────────────┐
-│ 2. Ghi bootargs vào DTB         │
-│    node /chosen/bootargs        │
-│                                 │
-│  /chosen {                      │
-│    bootargs = "console=...";    │ ← U-Boot ghi vào đây
-│  };                             │
-└─────────────────────────────────┘
-      │
-      ▼
-┌─────────────────────────────────┐
-│ 3. Verify DTB                   │
-│    - Check FDT magic: 0xD00DFEED│
-│    - Check DTB size hợp lệ      │
-└─────────────────────────────────┘
-      │
-      ▼
-┌─────────────────────────────────┐
-│ 4. Relocate DTB nếu cần         │
-│    (tránh bị kernel ghi đè)     │
-└─────────────────────────────────┘
-      │
-      ▼
-┌─────────────────────────────────┐
-│ 5. Disable MMU, CPU cache       │
-└─────────────────────────────────┘
-      │
-      ▼
-┌─────────────────────────────────┐
-│ 6. Setup thanh ghi ARM          │
-│    r0 = 0                       │
-│    r1 = 0xFFFFFFFF (dùng DTB)   │
-│    r2 = địa chỉ DTB             │
-└─────────────────────────────────┘
-      │
-      ▼
-┌─────────────────────────────────┐
-│ 9. Jump đến entry point của     │
-│    kernel                       │
-└─────────────────────────────────┘
-      │
-      ▼
+      v
++---------------------------------+
+| 1. Verify zImage magic number   |
+|    tại loadaddr + 0x24          |
++---------------------------------+
+      |
+      V
++---------------------------------+
+| 2. Ghi bootargs vào DTB         |
+|    node /chosen/bootargs        |
+|                                 |
+|  /chosen {                      |
+|    bootargs = "console=...";    | <- U-Boot ghi vào đây
+|  };                             |
++---------------------------------+
+      |
+      v
++---------------------------------+
+| 3. Verify DTB                   |
+|    - Check FDT magic: 0xD00DFEED|
+|    - Check DTB size hợp lệ      |
++---------------------------------+
+      |
+      v
++---------------------------------+
+| 4. Relocate DTB nếu cần         |
+|    (tránh bị kernel ghi đè)     |
++---------------------------------+
+      |
+      v
++---------------------------------+
+| 5. Disable MMU, CPU cache       |
++---------------------------------+
+      |
+      v
++---------------------------------+
+| 6. Setup thanh ghi ARM          |
+|    r0 = 0                       |
+|    r1 = 0xFFFFFFFF (dùng DTB)   |
+|    r2 = địa chỉ DTB             |
++---------------------------------+
+      |
+      v
++---------------------------------+
+| 7. Jump đến entry point của     |
+|    kernel                       |
++---------------------------------+
+      |
+      v
 Kernel bắt đầu chạy — U-Boot không còn tồn tại
 ```
 
@@ -653,7 +653,7 @@ Env được lưu dưới dạng một block nhị phân có cấu trúc đơn g
 
 Toàn bộ block có kích thước cố định, được định nghĩa bởi `CONFIG_ENV_SIZE`. Phần data chưa dùng hết sẽ được fill bằng `0x00`.
 
-Vị trí lưu environment phụ thuộc vào config trong defconfig hoặc Kconfig của U-Boot. Mỗi loại storage có config riêng:
+Vị trí lưu environment phụ thuộc vào config trong `defconfig` hoặc `Kconfig` của uboot. Mỗi loại storage có config riêng:
 
 **MMC/eMMC**
 
@@ -779,11 +779,11 @@ mkimage -C none -A arm -T script -d boot.cmd boot.scr
 Khi compile bằng `mkimage`, file `.scr` gồm 2 phần:
 
 ```
-┌─────────────────────────────┐
-│   Header (64 bytes)         │  <- mkimage header: magic, CRC, type...
-├─────────────────────────────┤
-│   Script data               │  <- nội dung lệnh thực sự
-└─────────────────────────────┘
++-----------------------+
+|   Header (64 bytes)   |  <- mkimage header: magic, CRC, type...
++-----------------------+
+|   Script data         |  <- nội dung lệnh thực sự
++-----------------------+
 ```
 
 ```bash
@@ -860,11 +860,11 @@ bootcmd=load mmc 0:1 0x80000000 boot.scr; source 0x80000000
 
 ```
 SD card                      RAM
-┌──────────────┐          ┌──────────────────┐
-│   boot.scr   │  ──────► │ 0x80000000       │
-│  (64B header │          │ [header 64 bytes]│
-│  + script)   │          │ [script data...] │
-└──────────────┘          └──────────────────┘
++---------------+          +-------------------+
+|   boot.scr    |  ----->  | 0x80000000        |
+|  (64B header  |          | [header 64 bytes] |
+|  + script)    |          | [script data...]  |
++---------------+          +-------------------+
 ```
 
 Sau đó, uboot sẽ đọc địa chỉ RAM đó:

@@ -1418,28 +1418,3 @@ fw_printenv boot_count    # phải là 0
 # Đang mount rootA chưa?
 lsblk -o NAME,LABEL,FSTYPE,MOUNTPOINT
 ```
-
-## 4. Quy trình update hàng ngày
- 
-Sau khi hệ thống đã setup xong, workflow mỗi khi có feature mới hoặc bug fix rất đơn giản:
- 
-### 4.1. Bump version
-
-```bash
-# recipes-extended/images/update-image.bb
-PV = "1.0.1"  →  PV = "1.0.2"
-```
-
-### 4.2. Build `.swu`
-
-```bash
-bitbake update-image
-
-# Kiểm tra nội dung .swu trước khi gửi
-cpio -itv < tmp/deploy/images/beaglebone/update-image-beaglebone.swu
-# Mong đợi:
-# sw-description
-# switch-slot.sh
-# zImage
-# am335x-boneblack.dtb
-```
