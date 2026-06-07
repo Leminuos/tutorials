@@ -1180,34 +1180,19 @@ part /data --source empty             --ondisk mmcblk0 --fstype=ext4 --label dat
 Trong đó:
 - `--ptable msdos` : dùng MBR partition table thay vì GPT
 - `part /boot` : tạo partition và mount tại `/boot` trong rootfs.
-- `--source bootimg-partition` : dùng plugin bootimg-partition của wic:
-  
-  ```
-  Plugin này tự động:
-  1. Copy kernel image (zImage/uImage)
-  2. Copy Device Tree blob (.dtb)
-  3. Copy bootloader files (MLO, u-boot.img)
-  4. Copy boot script (boot.scr/uEnv.txt)
-
-  Tất cả lấy từ DEPLOY_DIR_IMAGE
-  ```
+- `--source bootimg-partition` : yocto sẽ dùng plugin `bootimg-partition` của wic để tự động copy các file như `zImage`, `.dtb`, boot script,...từ deploy dir `DEPLOY_DIR_IMAGE` vào partition dựa vào biến `IMAGE_BOOT_FILES`.
 - `--ondisk mmcblk0` : chỉ định disk đích
 - `--fstype=vfat` hoặc `--fstype=ext4` : format FAT32 hoặc ext4
 - `--label boot` : đặt tên volume label
 - `--active` : đánh dấu bootable flag trong MBR
-
-  ```
-  MBR partition table có 1 bit "bootable"
-  BIOS/ROM bootloader tìm partition có flag này
-  -> Chỉ đặt cho boot partition
-  -> Các partition khác không cần
-  ```
-- `--align 4096` : căn chỉnh theo 4096 (tính bằng KB)
+- `--align 4096` : căn chỉnh theo 4096KB
 - `--fixed-size 32` : kích thước cố định 32MB
 - `--use-uuid` : dùng UUID thay vì device path
 
 :::warning Chú ý
 Nếu không có `rawcopy` cho `MLO`/`u-boot.img`, thì wic sẽ chỉ tạo partition table và vùng raw trước partition đầu tiên sẽ chỉ toàn là zero.
+
+Với `--ptable msdos`, nó chỉ hỗ trợ tối đa 4 phân vùng chính. Nếu vượt quá 4 phân vùng thì nên đổi sang GPT.
 :::
 
 :::tip Thông tin hữu ích

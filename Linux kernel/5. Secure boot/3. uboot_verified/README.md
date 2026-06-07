@@ -501,7 +501,7 @@ flowchart TD
     I --> J[Linux kernel bắt đầu thực thi<br>r2 = DTB pointer<br>Kernel đọc DTB để biết hardware]
 ```
 
-## 4. Cấu hình yocto
+## 4. Thực hiện uboot verified với yocto
 
 ### 4.1. Tạo signing keys
 
@@ -524,7 +524,7 @@ Tên file `dev.key` và `dev.crt` phải trùng với giá trị ta khai báo tr
 
 Hai file này phải được bảo vệ nghiêm ngặt. Ai có `dev.key` thì có thể ký firmware giả mạo mà device sẽ chấp nhận. Trong production, private key nên nằm trong HSM hoặc ít nhất là encrypted storage trên build server, không bao giờ commit vào git.
 
-### 4.2. Cấu hình U-Boot verified (FIT image signing)
+### 4.2. Cấu hình uboot verified (FIT image signing)
 
 Trong `local.conf` hoặc machine config của Yocto:
 
@@ -558,13 +558,72 @@ Giải thích từng biến:
 - `FIT_SIGN_INDIVIDUAL = "0"`: khi bằng 0, chỉ sign ở configuration level, tương đương với `required = "conf"`. Khi bằng 1, ký cả từng image riêng lẻ lẫn configuration. Thường để 0 vì configuration-level signing đã đủ và ký image riêng lẻ là thừa.
 - `UBOOT_MKIMAGE_DTCOPTS = "-I dts -O dtb -p 2000"`: Flag truyền cho `dtc` khi compile U-Boot DTB. `-p 2000` nghĩa là nó sẽ thêm 2000 byte padding vào DTB. Padding cần thiết vì `mkimage` sẽ ghi thêm public key vào DTB sau khi compile. Nếu không có padding, DTB không còn chỗ trống và `mkimage` fail với lỗi `FDT_ERR_NOSPACE`.
 
+Ngoài ra, cần bật các cấu hình sau trong uboot defconfig:
+
+```conf
+/* FIT support */
+CONFIG_FIT=y                # Bật FIT image format support
+CONFIG_FIT_SIGNATURE=y      # bật signature verification
+CONFIG_FIT_VERBOSE=y        # log chi tiết khi verify — tắt ở production
+
+/* Crypto */
+CONFIG_RSA=y                # RSA verify support
+CONFIG_RSA_VERIFY=y
+
+/* Device tree */
+CONFIG_OF_CONTROL=y         # Bảo uboot đọc device tree để lấy cấu hình runtime
+CONFIG_OF_SEPARATE=y
+```
+
+Tuy nhiên có một điểm cần chú ý là uboot environment variables. Mặc định, uboot lưu environment trên MMC/eMMC và cho phép user sửa qua serial console. Điều này giúp attacker có thể:
+
+```bash
+# Trên serial console uboot
+=> setenv bootcmd 'load mmc 0:1 ${loadaddr} malicious.bin; go ${loadaddr}'
+=> saveenv
+=> reset
+```
+
+Để ngăn chặn, ta cần lock down uboot environment:
+
+Uboot không lưu environment ra persistent storage. Mỗi lần boot đều dùng default environment được compile sẵn trong binary. Attacker không thể `setenv bootcmd load mmc 0:1 0x80000000 malicious; go 0x80000000` rồi `saveenv` vì không có chỗ save. Tuy nhiên cũng có nghĩa là ta không thể thay đổi environment sau khi build, mọi thay đổi phải rebuild uboot.
+
+```conf
+CONFIG_ENV_IS_NOWHERE=y        # không lưu env, dùng default compiled-in
+```
+
+Nếu cần persistent env thì ta cần cấu hình để không cho phép overwrite environment:
+
+```conf
+CONFIG_ENV_IS_IN_MMC=y
+CONFIG_SYS_MMC_ENV_DEV=0
+CONFIG_ENV_OVERWRITE=n         # không cho phép overwrite critical env
+```
+
+Kết hợp với disable serial console trong production build:
+
+```conf
+CONFIG_AUTOBOOT=y
+CONFIG_AUTOBOOT_KEYED=y
+CONFIG_AUTOBOOT_STOP_STR="<password-hash>"  # cần password để vào prompt
+CONFIG_AUTOBOOT_DELAY_STR=""
+CONFIG_BOOTDELAY=0                          # không delay, boot ngay
+```
+
+Hoặc có thể triệt để hơn, build uboot không có CLI:
+
+```conf
+CONFIG_CMDLINE=n              # loại bỏ hoàn toàn CLI
+CONFIG_AUTOBOOT=y
+```
+
 ### 4.3. Bên trong `kernel-fitimage.bbclass`
 
-Khi ta chạy `bitbake core-image-minimal` hoặc image nào khác, class `kernel-fitimage` thực hiện các bước sau. Ta sẽ đi theo đúng thứ tự mà class thực thi.
+Khi ta cấu hình `UBOOT_SIGN_ENABLE = "1"` và `KERNEL_IMAGETYPE = "fitImage"` thì class `kernel-fitimage.bbclass` của yocto tự động thực hiện các bước sau:
 
 **Bước 1: Tạo file `.its` từ template**
 
-Class có hàm `fitimage_emit_section_*` tạo từng phần của file `.its`. Nó không dùng file `.its` có sẵn mà generate hoàn toàn từ các biến Yocto. 
+Class có hàm `fitimage_emit_section_*` tạo từng node của file `.its`. Nó không dùng file `.its` có sẵn mà generate hoàn toàn từ các biến mà ta khai báo. 
 
 Quá trình diễn ra theo thứ tự:
 - Gọi `fitimage_emit_section_maint` để mở root node, ghi `/dts-v1/; / { description = "..."; #address-cells = <1>;`.
@@ -598,9 +657,15 @@ Flag `-r` được thêm vào khi `FIT_SIGN_INDIVIDUAL = "0"`.
 
 **Bước 4: Reassemble U-Boot binary với DTB mới**
 
-Sau khi `mkimage` ghi public key vào `u-boot.dtb`, DTB này cần được inject vào uboot binary. Tùy theo cấu hình `CONFIG_OF_SEPARATE` hay `CONFIG_OF_EMBED`:
+Sau khi `mkimage` ghi public key vào `u-boot.dtb`, DTB này cần được inject vào uboot binary. Tùy theo cấu hình `CONFIG_OF_SEPARATE` hay `CONFIG_OF_EMBED` của uboot:
 
-File `u-boot.bin` cuối cùng chứa cả uboot code lẫn DTB với public key embedded. Khi uboot chạy trên device, nó đọc DTB từ chính binary của mình để lấy public key cho việc verify.
+- `CONFIG_OF_SEPARATE`: Yocto compile ra hai file riêng biệt là uboot binary (`u-boot-nodtb.bin`) và DTB (`u-boot.dtb`). Hai file này được concatenate thành binary cuối cùng. Mode này phù hợp cho signing vì DTB là file riêng, `mkimage` có thể mở `u-boot.dtb`, ghi thêm node `/signature/key-dev` chứa public key. Sau đó chỉ cần concatenate lại với `u-boot-nodtb.bin` mà không cần phải compile lại uboot. Quá trình concatenate đơn giản:
+
+    ```bash
+    cat u-boot-nodtb.bin u-boot.dtb > u-boot.bin
+    ```
+
+- `CONFIG_OF_EMBED`: Mode này nhúng DTB vào giữa U-Boot binary tại compile time. DTB nằm trong section `.dtb` của ELF binary, được linker đặt vào vị trí cố định. Mode này không phù hợp với signing vì khi cần ghi public key vào DTB nó cần phải compile lại uboot.
 
 **Bước 5: Deploy**
 
@@ -613,4 +678,85 @@ tmp/deploy/images/beaglebone-yocto/
 ├── u-boot.img                  <- U-Boot image format (u-boot.bin + header)
 ├── MLO                         <- SPL cho AM335x
 └── core-image-minimal-....ext4 <- rootfs
-``
+```
+
+### 4.4. Vấn đề dependency giữa kernel và u-boot recipe
+
+Kernel recipe cần uboot DTB để `mkimage` ghi public key vào. Uboot recipe build ra DTB đó. Nhưng sau khi kernel recipe ghi public key vào DTB, uboot cần reassemble binary với DTB mới.
+
+Yocto giải quyết bằng cách chia uboot build thành nhiều task:
+`u-boot:do_compile` -> build uboot, output `u-boot.dtb` (chưa có public key).
+`kernel:do_assemble_fitimage` -> tạo fitImage, gọi `mkimage` sign, ghi public key vào `u-boot.dtb`.
+`u-boot:do_deploy` -> lấy `u-boot.dtb` đã có public key tạo thành `u-boot.bin` cuối cùng.
+
+Để dependency này hoạt động, ta cần khai báo trong uboot recipe hoặc bbappend:
+
+```bash
+# trong u-boot_%.bbappend
+DEPENDS += "virtual/kernel"
+do_deploy[depends] += "virtual/kernel:do_assemble_fitimage"
+```
+
+Nếu thiếu dependency này, uboot sẽ deploy với DTB không có public key -> required property không tồn tại -> verified boot thực tế bị vô hiệu hóa mà không có lỗi nào.
+
+### 4.5. Cách verify rằng signing hoạt động đúng
+
+Sau khi build xong, bạn nên kiểm tra trên build host trước khi flash lên device:
+
+```bash
+# Kiểm tra fitImage có signature không
+fit_check_sign -f tmp/deploy/images/<machine>/fitImage \
+    -k tmp/deploy/images/<machine>/u-boot.dtb
+
+# Hoặc dùng mkimage để xem nội dung FIT
+mkimage -l tmp/deploy/images/beaglebone-yocto/fitImage
+```
+
+Lệnh `mkimage -l` sẽ in ra cấu trúc FIT: danh sách image node, hash value, signature status. Nếu thấy sign value và timestamp trong output, signing đã hoạt động.
+
+Kiểm tra uboot DTB có public key:
+
+```bash
+fdtdump tmp/deploy/images/beaglebone-yocto/u-boot.dtb | grep -A 20 "signature"
+```
+
+Ta phải thấy node `/signature/key-dev` với các property `rsa,modulus`, `rsa,exponent`, `rsa,r-squared`, `rsa,n0-inverse`, và `required = "conf"`. Nếu thiếu bất kỳ property nào, signing chưa đúng.
+
+### 4.6. Kiểm tra trên device thật
+
+Boot device qua serial console, vào uboot và chạy:
+
+```bash
+=> load mmc 0:1 0x82000000 /boot/fitImage
+=> bootm 0x82000000
+```
+
+Nếu `CONFIG_FIT_VERBOSE=y`, uboot sẽ in chi tiết:
+
+```
+## Loading kernel from FIT Image at 82000000 ...
+   Using 'conf-1' configuration
+   Verifying Hash Integrity ... sha256,rsa2048:dev+ OK
+   Trying 'kernel' kernel subimage
+     Description:  Linux kernel
+     Type:         Kernel Image
+     Compression:  uncompressed
+     Data Start:   0x820000e8
+     Data Size:    4372480 Bytes
+     Hash algo:    sha256
+     Hash value:   a3f2e8...
+     Verifying Hash Integrity ... sha256+ OK
+```
+
+Dòng `sha256,rsa2048:dev+ OK` nghĩa là RSA signature verify pass. Dòng `sha256+ OK` sau mỗi image nghĩa là hash verify pass. Nếu ta thấy `sha256,rsa2048:dev- Failed` hoặc `sha256- Failed` thì nghĩa là có vấn đề với key hoặc image bị corrupt.
+
+Để test, ta có thể sửa 1 byte trong fitImage rồi thử boot lại:
+
+```bash
+# Trên build host, corrupt 1 byte
+printf '\x00' | dd of=fitImage bs=1 seek=1000 count=1 conv=notrunc
+```
+
+Copy fitImage đã corrupt lên SD card và boot lại
+$\rightarrow$ U-Boot phải in: `Hash Integrity ... sha256- Failed`
+$\rightarrow$ Từ chối boot
