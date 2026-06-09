@@ -64,7 +64,7 @@ SWUpdate là một framework OTA mã nguồn mở được thiết kế đặc b
 
 Điều quan trọng cần hiểu ngay từ đầu: SWUpdate **không tự quyết định** phải làm gì. Mọi quyết định đều đến từ file `sw-description` bên trong gói update. SWUpdate chỉ đọc và thực thi chỉ dẫn đó.
 
-## 2.2. Kiến trúc
+### 2.2. Kiến trúc
 
 SWUpdate hoạt động theo mô hình pipeline — dữ liệu đi qua được xử lý tuần tự:
 
@@ -101,9 +101,9 @@ File `.swu` thực chất là cpio archive, đây là một định dạng lưu 
 
 ```
 update.swu  (cpio archive)
-├── sw-description     ← bắt buộc, phải là file đầu tiên
-├── sw-description.sig ← chữ ký (bỏ qua vì lab)
-├── zImage             ← kernel
+├── sw-description        <- bắt buộc, phải là file đầu tiên
+├── sw-description.sig    <- chữ ký (bỏ qua vì lab)
+├── zImage                <- kernel
 ├── am335x-boneblack.dtb
 └── switch-slot.sh
 ```
@@ -113,7 +113,7 @@ Mỗi file `.swu` bắt buộc phải có `sw-description` — không có file n
 Khi SWUpdate đọc file `.swu`, nó phân loại các file bên trong thành hai nhóm:
 
 ```
-Các file trong `.swu`
+Các file trong .swu
         │
         ├── sw-description  ->  manifest (đặc biệt, luôn đọc trước)
         │
@@ -138,6 +138,27 @@ tmp/deploy/images/beaglebone/
     ├── core-image-minimal.ext4   <- build artifact
     └── MLO, u-boot.img...        <- build artifact
 ```
+
+Ta có thể dùng lệnh sau để biết tất cả các file có trong `.swu` mà không phải giải nén:
+
+```bash
+cpio -t < your-image.swu
+```
+
+Ta cũng có thể chỉ cần xem file `sw-description` bên trong:
+
+```bash
+cpio -i --to-stdout sw-description < your-image.swu
+```
+
+Hoặc cũng có thể giải nén toàn bộ để kiểm tra:
+
+```bash
+mkdir swu-contents && cd swu-contents
+cpio -idv < ../your-image.swu
+```
+
+Sau khi extract, ta sẽ thấy các file điển hình như `sw-description`, các image, script,...
 
 ### 2.4. `sw-description` — trái tim của gói update
  
