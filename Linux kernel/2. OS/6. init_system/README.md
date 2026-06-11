@@ -49,7 +49,7 @@ Trong cách làm cổ điển trước thời systemd, một daemon được t�
 - Đóng tất cả stdin, stdout, stderr vì không còn terminal để giao tiếp.
 - Cuối cùng ghi PID vào file (thường trong `/var/run/`) để các công cụ khác biết daemon đang chạy với PID nào.
 
-## 3. Cơ bản về Systemd
+## 3. Cơ bản về systemd
 
 ### 3.1. Unit là gì?
 
@@ -59,7 +59,7 @@ Mỗi unit được mô tả bằng một unit file (file văn bản kiểu `INI
 
 **Các loại unit phổ biến:**
 
-| Loại |	Đuôi file | Dùng để |
+| Loại | Đuôi file | Dùng để |
 | --- | --- | --- |
 | Service |	`.service`  | Quản lý daemon/process             |
 | Target  |	`.target`   | Nhóm các unit lại, thay runlevel   |
@@ -91,7 +91,7 @@ systemctl edit nginx.service
 # -> tạo /etc/systemd/system/nginx.service.d/override.conf
 ```
 
-### 3.2. Cấu trúc Unit file
+### 3.2. Cấu trúc unit file
 
 Cấu trúc một unit file gồm các section, mỗi section phục vụ một vai trò rõ ràng:
 
@@ -119,34 +119,43 @@ WantedBy=multi-user.target
 **Ý nghĩa từng section:**
 
 `[Unit]` - Section này cho biết unit này tồn tại trong hệ thống với vai trò gì và phụ thuộc vào những unit nào.
-- `Description=` : mô tả ngắn, hiện trong systemctl status
-- `Documentation=`: trỏ tới man page hoặc URL docs.
-- `After=` / `Before=`: quan hệ thứ tự, không bắt buộc service đó phải tồn tại.
-  - `After=` : khởi động sau unit nào
-  - `Before=` : khởi động trước unit nào
-- `Requires=` : quan hệ phụ thuộc (cứng) — nếu unit kia chết thì unit này cũng chết.
-- `Wants=` : quan hệ phụ thuộc (mềm) — nếu unit kia chết thì unit này vẫn chạy.
-- `BindsTo=` : chặt hơn `Requires` — unit kia stop là stop ngay lập tức.
+
+| Cấu hình | Ý nghĩa |
+| --- | --- |
+| `Description` | Mô tả ngắn, hiển thị trong `systemctl status` |
+| `Documentation` | Trỏ tới man page hoặc URL docs |
+| `After`/`Before` | Quan hệ thứ tự, không bắt buộc service đó phải tồn tại.<br>- `After` : Khởi động sau unit nào<br>- `Before` : Khởi động trước unit nào |
+| `Requires` | Quan hệ phụ thuộc (cứng) — nếu unit kia chết thì unit này cũng chết. |
+| `Wants` | Quan hệ phụ thuộc (mềm) — nếu unit kia chết thì unit này vẫn chạy. |
+| `BindsTo` | Chặt hơn `Requires` — unit kia stop là stop ngay lập tức. |
 
 `[Service]` — Cấu hình riêng cho service (chỉ có ở unit `.service`)
-- `Type=` : quyết định cách systemd theo dõi process (xem bên dưới)
-- `ExecStart=` : lệnh gọi chương trình khi start.
-- `ExecStop=` : lệnh gọi chương trình khi stop.
-- `ExecReload=` : lệnh gọi chương trình khi reload.
-- `Restart=` : khi nào tự restart
+
+| Cấu hình | Ý nghĩa |
+| --- | --- |
+| `Type` | Quyết định cách systemd theo dõi process (xem bên dưới) |
+| `ExecStart` | Lệnh gọi chương trình khi start. |
+| `ExecStop` | Lệnh gọi chương trình khi stop. |
+| `ExecReload` | Lệnh gọi chương trình khi reload. |
+| `Restart` | Khi nào tự restart. |
 
 `[Install]` — Cấu hình khi enable/disable
-- `WantedBy=` : unit này sẽ được kéo vào khi target nào được kích hoạt
-- `RequiredBy=` : tương tự nhưng là phụ thuộc cứng
+
+| Cấu hình | Ý nghĩa |
+| --- | --- |
+| `WantedBy` | Unit này sẽ được kéo vào khi target nào được kích hoạt |
+| `RequiredBy` | Tương tự nhưng là phụ thuộc cứng |
 
 **Một số service type như sau:**
 
-- `Type=simple`: ExecStart là tiến trình chính, systemd theo dõi PID này (mặc định, dùng cho hầu hết các service hiện đại)
-- `Type=forking`: Process sẽ fork rồi exit process cha (dành cho daemon kiểu cũ như Apache, Nginx)
-- `Type=oneshot`: Process chạy một lần rồi thoát (dùng cho script khởi tạo)
-- `Type=notify`: Process phải thông báo cho systemd khi đã sẵn sàng qua `sd_notify()`
-- `Type=dbus`: Sẵn sàng khi đã đăng ký tên trên D-Bus
-- `Type=idle`: Chờ tất cả job khác xong mới chạy
+| Type | Ý nghĩa |
+| --- | --- |
+| `simple` | ExecStart là tiến trình chính, systemd theo dõi PID này (mặc định, dùng cho hầu hết các service hiện đại) |
+| `forking` | Process sẽ fork rồi exit process cha (dành cho daemon kiểu cũ như Apache, Nginx) |
+| `oneshot` | Process chạy một lần rồi thoát (dùng cho script khởi tạo) |
+| `notify` | Process phải thông báo cho systemd khi đã sẵn sàng qua `sd_notify()` |
+| `dbus` | Sẵn sàng khi đã đăng ký tên trên D-Bus |
+| `idle` | Chờ tất cả job khác xong mới chạy |
 
 ### 3.3. Target unit
 
@@ -205,9 +214,188 @@ Mỗi tầng giải quyết một nhóm nhiệm vụ:
 
 Ngoài ra, `display-manager` là nhánh riêng của `graphical.target` — chỉ được kéo vào ở tầng này, không phải `multi-user.target`. Nếu ta boot vào `multi-user.target` thì sẽ không có GUI, hoàn toàn hợp lệ với server.
 
-### 3.4. Cơ chế dependency
+### 3.4. Mount unit
 
-Đây là lý do systemd khởi động nhanh hơn SysV:
+Mount unit là cách systemd quản lý việc mount filesystem, thay thế và mở rộng vai trò của `/etc/fstab` truyền thống.
+
+Mỗi mount point trên hệ thống đều có một mount unit tương ứng.
+
+```
+/etc/fstab  (cách cũ)          systemd mount unit (cách mới)
+--------------------------     -----------------------------
+/dev/sda1 /home ext4 ...   ->  home.mount
+/dev/sda2 /data ext4 ...   ->  data.mount
+tmpfs /tmp tmpfs ...       ->  tmp.mount
+```
+
+**Quy tắc đặt tên**
+
+Tên file `.mount` phải khớp chính xác với mount point, thay `/` bằng `-` và bỏ `/` đầu tiên.
+
+```
+Mount point              ->  Tên unit file
+---------------------------------------------------
+/                        ->  -.mount
+/home                    ->  home.mount
+/var/log                 ->  var-log.mount
+/mnt/data                ->  mnt-data.mount
+/mnt/usb/backup          ->  mnt-usb-backup.mount
+```
+
+Nếu đặt tên sai -> systemd không nhận và mount sẽ không hoạt động.
+
+Tạo tên chính xác bằng lệnh:
+
+```bash
+systemd-escape --path /mnt/usb/backup
+# -> mnt-usb-backup
+
+# Ngược lại, từ tên unit ra mount point
+systemd-escape --unescape --path mnt-usb-backup
+# -> /mnt/usb/backup
+```
+
+**Cấu trúc mount unit:**
+
+```ini
+[Unit]
+Description=Data Storage Mount
+Documentation=man:mount(8)
+After=local-fs-pre.target network.target
+Before=local-fs.target
+
+[Mount]
+What=/dev/sdb1          # thiết bị source cần mount
+Where=/mnt/data         # mount point
+Type=ext4               # loại filesystem
+Options=defaults,noatime,nodiratime  # mount options
+TimeoutSec=30           # timeout nếu mount không xong sau 30s
+
+[Install]
+WantedBy=local-fs.target
+```
+
+Ý nghĩa từng trường trong section mount:
+
+| Trường | Ý nghĩa |
+| `What=` | Thiết bị hoặc nguồn cần mount. Ví dụ: `/dev/sdb1`, `UUID=xxxx-xxxx`, `192.168.1.10:/share` |
+| `Where=` | Mount point, phải khớp tên file unit |
+| `Type=` | Loại filesystem. Ví dụ: `ext4`, `nfs`, `tmpfs`, `vfat`... |
+| `Options=` | Tùy chọn mount, giống cột thứ 4 trong fstab. |
+
+Với `Type=none` và `Options=bind` -> đây là bind mount.
+
+**Tại sao dùng mount unit thay vì fstab**
+
+fstab hoạt động tốt cho các mount đơn giản lúc boot. Nhưng mount unit cho phép ta kiểm soát thứ tự và dependency chính xác. Ví dụ ta có thể mount partition /data trước, rồi mới mount bind từ `/data/lib/NetworkManager` vào `/var/lib/NetworkManager` rồi mới start `NetworkManager` service. Với `fstab` ta không thể diễn đạt dependency kiểu này.
+
+Mount unit cũng có thể được start và stop lúc runtime:
+
+```bash
+systemctl start var-lib-NetworkManager.mount
+systemctl stop var-lib-NetworkManager.mount
+```
+
+Và systemd theo dõi trạng thái mount. Nếu mount fail, các service phụ thuộc vào nó sẽ không được start và ta thấy rõ lỗi trong log.
+
+**Mối quan hệ giữa fstab và mount unit**
+
+systemd tự động tạo mount unit từ `/etc/fstab` khi boot. Ta không cần tạo thủ công nếu đã có fstab.
+
+Nghĩa là fstab vẫn hoạt động bình thường, systemd tự chuyển đổi mỗi dòng fstab thành mount unit khi boot.
+
+```bash
+# Xem mount unit được tạo từ fstab
+systemctl list-units --type=mount
+```
+
+Ví dụ output:
+
+```
+-.mount            loaded active mounted Root Mount
+home.mount         loaded active mounted /home
+boot-efi.mount     loaded active mounted /boot/efi
+mnt-data.mount     loaded active mounted /mnt/data
+```
+
+Dùng fstab khi:
+- Mount đơn giản, không cần dependency phức tạp
+- Quen thuộc, dễ đọ
+
+Dùng `.mount` unit khi:
+- Cần dependency phức tạp
+- Cần điều kiện mount đặc biệt (network sẵn sàng, VPN kết nối...)
+- Cần kiểm soát thứ tự mount chặt chẽ
+- Dùng kết hợp với automount
+
+**Mount unit kết hợp service unit**
+
+Đây là phần thực sự mạnh, service phụ thuộc vào mount và mount có thể phục vụ riêng cho service đó.
+
+Ví dụ: Service cần data directory
+
+File `/etc/systemd/system/srv-webapp-data.mount`:
+
+```ini
+[Unit]
+Description=Bind mount data for webapp
+
+[Mount]
+What=/home/shared/webapp-data
+Where=/srv/webapp/data
+Type=none
+Options=bind
+
+[Install]
+WantedBy=multi-user.target
+```
+
+File `/etc/systemd/system/webapp.service`:
+
+```ini
+[Unit]
+Description=My Web Application
+Requires=srv-webapp-data.mount
+After=srv-webapp-data.mount
+
+[Service]
+Type=simple
+User=webapp
+ExecStart=/opt/webapp/bin/server
+WorkingDirectory=/srv/webapp
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Khi start `webapp.service`:
+1. systemd thấy `Requires=srv-webapp-data.mount`
+2. Mount `/home/shared/webapp-data` -> `/srv/webapp/data`
+3. Sau khi mount xong -> start webapp
+  
+Khi stop `webapp.service`: mount vẫn còn (Requires chỉ kéo vào, không tự stop)
+  
+Khi mount bị fail: `webapp.service` cũng fail (vì Requires)
+
+### 3.5. Cơ chế dependency graph
+
+Khi systemd khởi động, nó đọc tất cả unit file, xây dựng một đồ thị có hướng (DAG — Directed Acyclic Graph) mô tả mối quan hệ giữa các unit, rồi dựa vào đồ thị đó để quyết định thứ tự khởi động và mức độ song song.
+
+```
+         sysinit.target
+           ↙       ↘
+    basic.target   swap.target
+       ↙    ↘
+ network    syslog
+   ↓          ↓
+ nginx    postgresql
+       ↘   ↙
+      webapp
+```
+
+Mọi unit không nằm trên cùng đường đi thì sẽ được chạy song song.
+
+Cơ chế song song của systemd chính là nó khởi động nhanh hơn SysV:
 
 ```
 SysV:   A -> B -> C -> D -> E     (tuần tự, chờ từng cái)
@@ -216,8 +404,56 @@ systemd phân tích dependency:
         A ──┐
         B ──┼──► D ──► E
         C ──┘
-        (A, B, C không phụ thuộc nhau → chạy song song)
+        (A, B, C không phụ thuộc nhau -> chạy song song)
 ```
+
+Dependency graph có hai chiều hoàn toàn độc lập:
+
+**Chiều 1 — Ordering**
+
+Dùng `After=` hoặc `Before=`:
+
+```ini
+# nginx.service
+[Unit]
+After=network.target
+```
+
+Ý nghĩa: nếu cả `nginx` và `network.target` đều cần khởi động thì network sẽ được khởi động trước. Nhưng nếu `network.target` không cần khởi động thì directive này không có ý nghĩa gì.
+
+**Chiều 2 — Requirement**
+
+Dùng `Wants=`, `Requires=`, `BindsTo=`:
+
+```ini
+# nginx.service
+[Unit]
+Requires=network.target
+```
+
+Ý nghĩa: khi `nginx` khởi động, systemd kéo `network.target` vào. Nhưng hai unit này không có thứ tự —> có thể chạy đồng thời!
+
+Độ phụ thuộc của các loại requirement:
+
+```
+Yếu                                                     Mạnh
+  <------------------------------------------------------->
+    Wants=       Requisite=        Requires=      BindsTo=
+```
+
+**Kết hợp cả hai chiều**
+
+Đây mới là pattern đúng trong thực tế:
+
+```ini
+[Unit]
+Requires=network.target
+After=network.target
+```
+
+Dòng 1: đảm bảo `network.target` phải được kéo vào
+
+Dòng 2: đảm bảo `network.target` chạy xong trước
 
 ## 4. Systemctl
 

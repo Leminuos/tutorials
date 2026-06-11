@@ -911,7 +911,7 @@ Giải pháp:
     /var/lib/mosquitto/  -> bind mount từ /data/lib/mosquitto/
 ```
 
-## Phần 5: Read only rootfs trong Yocto
+## 5. Read only rootfs trong Yocto
 
 ### 5.1. Bật feature
 
