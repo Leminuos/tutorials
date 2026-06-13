@@ -8,7 +8,7 @@ Khi flash firmware mới đè lên firmware đang chạy, có hai rủi ro nghi�
 
 **Giải pháp: A/B Update**
 
-Tư tưởng của cơ chế là **không bao giờ ghi đè lên slot đang chạy**. Thay vào đó, luôn flash vào slot dự phòng (inactive). Nếu có sự cố, hệ thống tự động rollback về slot cũ.
+Tư tưởng của cơ chế là không bao giờ ghi đè lên slot đang chạy. Thay vào đó, luôn flash vào slot dự phòng (inactive). Nếu có sự cố, hệ thống tự động rollback về slot cũ.
 
 ```
 Không có A/B:                        Có A/B:
@@ -44,8 +44,8 @@ Toàn bộ cơ chế được diễn giải như sau:
 
 ![Workflow A/B update](img/workflow-ab-update.png)
 
-### Bảng trạng thái env qua các giai đoạn
- 
+**Bảng trạng thái env qua các giai đoạn**
+
 | Giai đoạn | `active_slot` | `ustate` | `boot_attempts` |
 |---|---|---|---|
 | Bình thường (slot A) | A | 0 | 0 |
@@ -62,18 +62,18 @@ Toàn bộ cơ chế được diễn giải như sau:
  
 SWUpdate là một framework OTA mã nguồn mở được thiết kế đặc biệt cho embedded Linux. Nó đóng vai trò là "người thực thi" — nhận gói update, kiểm tra tính hợp lệ, và áp dụng update theo đúng chỉ dẫn.
 
-Điều quan trọng cần hiểu ngay từ đầu: SWUpdate **không tự quyết định** phải làm gì. Mọi quyết định đều đến từ file `sw-description` bên trong gói update. SWUpdate chỉ đọc và thực thi chỉ dẫn đó.
+Điều quan trọng cần hiểu ngay từ đầu: SWUpdate không tự quyết định phải làm gì. Mọi quyết định đều đến từ file `sw-description` bên trong gói update. SWUpdate chỉ đọc và thực thi chỉ dẫn đó.
 
-### 2.2. Kiến trúc
+### 2.2. Cơ chế hoạt động
 
-SWUpdate hoạt động theo mô hình pipeline — dữ liệu đi qua được xử lý tuần tự:
+SWUpdate engine hoạt động theo mô hình pipeline — dữ liệu đi qua được xử lý tuần tự:
 
 ```
 File .swu đến BBB
       │
       ▼
 [1] SWUpdate mở cpio archive
-      │ đọc sw-description (file đầu tiên)
+      │ đọc sw-description
       ▼
 [2] Parse & Validate
       │ kiểm tra hardware-compatibility
@@ -84,6 +84,7 @@ File .swu đến BBB
       │ tính sha256 từng artifact
       │ so sánh với giá trị trong sw-description
       │ không khớp -> abort
+      │ (Nếu có signing thì verify chữ ký ở bước này)
       ▼
 [4] Chạy pre-install script (nếu có)
       ▼
@@ -95,38 +96,29 @@ File .swu đến BBB
 [7] Reboot
 ```
  
-### 2.3. File `.swu` — cpio archive
- 
+### 2.3. File .swu
+
 File `.swu` thực chất là cpio archive, đây là một định dạng lưu trữ nhiều file vào một file duy nhất, tương tự zip nhưng đơn giản hơn và phù hợp với streaming:
 
 ```
 update.swu  (cpio archive)
-├── sw-description        <- bắt buộc, phải là file đầu tiên
-├── sw-description.sig    <- chữ ký (bỏ qua vì lab)
-├── zImage                <- kernel
-├── am335x-boneblack.dtb
-└── switch-slot.sh
-```
-
-Mỗi file `.swu` bắt buộc phải có `sw-description` — không có file này SWUpdate từ chối xử lý gói. File này sẽ mô tả cho SWUpdate biết phải làm gì với những file có trong gói update này.
-
-Khi SWUpdate đọc file `.swu`, nó phân loại các file bên trong thành hai nhóm:
-
-```
-Các file trong .swu
         │
-        ├── sw-description  ->  manifest (đặc biệt, luôn đọc trước)
+        ├── sw-description      <- manifest (đặc biệt, luôn đọc trước)
         │
-        └── các file còn lại  ->  gọi chung là "artifact"
+        ├── sw-description.sig  <- signature (optional)
+        │
+        └── các file còn lại    <- gọi chung là artifact
                 │
                 ├── images      (kernel, rootfs, firmware binary...)
                 ├── files       (config file, text file thông thường...)
                 └── scripts     (shell script, lua script...)
 ```
 
-$\rightarrow$ Nói đơn giản: artifact nghĩa là bất kỳ file nào trong `.swu` trừ `sw-description`, tức là các thứ cần được xử lý và cài đặt lên thiết bị.
+**Artifact là gì?**
 
-Từ này xuất phát từ quy trình build — các file như `zImage`, `.dtb`, `rootfs.ext4` là sản phẩm đầu ra (artifact) của quá trình build hệ thống. Yocto cũng dùng thuật ngữ này:
+Artifact nghĩa là bất kỳ file nào trong `.swu` trừ `sw-description`, tức là các thứ cần được xử lý và cài đặt lên thiết bị.
+
+Từ này xuất phát từ quy trình build. các file như `zImage`, `.dtb`, `rootfs.ext4` là sản phẩm đầu ra (artifact) của quá trình build hệ thống. Yocto cũng dùng thuật ngữ này:
 
 ```
 bitbake core-image-minimal
@@ -138,6 +130,8 @@ tmp/deploy/images/beaglebone/
     ├── core-image-minimal.ext4   <- build artifact
     └── MLO, u-boot.img...        <- build artifact
 ```
+
+**Các lệnh cpio**
 
 Ta có thể dùng lệnh sau để biết tất cả các file có trong `.swu` mà không phải giải nén:
 
@@ -160,7 +154,7 @@ cpio -idv < ../your-image.swu
 
 Sau khi extract, ta sẽ thấy các file điển hình như `sw-description`, các image, script,...
 
-### 2.4. `sw-description` — trái tim của gói update
+### 2.4. File sw-description
  
 `sw-description` là file manifest — nó mô tả toàn bộ ý định của gói update. Không có nó, `.swu` chỉ là một đống byte vô nghĩa.
 
@@ -191,32 +185,33 @@ software = {
 
 **Vai trò 3 — Định nghĩa thứ tự:** `pre-install` script chạy trước khi flash, `switch-slot` script chạy sau — thứ tự này không thể đảo ngược.
 
-### 2.5. Handler — người thực thi
+### 2.5. Handler
  
-Mỗi artifact trong `sw-description` có một trường `type` — trường này quyết định handler nào được gọi để xử lý artifact đó. Handler là các module C được compile vào SWUpdate binary (kiểm soát qua `defconfig`).
+SWUpdate đọc từng entry trong `sw-description` và gọi handler tương ứng để xử lý. Handler là các module bên trong SWUpdate, mỗi loại biết cách ghi một kiểu dữ liệu.
 
-Các handler phổ biến với BBB:
+Các handler phổ biến:
 
 | `type` | Cách hoạt động | Dùng khi nào |
 |---|---|---|
 | `rawfile` | Ghi file vào path trên filesystem | Ghi kernel/DTB vào FAT partition |
-| `raw` | Ghi raw bytes thẳng vào block device | Flash toàn bộ rootfs image |
+| `raw` | Ghi raw byte trực tiếp vào block device | Flash toàn bộ rootfs image |
 | `shellscript` | Chạy shell script | switch-slot, pre-install |
+| `lua` | Chạy Lua script | Logic phức tạp, xử lý điều kiện |
+| `archive` | Giải nén tar archive vào filesystem | Update nhiều file cùng lúc |
 | `ubivol` | Ghi vào UBI volume | NAND flash (không dùng trên BBB) |
 
-Ví dụ minh họa sự khác biệt giữa `rawfile` và `raw`:
+SWUpdate không giải nén toàn bộ `.swu` ra disk rồi mới xử lý. Thay vào đó, nó đọc CPIO archive tuần tự, gặp file nào thì gọi handler tương ứng. Vì vậy thiết bị chỉ có vài MB RAM vẫn update được image hàng trăm MB.
 
 ```
-rawfile handler:
-  mount /dev/mmcblk0p1        <- mount FAT partition
-  open("/boot/zImageB", "w")  <- mở file đích
-  stream data -> file         <- ghi vào file
-  umount                      <- unmount
- 
-raw handler:
-  open("/dev/mmcblk0p3", "w") <- mở thẳng block device
-  stream data -> device       <- ghi byte-by-byte như dd
-  (không cần mount)
+.swu
+    │
+    ├── sw-description ──► parse, verify
+    │
+    ├── rootfs.ext4.gz ──► raw handler ──► decompress ──► write /dev/mmcblk0p3
+    │
+    ├── app-config.tar ──► archive handler ──► extract vào /mnt/data/
+    │
+    └── post_update.sh ──► shellscript handler ──► execute
 ```
 
 ### 2.6. Nơi lưu log của SWUpdate
@@ -284,11 +279,11 @@ Thực tế khi ta dùng curl upload `.swu`:
 ```
 curl -X POST http://<BBB_IP>:8080/upload -F "file=@update.swu"
       │
-      │  Web server nhận file
+      │  SWUpdate nhận file
       ▼
 /var/lib/swupdate/sockinstall
       │
-      │  gửi path file .swu qua socket
+      │  gửi file .swu qua socket
       ▼
 SWUpdate daemon xử lý update
 ```
@@ -305,6 +300,237 @@ swupdate-progress -s /var/lib/swupdate/progress
 # [=====     ] 50% - Flashing zImage...
 # [========  ] 80% - Running switch-slot script...
 # [==========] 100% - Done. Rebooting...
+```
+
+### 2.7. SWUpdate IPC socket
+
+SWUpdate sử dụng UNIX Domain Socket làm cơ chế giao tiếp IPC. Đây không phải network socket (TCP/UDP) mà là socket nội bộ trên cùng một máy, giao tiếp qua file system, tốc độ rất nhanh và không cần network stack.
+
+SWUpdate khi chạy tạo hai socket, mỗi cái phục vụ mục đích khác nhau:
+`/tmp/sockinstctrl` — control socket: Dùng để gửi lệnh điều khiển tới SWUpdate: bảo nó install file `.swu`, hủy update hoặc gửi file data.
+`/tmp/swupdateprog` — progress socket. Dùng để nhận thông tin progress: phần trăm, trạng thái, error message. Đây là socket read-only, chỉ để theo dõi.
+
+Trong phần này ta sẽ tập trung vào progress socket. Bất kỳ chương trình nào cũng có thể kết nối vào socket này để nhận realtime message.
+
+```
+SWUpdate daemon
+    │
+    │ ghi progress vào socket
+    ▼
+UNIX domain socket /tmp/swupdateprog
+    │
+    ├──► progress client (CLI tool)
+    ├──► custom application (C/Lua/Python)
+    └──► web UI
+```
+
+SWUpdate đi kèm tool `swupdate-progress` để đọc progress từ socket, cái này chính là progress client có sẵn.
+
+Mỗi message từ socket chứa struct `progress_msg`. Đây là struct C mà SWUpdate gửi qua socket mỗi khi có cập nhật tiến trình. Được định nghĩa trong header `include/progress_ipc.h` của source SWUpdate:
+
+```c
+/*
+ * Định nghĩa trong SWUpdate source code
+ * File: include/progress_ipc.h
+ */
+
+typedef enum {
+    IDLE,           /* 0 - Không có update nào đang chạy */
+    START,          /* 1 - Bắt đầu update */
+    RUN,            /* 2 - Đang cài đặt */
+    SUCCESS,        /* 3 - Cài đặt thành công */
+    FAILURE,        /* 4 - Cài đặt thất bại */
+    DOWNLOAD,       /* 5 - Đang download từ server */
+    DONE,           /* 6 - Toàn bộ quy trình kết thúc */
+    SUBPROCESS,     /* 7 - Đang chạy sub-process */
+    PROGRESS,       /* 8 - Cập nhật % tiến trình */
+} RECOVERY_STATUS;
+
+typedef enum {
+    SOURCE_UNKNOWN,
+    SOURCE_WEBSERVER,     /* Upload qua web UI */
+    SOURCE_SURICATTA,     /* Từ hawkBit server */
+    SOURCE_DOWNLOADER,    /* Download từ URL */
+    SOURCE_LOCAL,         /* Từ file local (USB, CLI) */
+    SOURCE_CHUNKS_DOWNLOADER,
+} sourcetype;
+
+struct progress_msg {
+    unsigned int magic;          /* 4 bytes - Magic number 0x14052001 */
+    unsigned int status;         /* 4 bytes - RECOVERY_STATUS enum */
+    unsigned int dwl_percent;    /* 4 bytes - % download (0-100) */
+    unsigned int nsteps;         /* 4 bytes - Tổng số bước install */
+    unsigned int cur_step;       /* 4 bytes - Bước hiện tại (1-based) */
+    unsigned int cur_percent;    /* 4 bytes - % hoàn thành bước hiện tại */
+    char         cur_image[256]; /* 256 bytes - Tên file đang xử lý */
+    char         hnd_name[64];   /* 64 bytes - Tên handler đang dùng */
+    sourcetype   source;         /* 4 bytes - Nguồn update */
+    unsigned int infolen;        /* 4 bytes - Độ dài info string phía sau */
+    /* Nếu infolen > 0, theo sau struct là info string dài infolen bytes */
+};
+```
+
+Ý nghĩa từng trường:
+
+| Trường | Ý nghĩa |
+| --- | --- |
+| magic | Dùng để xác nhận đây đúng là message từ SWUpdate.<br>Client nên kiểm tra magic trước khi xử lý. |
+| status | Trạng thái hiện tại của quá trình update.<br>Đây là trường quan trọng nhất để biết update đang ở phase nào. |
+| dwl_percent | Phần trăm download.<br>Chỉ có ý nghĩa khi `status == DOWNLOAD`.<br>Khi install từ local file, giá trị này không dùng. |
+| nsteps | Tổng số step trong quá trình install.<br>Mỗi image/script trong `sw-description` là một step.<br>Ví dụ: Ví dụ: `sw-description` có 1 rootfs + 1 script -> nsteps = 2 |
+| cur_step | Step đang thực hiện. Chạy từ 1 đến nsteps |
+| cur_percent | Phần trăm hoàn thành của bước hiện tại.<br>Ví dụ: đang ghi rootfs 500MB, đã ghi 250MB → cur_percent = 50 |
+| cur_image | Tên file đang được xử lý.<br>Ví dụ: `rootfs.ext4.gz`, `post_update.sh` |
+| hnd_name | Tên handler đang xử lý file này.<br>Ví dụ: `raw`, `rawfile`, `shellscript` |
+| source | Cho biết `.swu` đến từ đâu (web UI, hawkBit, local...) |
+| infolen | Nếu > 0, theo sau struct sẽ có thêm một chuỗi info dài `infolen` byte.<br>Thường chứa thông tin bổ sung như error message. |
+
+Vòng đời trạng thái `status` của message sẽ chia thành các phase như sau:
+
+Luồng 1: Update local
+
+```
+IDLE → START → RUN → SUCCESS → DONE
+                 │
+                 └──► FAILURE → DONE
+```
+
+Luồng 2: OTA update
+
+```
+IDLE ──► START ──► DOWNLOAD ──► RUN ──► SUCCESS ──► DONE
+                                 │
+                                 └────► FAILURE ──► DONE
+```
+
+Mỗi phase ta nên đọc trường nào:
+
+```
+IDLE       -> không cần đọc gì
+START      -> đọc nsteps                            -> biết tổng bao nhiêu step
+DOWNLOAD   -> đọc dwl_percent                       -> download được bao nhiêu %
+RUN        -> đọc cur_step, cur_percent, cur_image  -> đang ghi file gì, bao nhiêu %
+SUCCESS    -> không cần đọc gì
+FAILURE    -> đọc infolen để lấy error message      -> lỗi gì
+DONE       -> không cần đọc gì
+```
+
+Giả sử ta có board tên imx6-myboard, đang chạy firmware v1.0.0, muốn update lên v2.0.0. File `.swu` chứa:
+
+```
+my-update-v2.0.0.swu
+│
+├── sw-description        (1 KB)    — mô tả bản update
+├── sw-description.sig    (256 B)   — chữ ký RSA
+├── rootfs.ext4.gz        (150 MB)  — rootfs mới, đã nén
+├── zImage                (5 MB)    — kernel mới
+└── update_config.sh      (2 KB)    — script cập nhật config
+```
+
+Thì chuỗi message sẽ như sau:
+
+```
+Msg 1:  IDLE                                            -> Đang chờ, chưa có update
+
+Msg 2:  START                                           -> server báo có bản mới v2.0.0
+                                                           Parse sw-description OK
+                                                           Signature OK, HW compatible OK
+
+Msg 3:  DOWNLOAD, dwl_percent=0%                        -> Bắt đầu tải .swu (155MB)
+Msg 4:  DOWNLOAD, dwl_percent=15%                       -> Đã tải 23MB / 155MB
+Msg 5:  DOWNLOAD, dwl_percent=42%                       -> Đã tải 65MB / 155MB
+Msg 6:  DOWNLOAD, dwl_percent=78%                       -> Đã tải 121MB / 155MB
+Msg 7:  DOWNLOAD, dwl_percent=100%                      -> Tải xong, bắt đầu cài
+
+Msg 8:  RUN, step 1/3,   0%, "rootfs.ext4.gz" (raw)     -> Bắt đầu ghi rootfs vào /dev/mmcblk0p3
+Msg 9:  RUN, step 1/3,  25%, "rootfs.ext4.gz" (raw)     -> Đã ghi 37MB / 150MB
+Msg 10: RUN, step 1/3,  50%, "rootfs.ext4.gz" (raw)     -> Đã ghi 75MB / 150MB
+Msg 11: RUN, step 1/3,  75%, "rootfs.ext4.gz" (raw)     -> Đã ghi 112MB / 150MB
+Msg 12: RUN, step 1/3, 100%, "rootfs.ext4.gz" (raw)     -> Ghi rootfs xong!
+
+Msg 13: RUN, step 2/3,   0%, "zImage" (rawfile)         -> Bắt đầu copy kernel vào /boot/zImage
+Msg 14: RUN, step 2/3, 100%, "zImage" (rawfile)         -> Copy kernel xong (5MB, nhanh)
+
+Msg 15: RUN, step 3/3,   0%, "update_config.sh" (shell) -> Bắt đầu chạy script cập nhật config
+Msg 16: RUN, step 3/3, 100%, "update_config.sh" (shell) -> Script chạy xong, exit code 0
+
+Msg 17: SUCCESS                                         -> Tất cả 3 bước OK, đã cập nhật U-Boot env
+                                                           boot_partition=B, upgrade_available=1
+
+Msg 18: DONE                                            -> Kết thúc. Chờ reboot để kích hoạt v2.0.0
+                                                           Suricatta báo hawkBit: SUCCESS
+```
+
+Từ đây, ta có thể tự viết một custom application như sau:
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <unistd.h>
+#include <progress_ipc.h>
+
+int main(int argc, char *argv[])
+{
+    /*
+     * true = chờ cho đến khi SWUpdate daemon sẵn sàng
+     * Nếu daemon chưa chạy, hàm này sẽ block ở đây
+     */
+    int fd = progress_ipc_connect(true);
+    if (fd < 0) {
+        fprintf(stderr, "Không thể kết nối tới SWUpdate\n");
+        return EXIT_FAILURE;
+    }
+
+    printf("Đã kết nối. Đang chờ update...\n\n");
+
+    // Nhận từng message
+    struct progress_msg msg;
+    while (1) {
+        int ret = progress_ipc_receive(&fd, &msg);
+
+        /*
+         * Nếu receive thất bại (daemon bị kill, socket đóng),
+         * thử kết nối lại
+         */
+        if (ret != sizeof(msg)) {
+            printf("\nMất kết nối, đang thử lại...\n");
+            close(fd);
+            sleep(1);
+            fd = progress_ipc_connect(true);
+            continue;
+        }
+
+        switch (msg.status) {
+            case IDLE:
+                /* Do something */ 
+                break;
+            
+            case START:
+                /* Do something */ 
+                break;
+
+            case RUN:
+                /* Do something */ 
+                break;
+            
+            case SUCCESS:
+                /* Do something */ 
+                break;
+            
+            case FAILURE:
+                /* Do something */ 
+                break;
+            
+            case DONE:
+                /* Do something */ 
+                break;
+            
+            default:
+                break;
+        }
+    }
+}
 ```
 
 ## 3. Các bước xây dựng OTA layer với SWUpdate cho BBB
@@ -1424,3 +1650,26 @@ fw_printenv boot_count    # phải là 0
 # Đang mount rootA chưa?
 lsblk -o NAME,LABEL,FSTYPE,MOUNTPOINT
 ```
+
+## 5. OTA management server
+
+Ta đã biết, khi muốn update thì ta cần mở web UI của SWUpdate trên chính BBB rồi upload file `.swu` lên. Tuy nhiên, cách này cần phải biết IP từng board và thao tác thủ công trên từng thiết bị. Do đó, ở phần này, ta sẽ đi tìm hiểu một cách khác để thực hiện update hiểu qua hơn.
+
+Thay vì ta chủ động mở web UI để update thì ta sẽ cho BBB định kỳ kiểm tra version trên server xem có version mới không, nếu có thì nó sẽ thực hiện tải file `.swu` trên server về rồi đưa cho SWUpdate xử lý.
+
+Để làm được điều này thì ta cần:
+
+**Phía server:**
+- Cung cấp file `version.json` để device biết version mới nhất là gì
+- Và file `.swu` để device tải về khi cần update
+
+**Phía client:**
+- Một systemd timer chạy mỗi 5 phút, trigger một shell script
+- Shell script này sẽ thực hiện:
+  + Đọc version hiện tại từ file `/etc/sw-version` trên device.
+  + `curl` lấy `version.json` từ server và parse ra version mới nhất
+  + So sánh hai version string: Nếu giống nhau thì dừng, không làm gì
+  + Nếu server version mới hơn thì script có thể thực hiện gọi `swupdate` bằng một trong hai cách sau:
+    + Cách 1: Đưa URL trực tiếp cho `swupdate`
+    + Cách 2: Tải `.swu` về rồi mới gọi `swupdate` để install.
+  + SWUpdate flash vào slot inactive, set U-Boot env để boot sang slot mới
