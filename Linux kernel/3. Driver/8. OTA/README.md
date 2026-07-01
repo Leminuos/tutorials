@@ -156,9 +156,9 @@ Sau khi extract, ta sẽ thấy các file điển hình như `sw-description`, c
 
 ### 2.4. File sw-description
  
-`sw-description` là file manifest — nó mô tả toàn bộ ý định của gói update. Không có nó, `.swu` chỉ là một đống byte vô nghĩa.
+`sw-description` là file manifest, nó mô tả toàn bộ ý định của gói update. Không có nó, `.swu` chỉ là một đống byte vô nghĩa.
 
-File này dùng cú pháp **libconfig** — cú pháp dạng block có cấu trúc rõ ràng:
+File này dùng cú pháp **libconfig**, đây là một cú pháp dạng block có cấu trúc rõ ràng:
 
 ```
 software = {
@@ -177,13 +177,13 @@ software = {
 }
 ```
 
-`sw-description` đóng ba vai trò cốt lõi:
-
-**Vai trò 1 — Kiểm soát điều kiện:** Trước khi làm bất cứ điều gì, SWUpdate đọc `hardware-compatibility` và so sánh với hardware hiện tại (lấy từ `/etc/hwrevision`). Đây là lớp bảo vệ tránh flash nhầm firmware lên sai thiết bị.
-
-**Vai trò 2 — Mô tả nội dung:** Mỗi artifact được mô tả kèm `type` (handler nào xử lý), `device` (flash vào đâu), `path` (đường dẫn đích), và `sha256` (để verify).
-
-**Vai trò 3 — Định nghĩa thứ tự:** `pre-install` script chạy trước khi flash, `switch-slot` script chạy sau — thứ tự này không thể đảo ngược.
+Các khái niệm cần nắm trong sw-description:
+- hardware-compatibility: danh sách phần cứng tương thích, SWUpdate sẽ từ chối nếu board không khớp.
+- version: so sánh version, tránh cài lại bản cũ hơn hoặc bản đang chạy.
+- images section: khai báo các image cần ghi như rootfs, kernel, dtb...Mỗi image được mô tả kèm `type` cho biết handler nào sẽ xử lý, `device` cho biết flash vào đâu, `path` cho biết đường dẫn đích và `sha256` dùng để verify image.
+- files section: khai báo các file đơn lẻ cần copy vào hệ thống.
+- scripts section: các script chạy trước hoặc sau khi cài.
+- embedded-script: Lua script nhúng trực tiếp trong sw-description để xử lý logic phức tạp (ví dụ: chọn partition động).
 
 ### 2.5. Handler
  
@@ -307,8 +307,8 @@ swupdate-progress -s /var/lib/swupdate/progress
 SWUpdate sử dụng UNIX Domain Socket làm cơ chế giao tiếp IPC. Đây không phải network socket (TCP/UDP) mà là socket nội bộ trên cùng một máy, giao tiếp qua file system, tốc độ rất nhanh và không cần network stack.
 
 SWUpdate khi chạy tạo hai socket, mỗi cái phục vụ mục đích khác nhau:
-`/tmp/sockinstctrl` — control socket: Dùng để gửi lệnh điều khiển tới SWUpdate: bảo nó install file `.swu`, hủy update hoặc gửi file data.
-`/tmp/swupdateprog` — progress socket. Dùng để nhận thông tin progress: phần trăm, trạng thái, error message. Đây là socket read-only, chỉ để theo dõi.
+- `/tmp/sockinstctrl` — control socket: Dùng để gửi lệnh điều khiển tới SWUpdate: bảo nó install file `.swu`, hủy update hoặc gửi file data.
+- `/tmp/swupdateprog` — progress socket. Dùng để nhận thông tin progress: phần trăm, trạng thái, error message. Đây là socket read-only, chỉ để theo dõi.
 
 Trong phần này ta sẽ tập trung vào progress socket. Bất kỳ chương trình nào cũng có thể kết nối vào socket này để nhận realtime message.
 
@@ -374,16 +374,16 @@ struct progress_msg {
 
 | Trường | Ý nghĩa |
 | --- | --- |
-| magic | Dùng để xác nhận đây đúng là message từ SWUpdate.<br>Client nên kiểm tra magic trước khi xử lý. |
-| status | Trạng thái hiện tại của quá trình update.<br>Đây là trường quan trọng nhất để biết update đang ở phase nào. |
-| dwl_percent | Phần trăm download.<br>Chỉ có ý nghĩa khi `status == DOWNLOAD`.<br>Khi install từ local file, giá trị này không dùng. |
-| nsteps | Tổng số step trong quá trình install.<br>Mỗi image/script trong `sw-description` là một step.<br>Ví dụ: Ví dụ: `sw-description` có 1 rootfs + 1 script -> nsteps = 2 |
-| cur_step | Step đang thực hiện. Chạy từ 1 đến nsteps |
-| cur_percent | Phần trăm hoàn thành của bước hiện tại.<br>Ví dụ: đang ghi rootfs 500MB, đã ghi 250MB → cur_percent = 50 |
-| cur_image | Tên file đang được xử lý.<br>Ví dụ: `rootfs.ext4.gz`, `post_update.sh` |
-| hnd_name | Tên handler đang xử lý file này.<br>Ví dụ: `raw`, `rawfile`, `shellscript` |
-| source | Cho biết `.swu` đến từ đâu (web UI, hawkBit, local...) |
-| infolen | Nếu > 0, theo sau struct sẽ có thêm một chuỗi info dài `infolen` byte.<br>Thường chứa thông tin bổ sung như error message. |
+| `magic` | Dùng để xác nhận đây đúng là message từ SWUpdate.<br>Client nên kiểm tra magic trước khi xử lý. |
+| `status` | Trạng thái hiện tại của quá trình update.<br>Đây là trường quan trọng nhất để biết update đang ở phase nào. |
+| `dwl_percent` | Phần trăm download.<br>Chỉ có ý nghĩa khi `status == DOWNLOAD`.<br>Khi install từ local file, giá trị này không dùng. |
+| `nsteps` | Tổng số step trong quá trình install.<br>Mỗi image/script trong `sw-description` là một step.<br>Ví dụ: Ví dụ: `sw-description` có 1 rootfs + 1 script -> nsteps = 2 |
+| `cur_step` | Step đang thực hiện. Chạy từ 1 đến nsteps |
+| `cur_percent` | Phần trăm hoàn thành của bước hiện tại.<br>Ví dụ: đang ghi rootfs 500MB, đã ghi 250MB → cur_percent = 50 |
+| `cur_image` | Tên file đang được xử lý.<br>Ví dụ: `rootfs.ext4.gz`, `post_update.sh` |
+| `hnd_name` | Tên handler đang xử lý file này.<br>Ví dụ: `raw`, `rawfile`, `shellscript` |
+| `source` | Cho biết `.swu` đến từ đâu (web UI, hawkBit, local...) |
+| `infolen` | Nếu > 0, theo sau struct sẽ có thêm một chuỗi info dài `infolen` byte.<br>Thường chứa thông tin bổ sung như error message. |
 
 Vòng đời trạng thái `status` của message sẽ chia thành các phase như sau:
 
@@ -1673,3 +1673,568 @@ Thay vì ta chủ động mở web UI để update thì ta sẽ cho BBB định 
     + Cách 1: Đưa URL trực tiếp cho `swupdate`
     + Cách 2: Tải `.swu` về rồi mới gọi `swupdate` để install.
   + SWUpdate flash vào slot inactive, set U-Boot env để boot sang slot mới
+
+## 6. Signature 
+
+## 7. Hawkbit server
+
+### 7.1. Tổng quan
+
+[Eclipse hawkBit](https://hawkbit.eclipse.dev/) là một backend server open source dùng để quản lý việc update firmware OTA cho các thiết bị IoT, nhúng, gateway và edge controller.
+
+hawkBit không trực tiếp ghi firmware vào flash của thiết bị. Nó chịu trách nhiệm ở phía server:
+- Quản lý danh sách thiết bị.
+- Lưu metadata và artifact của các software version.
+- Chỉ định thiết bị nào được nhận phiên bản nào.
+- Điều phối việc cập nhật theo từng nhóm.
+- Theo dõi tiến trình, kết quả và lịch sử cập nhật.
+- Cung cấp API để thiết bị hoặc hệ thống quản trị tích hợp.
+
+Phía thiết bị vẫn cần một update agent như SWUpdate/Suricatta, RAUC client hoặc agent tự phát triển để tải artifact, kiểm tra, cài đặt, reboot, rollback và gửi kết quả về hawkBit.
+
+### 7.1. Kiến trúc hawkBit
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    hawkBit Server                       │
+│                                                         │
+│  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐   │
+│  │  Management │  │  Software    │  │   Rollout     │   │
+│  │  UI (Web)   │  │  Repository  │  │   Engine      │   │
+│  └──────┬──────┘  └──────┬───────┘  └───────┬───────┘   │
+│         │                │                   │          │
+│  ┌──────▼────────────────▼───────────────────▼───────┐  │
+│  │              hawkBit Core                         │  │
+│  │  - Target Management (quản lý thiết bị)           │  │
+│  │  - Distribution Set Management (quản lý firmware) │  │
+│  │  - Action Management (quản lý lệnh update)        │  │
+│  └──────────────────┬────────────────────────────────┘  │
+│                     │                                   │
+│  ┌──────────────────▼───────────────────────────────┐   │
+│  │              APIs                                │   │
+│  │  DDI API ──── cho thiết bị (SWUpdate/Suricatta)  │   │
+│  │  Management API ── cho admin (UI hoặc CI/CD)     │   │
+│  └──────────────────┬───────────────────────────────┘   │
+│                     │                                   │
+│  ┌──────────────────▼──────────────────┐                │
+│  │  Database (MySQL/PostgreSQL/H2)     │                │
+│  └─────────────────────────────────────┘                │
+└─────────────────────────────────────────────────────────┘
+         │ DDI API                    │ Management API
+         ▼                            ▼
+┌─────────────────┐          ┌─────────────────┐
+│   Device 1      │          │   Admin / CI/CD │
+│   (SWUpdate +   │          │   Dashboard     │
+│    Suricatta)   │          └─────────────────┘
+├─────────────────┤
+│   Device 2      │
+├─────────────────┤
+│   Device N      │
+└─────────────────┘
+```
+
+### 7.2. Các thành phần cốt lõi trong hawkBit
+
+#### 7.2.1. Target
+
+Target đại diện cho một thiết bị vật lý trong hệ thống hawkBit. Mỗi khi một thiết bị embedded kết nối tới hawkBit lần đầu, nó được đăng ký hoặc tự đăng ký thành một target.
+
+Mỗi target có một controller ID duy nhất, thường là serial number, MAC address hoặc UUID.
+
+hawkBit sẽ theo dõi trạng thái của từng target: đang chạy firmware phiên bản nào, update thành công hay thất bại, online hay offline.
+
+#### 7.2.2. Software Module
+
+Software module là đơn vị phần mềm nhỏ nhất trong hawkBit. Mỗi module là một thành phần phần mềm có version riêng, metadata và một hoặc nhiều file artifact.
+
+Các loại software module chính:
+- OS Module: chứ OS hoặc rootfs image.
+- Application Module: chứa ứng dụng chạy trên OS.
+- Firmware Module: chứa firmware cho các chip phụ trên board như MCU, WiFi module, BLE chip...
+
+Cấu trúc của Software Module:
+
+```
+Software Module
+├── Metadata
+│   ├── Name: "rootfs-image"
+│   ├── Version: "2.1.0"
+│   ├── Type: OS / Application / Firmware
+│   ├── Vendor: "My Company"
+│   └── Description: "Main rootfs for gateway product"
+│
+└── Artifacts
+    ├── gateway-rootfs-v2.1.0.swu    (142 MB)
+    ├── checksum: SHA256 = a1b2c3...
+    └── checksum: MD5 = x4y5z6...
+```
+
+Software Module là metadata phía server, trong đó **artifact** mới là file nhị phân thực tế được thiết bị tải xuống. Khi ta upload file `.swu` lên hawkBit, nó sẽ trở thành artifact. hawkBit tự tính và lưu checksum cho mỗi artifact, để thiết bị verify sau khi download.
+
+#### 7.2.3. Distribution Set
+
+Distribution Set là một bộ phần mềm hoàn chỉnh gồm một hoặc nhiều software module. Ví dụ một distribution set có thể gồm:
+- OS module (rootfs v2.1)
+- Application module (app v3.0)
+
+Đây là đơn vị mà ta sẽ assign cho thiết bị để update.
+
+**Tại sao cần Distribution Set?**
+
+Vì một thiết bị thường có nhiều software module cần update cùng lúc. Thay vì assign từng module riêng lẻ, ta gộp chúng thành một DS.
+
+```
+Distribution Set: Gateway Release v2.1
+Version: v2.1
+Type: gateway-release
+├── OS Module:          gateway-os v2.1.0
+├── Application Module: data-collector v3.5.2
+└── Firmware Module:    wifi-fw v1.2.0
+```
+
+**Distribution Set Type**
+
+Trước khi tạo DS, ta cần định nghĩa DS Type, template quy định DS chứa loại module nào. Đây là lớp ràng buộc quan trọng.
+
+```
+DS Type: gateway-full-update
+├── Mandatory: OS      (bắt buộc phải có 1 module loại OS)
+├── Mandatory: Application (bắt buộc phải có 1 module loại App)
+└── Optional:  Firmware    (có thể có hoặc không)
+
+DS Type: "app-only-update"  
+└── Mandatory: Application (chỉ cần module Application)
+```
+
+Khi tạo DS theo type `gateway-full-update`, hawkBit sẽ yêu cầu ta phải thêm ít nhất 1 OS module và 1 Application module. Nếu thiếu, DS không hợp lệ và không thể assign cho target.
+
+**Mối quan hệ giữa Target — Distribution Set — Software Module**
+
+```
+              assign
+Target ◄──────────────── Distribution Set
+  │                          │
+  │                          ├── Software Module (OS)
+  │                          │     └── Artifact (.swu)
+  │                          │
+  │                          ├── Software Module (App)
+  │                          │     └── Artifact (.swu)
+  │                          │
+  │                          └── Software Module (FW)
+  │                                └── Artifact (.swu)
+  │
+  │  Khi được assign, target sẽ:
+  │  1. Nhận thông báo có update
+  │  2. Download tất cả artifacts trong DS
+  │  3. Cài đặt từng artifact
+  │  4. Báo kết quả về hawkBit
+```
+
+**Ví dụ thực tế**
+
+Giả sử ta đang phát triển sản phẩm IoT gateway. Qua thời gian, ta release nhiều phiên bản:
+
+```
+DS: "Gateway Release v1.0" (phiên bản đầu tiên)
+├── gateway-os v1.0.0
+├── data-collector v1.0.0
+└── wifi-fw v1.0.0
+
+DS: "Gateway Release v1.1" (chỉ fix bug app)
+├── gateway-os v1.0.0          <- giữ nguyên
+├── data-collector v1.1.0      <- update
+└── wifi-fw v1.0.0             <- giữ nguyên
+
+DS: "Gateway Release v2.0" (update lớn)
+├── gateway-os v2.0.0          <- update
+├── data-collector v2.0.0      <- update
+└── wifi-fw v1.2.0             <- update
+```
+
+Thiết bị đang chạy v1.0 $\rightarrow$ assign DS v2.0 $\rightarrow$ thiết bị tải và cài tất cả module trong DS v2.0
+
+#### 7.2.4. Rollout
+
+Là một chiến dịch triển khai update cho một nhóm thiết bị. Rollout cho phép ta kiểm soát:
+- Target filter: chọn nhóm thiết bị nào được update (theo tag, type, hoặc query)
+- Group phasing: chia thành nhiều đợt, ví dụ 10% đầu tiên, rồi 30%, rồi 60% còn lại
+- Error threshold: nếu tỷ lệ thất bại vượt ngưỡng, tự động dừng rollout
+- Schedule: lên lịch thời điểm bắt đầu rollout
+
+Rollout là một chiến dịch phân phối một Distribution Set tới nhiều thiết bị một cách có kiểm soát. Thay vì assign DS cho từng target, rollout tự động hóa quá trình này.
+
+**Tại sao cần Rollout?**
+
+Giả sử ta có 10000 thiết bị ngoài thị trường, ta không muốn update tất cả cùng lúc vì:
+- Nếu firmware lỗi, tất cả 10.000 thiết bị đều bị ảnh hưởng
+- Server có thể quá tải khi 10.000 thiết bị đồng loạt download
+- Ta muốn quan sát kết quả đợt đầu trước khi tiếp tục update
+
+**Cấu trúc rollout**
+
+```
+Rollout: "Deploy Gateway v2.0 to Factory-A"
+│
+├── Distribution Set: "Gateway Release v2.0"
+│
+├── Target Filter: tag == factory-A and tag == production
+│   (match 5000 thiết bị)
+│
+├── Rollout Groups (chia thành nhiều đợt):
+│   │
+│   ├── Group 1: "Canary" 
+│   │   ├── 5% thiết bị (250 device)
+│   │   ├── Error threshold: 2% (nếu >5 thiết bị fail -> dừng)
+│   │   └── Trigger: bắt đầu ngay khi rollout start
+│   │
+│   ├── Group 2: "Early Adopters"
+│   │   ├── 20% thiết bị (1000 device)
+│   │   ├── Error threshold: 5%
+│   │   └── Trigger: bắt đầu sau khi Group 1 hoàn thành thành công
+│   │
+│   └── Group 3: "Remaining"
+│       ├── 75% thiết bị (3750 device)
+│       ├── Error threshold: 5%
+│       └── Trigger: bắt đầu sau khi Group 2 hoàn thành thành công
+│
+└── Schedule: Start ngày 2025-01-15 lúc 02:00 AM (giờ ít traffic)
+```
+
+**Rollout Group Phasing**
+
+Mỗi rollout group có các thuộc tính:
+- Percentage: phần trăm thiết bị trong group này.
+- Success condition: điều kiện để group được coi là thành công. Ví dụ: 95% thiết bị trong group báo success.
+- Success action: hành động khi group thành công. Thường là chuyển sang group tiếp theo.
+- Error condition: điều kiện lỗi. Ví dụ: hơn 5% thiết bị báo failure.
+- Error action: hành động khi vượt ngưỡng lỗi. Thường là tạm dừng rollout để admin kiểm tra.
+
+```
+Luồng hoạt động của Rollout:
+
+  START
+    │
+    ▼
+  Group 1 (Canary 5%)
+    │
+    ├── Thiết bị poll -> nhận update -> install -> báo kết quả
+    │
+    ├── 248/250 success, 2/250 fail -> fail rate 0.8% < 2% threshold
+    │   -> Success condition
+    │   -> Trigger Group 2
+    │
+    ▼
+  Group 2 (Early Adopters 20%)
+    │
+    ├── 950/1000 success, 50/1000 fail -> fail rate 5% = 5% threshold
+    │   -> Error condition!
+    │   -> PAUSE rollout
+    │   -> Admin nhận notification
+    │   -> Admin kiểm tra: lỗi do firmware hay do mạng?
+    │
+    ├── [Nếu admin quyết định tiếp tục] -> Resume -> Group 3
+    └── [Nếu admin quyết định hủy] -> Cancel rollout
+```
+
+#### 7.2.5. Action
+
+Khi một distribution set được assign cho một target, hawkBit tạo ra một action. Đây là đơn vị theo dõi nhỏ nhất của quá trình cập nhật.
+
+Vòng đời của action:
+
+```
+                    hawkBit tạo action
+                          │
+                          ▼
+                    ┌─────────┐
+                    │ WAITING │  (chờ thiết bị poll)
+                    └────┬────┘
+                         │  thiết bị poll, nhận được action
+                         ▼
+                    ┌─────────┐
+                    │ RUNNING │  (thiết bị đang download + install)
+                    └────┬────┘
+                         │
+              ┌──────────┼──────────┐
+              ▼          ▼          ▼
+        ┌──────────┐ ┌───────┐ ┌──────────┐
+        │ FINISHED │ │ ERROR │ │ CANCELED │
+        └──────────┘ └───────┘ └──────────┘
+```
+
+Các action type phổ biến:
+
+| Action type | Ý nghĩa |
+| --- | --- |
+| Forced | thiết bị phải cài ngay khi nhận được. Không cho phép trì hoãn. |
+| Soft | thiết bị nhận thông báo có update, nhưng có thể trì hoãn. Thiết bị quyết định khi nào cài. |
+| Download Only | thiết bị chỉ download, chưa cài. Khi admin sẵn sàng, gửi thêm lệnh cài đặt. Hữu ích khi muốn pre-download để giảm downtime. |
+| Time Forced | soft trước một thời điểm nhất định, sau thời điểm đó chuyển thành forced. Ví dụ: cho phép trì hoãn đến 23:00, sau 23:00 bắt buộc cài. |
+
+### 7.3. Các API
+
+hawkBit có ba nhóm API chính: DDI, Management và DMF. Phạm vi tài liệu này tập trung vào DDI và Management.
+
+| API | Client | Giao thức | Mục đích |
+|---|---|---|---|
+| DDI | Update agent trên thiết bị | HTTP/JSON, polling | Nhận deployment, tải artifact, gửi feedback/attributes |
+| Management | UI, admin tool, CI/CD | REST/JSON | CRUD Target, module, DS, rollout và theo dõi Action |
+| DMF | Device management platform | AMQP/RabbitMQ | Tích hợp gián tiếp, bất đồng bộ |
+
+#### 7.3.1. DDI API (Device Device Integration)
+
+Đây là API sử dụng giao thức RESTful mà thiết bị gọi tới hawkBit.
+
+Luồng giao tiếp cơ bản:
+
+```
+Device                              hawkBit
+  │                                    │
+  │──── GET /controller/v1/{id} ──────▶│  (poll: có update không?)
+  │◀─── Response: deploymentBase ──────│  (có update mới!)
+  │                                    │
+  │──── GET /deploymentBase/{id} ─────▶│  (lấy chi tiết update)
+  │◀─── Response: artifacts list ──────│
+  │                                    │
+  │──── GET /softwaremodules/.../      │
+  │     artifacts/{filename} ─────────▶│  (download .swu file)
+  │◀─── Binary stream ─────────────────│
+  │                                    │
+  │──── POST /deploymentBase/{id}/     │
+  │     feedback ─────────────────────▶│  (báo kết quả: success/fail)
+  │                                    │
+```
+
+**Polling vs Push:**
+- Polling: thiết bị gọi API định kỳ (mặc định mỗi 5 phút) để hỏi có update mới không
+- Push: dùng AMQP message broker để push thông báo tới thiết bị. Real-time hơn nhưng phức tạp hơn về hạ tầng.
+
+#### 7.3.2. Management API
+
+API REST cho admin hoặc hệ thống CI/CD, dùng để:
+- Tạo/quản lý target, software module, distribution set
+- Tạo và giám sát rollout
+- Query trạng thái thiết bị
+- Upload artifact
+
+Có thể tích hợp vào pipeline CI/CD: sau khi Yocto build xong file `.swu`, script tự động upload lên hawkBit và tạo rollout.
+
+### 7.4. Deploy hawkBit
+
+**Clone repo chính thức**
+
+```bash
+git clone https://github.com/eclipse-hawkbit/hawkbit.git
+cd hawkbit/docker
+```
+
+Xem cấu trúc thư mục docker, bạn sẽ thấy nhiều file compose có sẵn:
+
+```
+docker/
+├── mysql
+│   ├── docker-compose-deps-mysql.yml
+│   ├── docker-compose-micro-services-dbinit-mysql.yml
+│   ├── docker-compose-micro-services-dbinit-with-ui-mysql.yml
+│   ├── docker-compose-micro-services-mysql.yml
+│   ├── docker-compose-micro-services-with-ui-mysql.yml
+│   ├── docker-compose-monolith-dbinit-mysql.yml
+│   ├── docker-compose-monolith-mysql.yml
+│   ├── docker-compose-monolith-with-ui-dbinit-mysql.yml
+│   └── docker-compose-monolith-with-ui-mysql.yml
+├── postgres
+│   ├── docker-compose-deps-postgres.yml
+│   ├── docker-compose-micro-services-dbinit-postgres.yml
+│   ├── docker-compose-micro-services-dbinit-with-ui-postgres.yml
+│   ├── docker-compose-micro-services-postgres.yml
+│   ├── docker-compose-micro-services-with-ui-postgres.yml
+│   ├── docker-compose-monolith-dbinit-postgres.yml
+│   ├── docker-compose-monolith-dbinit-with-ui-postgres.yml
+│   ├── docker-compose-monolith-postgres.yml
+│   └── docker-compose-monolith-with-ui-postgres.yml
+└── README.md
+```
+
+**Chọn file compose phù hợp**
+
+Ta cần đưa ra 3 lựa chọn:
+- Database: MySQL hay PostgreSQL?
+- Architecture: Monolith hay microservice?
+- UI: Có Simple UI hay không?
+
+```bash
+# Monolith + MySQL + Simple UI (khuyến nghị cho dev/test)
+docker compose -f mysql/docker-compose-monolith-with-ui-mysql.yml up -d
+
+# Hoặc nếu thích PostgreSQL:
+docker compose -f postgres/docker-compose-monolith-with-ui-postgres.yml up -d
+```
+
+Kiểm tra service:
+
+```bash
+# Xem trạng thái containers
+docker compose -f mysql/docker-compose-monolith-with-ui-mysql.yml ps
+
+# Xem logs hawkBit
+docker compose -f mysql/docker-compose-monolith-with-ui-mysql.yml logs -f
+```
+
+Dừng stack:
+
+```bash
+docker compose -f mysql/docker-compose-monolith-with-ui-mysql.yml down
+```
+
+Chỉ thêm `-v` vào `down` khi chắc chắn muốn xóa cả volume database:
+
+```bash
+docker compose -f mysql/docker-compose-monolith-with-ui-mysql.yml down -v
+```
+
+**Chạy nhanh một container**
+
+Một cách khác để chạy hawkbit server bằng docker nhanh hơn:
+
+```bash
+docker pull hawkbit/hawkbit-update-server:latest
+
+docker run -d \
+  --name hawkbit \
+  -p 8080:8080 \
+  hawkbit/hawkbit-update-server:latest
+```
+
+Kiểm tra:
+
+```bash
+docker ps
+docker logs -f hawkbit
+```
+
+Truy cập:
+
+```text
+Server/Swagger: http://localhost:8080/swagger-ui/index.html
+Tài khoản mặc định: admin / admin
+```
+
+Dừng và xóa container:
+
+```bash
+docker stop hawkbit
+docker rm hawkbit
+```
+
+## 8. Suricatta
+
+### 8.1. Suricatta là gì?
+
+Suricatta là một module nằm bên trong [SWUpdate](https://sbabic.github.io/swupdate/suricatta.html), đóng vai trò client giao tiếp với update server. Nó không phải phần mềm riêng biệt mà được compile chung với SWUpdate binary.
+
+```
+┌─────────────────────────────────────────────────┐
+│                SWUpdate Process                 │
+│                                                 │
+│  ┌────────────────────┐  ┌────────────────────┐ │
+│  │   Core Engine      │  │    Suricatta       │ │
+│  │                    │  │                    │ │
+│  │  - Parse .swu      │  │  - Poll hawkBit    │ │
+│  │  - Verify signature│  │  - Download .swu   │ │
+│  │  - Gọi handlers    │  │  - Báo feedback    │ │
+│  │  - Ghi vào storage │  │  - Nhận config     │ │
+│  │                    │  │                    │ │
+│  └────────┬───────────┘  └────────┬───────────┘ │
+│           │    internal IPC       │             │
+│           ◄───────────────────────►             │
+└─────────────────────────────────────────────────┘
+```
+
+Khi SWUpdate được khởi động ở suricatta mode, Suricatta chạy như một daemon, nó định kỳ liên lạc với hawkBit server. Khi phát hiện có yêu cầu update, nó tải file `.swu` về và chuyển cho Core Engine cài đặt và gửi feedback về server.
+
+### 8.2. Tại sao cần Suricatta?
+
+Nếu không có Suricatta, ta vẫn dùng SWUpdate được nhưng chỉ ở chế độ thủ công, ta cần phải tự đưa file `.swu` vào thiết bị qua USB, SD card hoặc upload qua web UI. Suricatta giải quyết bài toán tự động hóa OTA cho hàng loạt thiết bị.
+
+```
+Không có Suricatta (thủ công):
+  Admin -> copy .swu vào USB -> cắm vào thiết bị -> SWUpdate cài
+
+Có Suricatta (tự động OTA):
+  Admin -> upload .swu lên hawkBit -> tạo rollout
+  -> Suricatta trên thiết bị tự poll -> tự download -> tự cài
+  -> Báo kết quả về hawkBit -> Admin xem dashboard
+```
+
+Không cần Suricatta nếu thiết bị dùng RAUC client, Zephyr hawkBit client hoặc agent DDI tự phát triển. Chỉ cần một client triển khai đúng DDI và cơ chế update an toàn.
+
+### 8.3. Cách Suricatta hoạt động
+
+```mermaid
+sequenceDiagram
+    participant H as hawkBit
+    participant S as Suricatta/SWUpdate
+    participant B as Bootloader + A/B storage
+
+    S->>H: Poll
+    H-->>S: Bản cập nhật và URL artifact
+    S->>H: Tải file .swu
+    S->>B: Ghi vào slot không hoạt động
+    S->>B: Reboot vào slot mới
+    alt Hệ thống mới hoạt động tốt
+        B-->>S: Health check thành công
+        S->>H: SUCCESS
+    else Không boot hoặc health check lỗi
+        B->>B: Rollback về slot cũ
+        B-->>S: Báo thất bại
+        S->>H: FAILURE
+    end
+```
+
+### 8.4. Cấu hình Suricatta trên thiết bị
+
+File cấu hình: `/etc/swupdate/swupdate.cfg`
+
+```
+globals: {
+    verbose = true;
+    loglevel = 5;
+    syslog = true;
+};
+
+suricatta: {
+    # === Thông tin kết nối ===
+    tenant = "default";              # tenant trên hawkBit
+    id = "device-001";               # controller ID, phải unique
+    url = "https://hawkbit.mycompany.com";
+
+    # === Authentication (chọn 1 trong 3) ===
+
+    # Cách 1: Target token (mỗi thiết bị 1 token riêng)
+    targettoken = "bH7XXAprK2D5EU...";
+
+    # Cách 2: Gateway token (dùng chung cho nhiều thiết bị)
+    # gatewaytoken = "dGVzdA==...";
+
+    # Cách 3: mTLS certificate (an toàn nhất)
+    # cafile = "/etc/ssl/certs/hawkbit-ca.crt";
+    # sslcert = "/etc/ssl/certs/device-001.crt";
+    # sslkey = "/etc/ssl/private/device-001.key";
+
+    # === Polling ===
+    polldelay = 300;                 # poll mỗi 300 giây (5 phút)
+                                     # hawkBit có thể override giá trị này
+
+    # === Retry khi mất kết nối ===
+    retry = 5;                       # thử lại tối đa 5 lần
+    retrywait = 120;                 # đợi 120 giây giữa các lần retry
+
+    # === Logging ===
+    loglevel = 5;                    # 0=off, 5=trace
+
+    # === Nâng cao ===
+    # initial_report_delay = 5;      # delay trước khi gửi report đầu tiên (giây)
+    # connection_timeout = 300;      # timeout kết nối (giây)
+    # max_artifacts_download = 0;    # 0 = không giới hạn download đồng thời
+};
+```

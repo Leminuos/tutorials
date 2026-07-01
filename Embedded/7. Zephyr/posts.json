@@ -1,0 +1,19 @@
+{
+  "1. introduction": {
+    "title": "Giới thiệu",
+    "date": "24-06-2026",
+    "author": "Peizzon",
+    "description": "...",
+    "image": "img/zephyr.img",
+    "tags": ["zephyr"]
+  },
+
+  "2. setup": {
+    "title": "Hướng dẫn cài đặt môi trường",
+    "date": "24-06-2026",
+    "author": "Peizzon",
+    "description": "...",
+    "image": "img/zephyr.img",
+    "tags": ["zephyr"]
+  }
+}
