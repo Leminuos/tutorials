@@ -1,10 +1,10 @@
 {
-  "1. introduction": {
+  "1. introduce": {
     "title": "Giới thiệu",
     "date": "24-06-2026",
     "author": "Peizzon",
     "description": "...",
-    "image": "img/zephyr.img",
+    "image": "img/zephyr.png",
     "tags": ["zephyr"]
   },
 
@@ -13,7 +13,7 @@
     "date": "24-06-2026",
     "author": "Peizzon",
     "description": "...",
-    "image": "img/zephyr.img",
+    "image": "img/zephyr.png",
     "tags": ["zephyr"]
   }
 }

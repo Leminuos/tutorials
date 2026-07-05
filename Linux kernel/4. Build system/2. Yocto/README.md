@@ -70,12 +70,15 @@ Trong đó:
 - `[build-directory]` là tùy chọn. Nếu không truyền, Yocto mặc định dùng thư mục `build/` nằm cùng cấp với `poky`.
 
 Khi chạy, script này sẽ:
-1. Tạo thư mục `build/` nếu chưa tồn tại.
-2. Generate các file cấu hình mặc định (`local.conf`, `bblayers.conf`).
+1. Set `$OEROOT`: Xác định thư mục gốc của yocto
+2. Set $BUILDDIR : Chọn thư mục output (default sẽ là build, nhưng nếu chạy cho nhiều board thì nên chia riêng)
 3. Thiết lập các biến môi trường: `BBPATH`, `TOPDIR`, `PATH`, `PYTHONPATH`.
-4. Trỏ terminal vào thư mục `build/`.
+4. Tạo cấu trúc thư mục `$BUILDDIR` nếu chưa tồn tại.
+5. Trỏ terminal vào thư mục `$BUILDDIR`.
 
-## 4. Cấu trúc thư mục `build`
+![Init build](img/init-build.png)
+
+## 4. Cấu trúc thư mục build
 
 Sau khi khởi tạo môi trường và chạy build, thư mục `build/` sẽ có cấu trúc như sau:
 
@@ -216,7 +219,7 @@ find sstate-cache/ -name "sstate-*" -mtime +30 -delete
 
 ## 5. Một số cấu hình quan trọng
 
-### 5.1. Machine - Chọn phần cứng target
+### 5.1. Machine
 
 Machine xác định phần cứng target ta đang build. Giá trị này quyết định:
 - Kiến trúc CPU (ARM, x86, MIPS, ...)
@@ -739,7 +742,7 @@ features = json,syslog
 Ta cũng có thể sử dụng CMake hoặc autotools để thực hiện thay placeholder trong file template.
 :::
 
-## 6. BitBake — Build Engine của Yocto
+## 6. BitBake
 
 ### 6.1. BitBake là gì?
 
@@ -790,7 +793,7 @@ Trong đó:
 Dùng `cleansstate` khi nghi ngờ cache bị stale hoặc corrupt.
 :::
 
-## 7. Recipe — Công thức build
+## 7. Recipe
 
 ### 7.1. Recipe là gì?
 
@@ -858,7 +861,7 @@ Mỗi recipe đi qua một chuỗi task chuẩn theo thứ tự:
 fetch → unpack → patch → configure → compile → install → package
 ```
 
-#### 7.3.1. `do_fetch` — Tải source code
+#### 7.3.1. do_fetch: Tải source code
 
 Task đầu tiên trong vòng đời recipe, chịu trách nhiệm tải source code hoặc patch cần thiết từ các vị trí được định nghĩa trong biến `SRC_URI`.
 
@@ -875,11 +878,11 @@ Với mỗi loại URI sẽ được xử lý theo cách thức khác nhau.
 
 Khi `do_fetch` hoàn thành, BitBake tạo file `.done_fetch` trong `${WORKDIR}` để đánh dấu task đã xong. Nhờ đó, lần build sau sẽ bỏ qua bước fetch nếu source không thay đổi.
 
-#### 7.3.2. `do_unpack` — Giải nén source
+#### 7.3.2. do_unpack: Giải nén source
  
 Giải nén source code từ `${DL_DIR}` vào `${WORKDIR}`. Nếu source là git repo, BitBake checkout đúng commit được chỉ định bởi `SRCREV`. Nếu là tarball, giải nén vào thư mục con trong `${WORKDIR}`.
 
-#### 7.3.3. `do_patch` — Apply patch vào source
+#### 7.3.3. do_patch: Apply patch vào source
 
 Trong yocto, kernel source không nằm cố định ở một nơi, mà nó được tải động thông qua recipe có thể là `linux-yocto.bb`, `linux-ti-staging.bb` hoặc các recipe tương tự khác. Do đó, sau mỗi lần build image thì yocto sẽ unpack lại source mới -> Bởi vì nguyên nhân này mà khi thay đổi source code thì ta cần force compile để không bị mất code:
 
@@ -891,7 +894,7 @@ Tuy nhiên, điều này chỉ có thể làm trên máy local, ta không thể 
 
 Task này sẽ apply các file `.patch` được liệt kê trong `SRC_URI` vào source code. Đây là cơ chế quan trọng để custom source code hoặc fix bug trước khi compile. Thứ tự apply patch đúng theo thứ tự liệt kê trong `SRC_URI`.
  
-#### 7.3.4. `do_configure` — Cấu hình trước khi compile
+#### 7.3.4. do_configure: Cấu hình trước khi compile
 
 Chạy bước cấu hình cho project, ví dụ:
 - Với CMake project $\rightarrow$ chạy `cmake` để generate Makefile.
@@ -900,7 +903,7 @@ Chạy bước cấu hình cho project, ví dụ:
 
 Task này thường được cung cấp dưới dạng class kế thừa (`inherit cmake`, `inherit autotools`,...). Nếu recipe không inherit class nào, ta có thể tự viết `do_configure()`.
 
-#### 7.3.5. `do_compile` — Biên dịch source code
+#### 7.3.5. do_compile: Biên dịch source code
 
 Chạy lệnh compile. Mặc định chạy `oe_runmake` (tương đương `make`), nhưng ta có thể override hoàn toàn:
 
@@ -912,7 +915,7 @@ do_compile() {
 
 Quá trình compile diễn ra trong thư mục `${B}` (Build directory).
  
-#### 7.3.6. `do_install` — Cài đặt vào staging directory
+#### 7.3.6. do_install: Cài đặt vào staging directory
 
 Copy các file cần thiết (binary, library, config, header,...) vào staging directory `${D}`. Đây không phải rootfs thật — chỉ là thư mục tạm để BitBake biết recipe muốn cài gì.
 
@@ -951,7 +954,7 @@ myapp.conf    ──install──►  /sysconfdir/myapp.cfg
 Mọi file muốn xuất hiện trong rootfs đều phải được copy vào `${D}` trong `do_install()`. Nếu quên copy, file sẽ không có trong image cuối cùng dù đã compile thành công.
 :::
 
-#### 7.3.7. `do_package` — Chia output thành các package con
+#### 7.3.7. do_package: Chia output thành các package con
 
 Sau khi `do_install` chạy xong, `${D}` chứa tất cả mọi thứ của một recipe:
 
@@ -1006,7 +1009,7 @@ FILES:myapp-plugins = "${libdir}/myapp/plugins/*"
 
 Tức là ta có thể đặt tên package tùy ý, không bắt buộc phải theo pattern `${PN}-dev`, `${PN}-lib`,...
 
-#### 7.3.8. `do_rootfs` - Đưa package vào root filesystem
+#### 7.3.8. do_rootfs: Đưa package vào root filesystem
 
 Khi ta build image với config:
 
@@ -1030,7 +1033,7 @@ build/tmp/work/.../core-image-minimal/rootfs/
     └── ...
 ```
 
-#### 7.3.9. `do_image` - Đóng gói thành image file
+#### 7.3.9. do_image: Đóng gói thành image file
 
 Rootfs đó được đóng gói thành file image tùy format:
 
@@ -1042,7 +1045,7 @@ core-image-minimal.tar.gz  ← tarball
 
 Rồi flash lên board, khi board boot lên thì rootfs đó chính là `/` của hệ thống.
 
-### 7.4. Từ khóa `inherit`
+### 7.4. Từ khóa inherit
 
 `inherit` dùng để import một class (`.bbclass`) vào trong recipe `.bb`.
 
@@ -1183,7 +1186,7 @@ do_install() {
 Sau đó BitBake sẽ lấy nội dung từ `${D}` để đóng gói thành package.
 :::
 
-## 8. Layer — Module hóa metadata
+## 8. Layer
 
 ### 8.1. Layer là gì?
  
@@ -1275,7 +1278,7 @@ Ví dụ:
 | meta-yocto     | 6        | Ghi đè được `meta`  |
 | meta-yourboard | 9        | Ghi đè tất cả       |
 
-### 8.5. Mở rộng recipe bằng `.bbappend`
+### 8.5. Mở rộng recipe bằng .bbappend
 
 Một layer có thể mở rộng recipe của layer khác mà không cần phải sửa file gốc.
 
@@ -1402,7 +1405,7 @@ Build image:
 bitbake <image-name>
 ```
 
-### 8.7. Chuyển cấu hình từ `local.conf` sang Layer để tự động hóa build
+### 8.7. Chuyển cấu hình từ local.conf sang Layer để tự động hóa build
 
 Khi bắt đầu dùng Yocto, mọi thứ thường được cấu hình trong `local.conf` vì đơn giản và nhanh. Nhưng khi dự án phát triển, `local.conf` sẽ phình to với đủ loại cấu hình lẫn lộn: machine, distro policy, image package, biến môi trường,...Điều này gây ra nhiều vấn đề:
 - Không tái sử dụng: File `local.conf` gắn với máy build cụ thể. Developer A có `local.conf` khác developer B. Khi clone repo, mỗi người phải tự tạo lại.
@@ -1575,7 +1578,7 @@ Mỗi developer clone repo $\rightarrow$ chỉ cần tạo `local.conf` với 6�
 
 ## 9. Thao tác với source kernel
 
-### 9.1. Virtual Provider — `virtual/kernel`
+### 9.1. Virtual Provider
 
 Trong Yocto, `virtual/kernel` là một **virtual recipe** — alias trỏ tới recipe kernel cụ thể. Cơ chế này cho phép nhiều layer cung cấp kernel khác nhau, và Yocto sẽ tự chọn đúng recipe phù hợp cho `MACHINE`-> Đây là cơ chế Virtual Provider.
 
@@ -1857,3 +1860,7 @@ oe-pkgdata-util list-pkg-files mosquitto-dev
 /usr/lib/libmosquitto.so
 /usr/lib/pkgconfig/libmosquitto.pc
 ```
+
+## Tham khảo
+
+https://docs.yoctoproject.org/ref-manual/#

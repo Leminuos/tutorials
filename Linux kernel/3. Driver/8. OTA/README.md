@@ -1674,7 +1674,241 @@ Thay vì ta chủ động mở web UI để update thì ta sẽ cho BBB định 
     + Cách 2: Tải `.swu` về rồi mới gọi `swupdate` để install.
   + SWUpdate flash vào slot inactive, set U-Boot env để boot sang slot mới
 
-## 6. Signature 
+## 6. Signature verification
+
+### 6.1. Tổng quan
+
+Signature verification là cơ chế bảo mật quan trọng của SWUpdate, đảm bảo rằng chỉ những bản update do ta tạo ra mới được cài đặt lên thiết bị.
+
+**Tại sao cần signature verification?**
+
+Không có signature, bất kỳ ai cũng có thể tạo file `.swu` rồi cài lên thiết bị qua USB, qua web UI hoặc thậm chí MITM khi OTA. Hậu quả có thể là cài malware, đánh cắp dữ liệu hoặc biến thiết bị thành botnet. Signing giải quyết hai vấn đề cốt lõi: authentication (bản update đúng là do bta tạo) và integrity (nội dung không bị sửa đổi trên đường truyền).
+
+### 6.2. Cơ chế hoạt động
+
+```
+Build server                                    THIẾT BỊ
+*************************************           ***************************
+
+1. Tạo file .swu         
+
+2. Tính hash của sw-description            
+
+3. Ký hash bằng private key               
+   → tạo ra file sw-description.sig       
+
+4. Đóng gói tất cả vào .swu:              
+   sw-description                         
+   sw-description.sig                     
+   rootfs.ext4.gz                         
+   ...                                    
+
+5. Gửi .swu tới thiết bị ---------------------> 6. SWUpdate nhận .swu
+
+                                                7. Extract sw-description
+                                                   và sw-description.sig
+
+                                                8. Dùng public key đã có
+                                                   sẵn trên thiết bị để
+                                                   verify chữ ký
+
+                                                9. Nếu pass -> tiếp tục cài đặt
+                                                   Nếu fail -> từ chối, hủy update
+```
+
+:::warning Chú ý
+Private key không bao giờ nằm trên thiết bị. Thiết bị chỉ có public key để verify. Kẻ tấn công dù có thiết bị trong tay cũng không thể tạo bản update giả.
+:::
+
+### 6.3. Các phương pháp signing
+
+SWUpdate hỗ trợ hai phương pháp, mỗi cái có đặc điểm riêng.
+
+**Phương pháp 1: RSA Raw Signature**
+
+Cách đơn giản, ký trực tiếp bằng RSA key pair.
+
+Tạo key pair:
+
+```bash
+# Tạo private key
+openssl genrsa -aes256 -out swupdate-priv.pem 2048
+
+# Trích xuất public key đưa vào thiết bị
+openssl rsa -in swupdate-priv.pem -out swupdate-pub.pem -outform PEM -pubout
+```
+
+Ký bản update:
+
+```bash
+# Ký file sw-description
+openssl dgst -sha256 -sign swupdate-priv.pem -out sw-description.sig sw-description
+```
+
+Cấu trúc file `.swu` khi có signature:
+
+```
+.swu (CPIO archive)
+├── sw-description          <- file mô tả
+├── sw-description.sig      <- chữ ký
+├── rootfs.ext4.gz
+├── post_update.sh
+└── ...
+```
+
+Thứ tự rất quan trọng: `sw-description` phải là entry đầu tiên, `sw-description.sig` phải là entry thứ hai trong CPIO archive.
+
+Cấu hình SWUpdate trong `swupdate.cfg`:
+
+```
+globals: {
+    public-key-file = "/etc/swupdate-pub.pem";
+};
+```
+
+Hoặc truyền qua command line:
+
+```bash
+swupdate -k /etc/swupdate-pub.pem
+```
+
+**Phương pháp 2: CMS (PKCS#7) Signature**
+
+Phương pháp chuẩn công nghiệp, dùng certificate chain (X.509). Mạnh hơn RSA raw vì hỗ trợ certificate expiry, revocation và chain of trust.
+
+Tạo certificate:
+
+```bash
+# 1. Tạo CA (Certificate Authority)
+openssl req -x509 -newkey rsa:2048 -keyout ca-priv.pem \
+    -out ca-cert.pem -days 3650 -nodes \
+    -subj "/O=MyCompany/CN=MyCompany OTA CA"
+
+# 2. Tạo signing key + CSR
+openssl req -newkey rsa:2048 -keyout signing-priv.pem \
+    -out signing.csr -nodes \
+    -subj "/O=MyCompany/CN=MyCompany OTA Signing"
+
+# 3. CA ký certificate cho signing key
+openssl x509 -req -in signing.csr -CA ca-cert.pem \
+    -CAkey ca-priv.pem -CAcreateserial \
+    -out signing-cert.pem -days 365
+```
+
+Ký bản update bằng CMS:
+
+```bash
+openssl cms -sign -in sw-description \
+    -out sw-description.sig -signer signing-cert.pem \
+    -inkey signing-priv.pem -outform DER \
+    -nosmimecap -binary
+```
+
+Cấu hình SWUpdate cho CMS:
+
+```
+globals: {
+    ca-cert-file = "/etc/swupdate-ca-cert.pem";
+};
+```
+
+### 6.4. Tích hợp vào Yocto Build
+
+**Bật signing trong SWUpdate defconfig**
+
+SWUpdate dùng hệ thống cấu hình giống kernel (Kconfig). Ta cần bật option tương ứng:
+
+```bash
+# Cho RSA raw signature
+CONFIG_SIGNED_IMAGES=y
+CONFIG_SIGALG_RAWRSA=y
+
+# HOẶC cho CMS signature
+CONFIG_SIGNED_IMAGES=y
+CONFIG_SIGALG_CMS=y
+```
+
+**Đưa public key/CA cert vào image**
+
+Tạo recipe hoặc bbappend để cài public key vào rootfs:
+
+```bash
+# swupdate_%.bbappend hoặc recipe riêng
+FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
+
+SRC_URI += "file://swupdate-ca-cert.pem"
+
+do_install:append() {
+    install -d ${D}/etc
+    install -m 0644 ${WORKDIR}/swupdate-ca-cert.pem ${D}/etc/
+}
+```
+
+Script tạo `.swu` có signing
+
+```bash
+#!/bin/bash
+# create-swu.sh
+
+PRIVATE_KEY="path/to/signing-priv.pem"
+SIGNER_CERT="path/to/signing-cert.pem"
+FILES="sw-description rootfs.ext4.gz post_update.sh"
+
+# 1. Ký sw-description
+openssl cms -sign -in sw-description \
+    -out sw-description.sig \
+    -signer ${SIGNER_CERT} \
+    -inkey ${PRIVATE_KEY} \
+    -outform DER -nosmimecap -binary
+
+# 2. Đóng gói
+echo "sw-description sw-description.sig ${FILES}" \
+    | tr ' ' '\n' \
+    | cpio -o -H crc > my-update.swu
+```
+
+### 6.5. Luồng verify trên thiết bị
+
+Khi SWUpdate nhận được file `.swu`, quá trình verify diễn ra như sau:
+1. Extract `sw-description`
+2. Extract `sw-description.sig`
+3. Đọc public key / CA cert từ `/etc/`
+4. Verify signature
+5. Parse `sw-description` -> lấy danh sách files + sha256 checksums
+6. Với mỗi file trong `.swu`:
+   - Tính sha256
+   - So sánh với hash trong `sw-description`
+   - Nếu mismatch -> hủy
+   - Nếu match -> ghi vào target
+
+Điểm hay là `sw-description` chứa hash của mọi file bên trong và bản thân sw-description được ký. Nên chỉ cần verify signature của `sw-description` là đủ đảm bảo toàn bộ nội dung `.swu` chưa bị thay đổi.
+
+Ví dụ `sw-description`:
+
+```
+software = {
+    version = "2.0.0";
+    hardware-compatibility = ["rev1.0"];
+
+    images: (
+        {
+            filename = "rootfs.ext4.gz";
+            type = "raw";
+            device = "/dev/mmcblk0p3";
+            compressed = "zlib";
+            sha256 = "a1b2c3d4e5f6...";  <- hash của file
+        }
+    );
+};
+```
+
+### 6.6. Quản lý key trong thực tế
+
+Private key là tài sản quan trọng nhất. Nếu bị lộ, kẻ tấn công có thể tạo update giả cho toàn bộ thiết bị.
+- Lưu trong HSM hoặc ít nhất là máy build server offline
+- Dùng passphrase bảo vệ private key
+- Giới hạn người có quyền truy cập
+- Tách riêng signing khỏi build pipeline (build xong -> chuyển sang máy signing riêng)
 
 ## 7. Hawkbit server
 
@@ -1695,42 +1929,42 @@ Phía thiết bị vẫn cần một update agent như SWUpdate/Suricatta, RAUC 
 ### 7.1. Kiến trúc hawkBit
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                    hawkBit Server                       │
-│                                                         │
-│  ┌─────────────┐  ┌──────────────┐  ┌───────────────┐   │
-│  │  Management │  │  Software    │  │   Rollout     │   │
-│  │  UI (Web)   │  │  Repository  │  │   Engine      │   │
-│  └──────┬──────┘  └──────┬───────┘  └───────┬───────┘   │
-│         │                │                   │          │
-│  ┌──────▼────────────────▼───────────────────▼───────┐  │
-│  │              hawkBit Core                         │  │
-│  │  - Target Management (quản lý thiết bị)           │  │
-│  │  - Distribution Set Management (quản lý firmware) │  │
-│  │  - Action Management (quản lý lệnh update)        │  │
-│  └──────────────────┬────────────────────────────────┘  │
-│                     │                                   │
-│  ┌──────────────────▼───────────────────────────────┐   │
-│  │              APIs                                │   │
-│  │  DDI API ──── cho thiết bị (SWUpdate/Suricatta)  │   │
-│  │  Management API ── cho admin (UI hoặc CI/CD)     │   │
-│  └──────────────────┬───────────────────────────────┘   │
-│                     │                                   │
-│  ┌──────────────────▼──────────────────┐                │
-│  │  Database (MySQL/PostgreSQL/H2)     │                │
-│  └─────────────────────────────────────┘                │
-└─────────────────────────────────────────────────────────┘
-         │ DDI API                    │ Management API
-         ▼                            ▼
-┌─────────────────┐          ┌─────────────────┐
-│   Device 1      │          │   Admin / CI/CD │
-│   (SWUpdate +   │          │   Dashboard     │
-│    Suricatta)   │          └─────────────────┘
-├─────────────────┤
-│   Device 2      │
-├─────────────────┤
-│   Device N      │
-└─────────────────┘
++---------------------------------------------------------+
+|                    hawkBit Server                       |
+|                                                         |
+|  +-------------+  +--------------+  +---------------+   |
+|  |  Management |  |  Software    |  |   Rollout     |   |
+|  |  UI (Web)   |  |  Repository  |  |   Engine      |   |
+|  +-------------+  +--------------+  +---------------+   |
+|         |                |                   |          |
+|  +---------------------------------------------------+  |
+|  |              hawkBit Core                         |  |
+|  |  - Target Management (quản lý thiết bị)           |  |
+|  |  - Distribution Set Management (quản lý firmware) |  |
+|  |  - Action Management (quản lý lệnh update)        |  |
+|  +---------------------------------------------------+  |
+|                     |                                   |
+|  +--------------------------------------------------+   |
+|  |              APIs                                |   |
+|  |  DDI API: cho thiết bị (SWUpdate/Suricatta)      |   |
+|  |  Management API: cho admin (UI hoặc CI/CD)       |   |
+|  +--------------------------------------------------+   |
+|                     |                                   |
+|  +-------------------------------------+                |
+|  |  Database (MySQL/PostgreSQL/H2)     |                |
+|  +-------------------------------------+                |
++---------------------------------------------------------+
+         | DDI API                    | Management API
+         |                            |
++-----------------+          +-----------------+
+|   Device 1      |          |   Admin / CI/CD |
+|   (SWUpdate +   |          |   Dashboard     |
+|    Suricatta)   |          +-----------------+
++-----------------+
+|   Device 2      |
++-----------------+
+|   Device N      |
++-----------------+
 ```
 
 ### 7.2. Các thành phần cốt lõi trong hawkBit
@@ -1943,23 +2177,24 @@ Khi một distribution set được assign cho một target, hawkBit tạo ra m�
 Vòng đời của action:
 
 ```
-                    hawkBit tạo action
-                          │
-                          ▼
-                    ┌─────────┐
-                    │ WAITING │  (chờ thiết bị poll)
-                    └────┬────┘
-                         │  thiết bị poll, nhận được action
-                         ▼
-                    ┌─────────┐
-                    │ RUNNING │  (thiết bị đang download + install)
-                    └────┬────┘
-                         │
-              ┌──────────┼──────────┐
-              ▼          ▼          ▼
-        ┌──────────┐ ┌───────┐ ┌──────────┐
-        │ FINISHED │ │ ERROR │ │ CANCELED │
-        └──────────┘ └───────┘ └──────────┘
+          hawkBit tạo action
+                 |
+                 |
+            +---------+
+            | WAITING |  (chờ thiết bị poll)
+            +---------+
+                 |
+                 |  thiết bị poll, nhận được action
+                 |
+            +---------+
+            | RUNNING |  (thiết bị đang download + install)
+            +----┬----+
+                 |
+      +----------+----------+
+      |          |          |
++----------+ +-------+ +----------+
+| FINISHED | | ERROR | | CANCELED |
++----------+ +-------+ +----------+
 ```
 
 Các action type phổ biến:
@@ -1989,20 +2224,20 @@ Luồng giao tiếp cơ bản:
 
 ```
 Device                              hawkBit
-  │                                    │
-  │──── GET /controller/v1/{id} ──────▶│  (poll: có update không?)
-  │◀─── Response: deploymentBase ──────│  (có update mới!)
-  │                                    │
-  │──── GET /deploymentBase/{id} ─────▶│  (lấy chi tiết update)
-  │◀─── Response: artifacts list ──────│
-  │                                    │
-  │──── GET /softwaremodules/.../      │
-  │     artifacts/{filename} ─────────▶│  (download .swu file)
-  │◀─── Binary stream ─────────────────│
-  │                                    │
-  │──── POST /deploymentBase/{id}/     │
-  │     feedback ─────────────────────▶│  (báo kết quả: success/fail)
-  │                                    │
+  |                                    |
+  |---- GET /controller/v1/{id} ------>|  (poll: có update không?)
+  |<--- Response: deploymentBase ------|  (có update mới!)
+  |                                    |
+  |---- GET /deploymentBase/{id} ----->|  (lấy chi tiết update)
+  |<--- Response: artifacts list ------|
+  |                                    |
+  |---- GET /softwaremodules/.../      |
+  |     artifacts/{filename} --------->|  (download .swu file)
+  |<--- Binary stream -----------------|
+  |                                    |
+  |---- POST /deploymentBase/{id}/     |
+  |     feedback --------------------->|  (báo kết quả: success/fail)
+  |                                    |
 ```
 
 **Polling vs Push:**
@@ -2133,21 +2368,22 @@ docker rm hawkbit
 Suricatta là một module nằm bên trong [SWUpdate](https://sbabic.github.io/swupdate/suricatta.html), đóng vai trò client giao tiếp với update server. Nó không phải phần mềm riêng biệt mà được compile chung với SWUpdate binary.
 
 ```
-┌─────────────────────────────────────────────────┐
-│                SWUpdate Process                 │
-│                                                 │
-│  ┌────────────────────┐  ┌────────────────────┐ │
-│  │   Core Engine      │  │    Suricatta       │ │
-│  │                    │  │                    │ │
-│  │  - Parse .swu      │  │  - Poll hawkBit    │ │
-│  │  - Verify signature│  │  - Download .swu   │ │
-│  │  - Gọi handlers    │  │  - Báo feedback    │ │
-│  │  - Ghi vào storage │  │  - Nhận config     │ │
-│  │                    │  │                    │ │
-│  └────────┬───────────┘  └────────┬───────────┘ │
-│           │    internal IPC       │             │
-│           ◄───────────────────────►             │
-└─────────────────────────────────────────────────┘
++-------------------------------------------------+
+|                SWUpdate Process                 |
+|                                                 |
+|  +--------------------+  +--------------------+ |
+|  |   Core Engine      |  |    Suricatta       | |
+|  |                    |  |                    | |
+|  |  - Parse .swu      |  |  - Poll hawkBit    | |
+|  |  - Verify signature|  |  - Download .swu   | |
+|  |  - Gọi handlers    |  |  - Báo feedback    | |
+|  |  - Ghi vào storage |  |  - Nhận config     | |
+|  |                    |  |                    | |
+|  +--------------------+  +--------------------+ |
+|           |                       |             |
+|           |    internal IPC       |             |
+|           <=======================>             |
++-------------------------------------------------+
 ```
 
 Khi SWUpdate được khởi động ở suricatta mode, Suricatta chạy như một daemon, nó định kỳ liên lạc với hawkBit server. Khi phát hiện có yêu cầu update, nó tải file `.swu` về và chuyển cho Core Engine cài đặt và gửi feedback về server.
@@ -2191,9 +2427,152 @@ sequenceDiagram
     end
 ```
 
-### 8.4. Cấu hình Suricatta trên thiết bị
+### 8.4. Cấu hình hawkBit trên Simple UI
 
-File cấu hình: `/etc/swupdate/swupdate.cfg`
+**Bước 1: Cấu hình Config**
+
+Vào Config (menu trái), ta sẽ thấy giao diện như sau:
+
+![Hawkbit web UI](img/hawkbit-web-ui.jpg)
+
+Giải thích từng setting:
+
+```
+authentication.targettoken.enabled
+  -> Cho phép thiết bị xác thực bằng target token riêng
+  -> Bật lên để thiết bị có thể kết nối
+
+rollout.approval.enabled
+  -> Yêu cầu admin approve trước khi rollout bắt đầu
+  -> Tắt khi test, bật khi production
+
+action.cleanup.auto.expiry: -1
+  -> Tự động xóa action cũ sau N ngày (-1 = không tự xóa)
+  -> Giữ -1 khi test
+
+action.cleanup.auto.status: CANCELED,ERROR
+  -> Chỉ tự xóa action có status này
+  -> Giữ mặc định
+
+maintenanceWindowPollCount: 3
+  -> Số lần poll trong maintenance window
+  -> Giữ mặc định
+
+repository.actions.autoclose.enabled
+  -> Tự đóng action cũ khi assign DS mới
+  -> Tùy nhu cầu
+
+default.ds.type: 2
+  -> ID của Distribution Set Type mặc định
+  -> Sẽ thay đổi sau khi bạn tạo DS Type
+
+authentication.header.enabled
+  -> Cho phép xác thực qua HTTP header (gateway token)
+  -> BẬT lên nếu dùng gateway token cho Suricatta
+
+pollingOverdueTime: 00:05:00
+  -> Sau bao lâu không poll thì coi thiết bị là offline
+  -> Đặt 00:01:00 khi test cho nhanh
+
+implicit.lock.enabled: ✓
+  -> Tự lock Distribution Set khi assign cho target
+  -> Giữ bật
+
+batch.assignments.enabled
+  -> Cho phép assign hàng loạt
+  -> Bật nếu cần
+```
+
+Cấu hình tối thiểu cho test: bật `authentication.targettoken.enabled` hoặc `authentication.header.enabled` hoặc cả hai, rồi nhấn Save.
+
+**Bước 2.2: Tạo Software Module**
+
+Vào Software Modules:
+1. Click "+" hoặc nút tạo mới
+2. Điền thông tin:
+   - Type: chọn type có sẵn (OS, Application, hoặc Firmware)
+   - Name: my-gateway-os
+   - Version: 1.0.0
+   - Vendor: (tùy chọn)
+3. Save
+4. Chọn module vừa tạo -> Upload artifact:
+   - Click vào module -> tìm phần upload artifact
+   - Chọn file .swu của bạn
+   - Đợi upload hoàn tất
+
+**Bước 3:Tạo Distribution Set**
+
+Vào Distribution Sets:
+1. Click "+" tạo mới
+2. Điền:
+   - Type: chọn DS Type phù hợp (ví dụ: "OS with app")
+   - Name: Gateway Release
+   - Version: 1.0.0
+3. Save
+4. Gán Software Module vào Distribution Set:
+   - Chọn DS vừa tạo
+   - Thêm software module "my-gateway-os v1.0.0" vào
+
+**Bước 4: Tạo Target**
+
+Vào Targets:
+1. Click "+" tạo mới
+2. Điền:
+   - Controller ID: device-001 (phải match với ID cấu hình trên thiết bị)
+   - Name: My Test Device
+   - Description: (tùy chọn)
+3. Save
+4. Lấy Security Token của target:
+   - Click vào target "device-001"
+   - Xem chi tiết → tìm Security Token
+   - Copy token này (sẽ dùng khi cấu hình Suricatta)
+
+Hoặc nếu ta không tạo thủ công, thiết bị sẽ tự đăng ký khi kết nối lần đầu (nếu server cho phép, cần cấu hình trong `application.properties`).
+
+**Bước 5: Assign Update cho Target**
+
+1. Vào Targets → chọn "device-001"
+2. Assign Distribution Set "Gateway Release v1.0.0"
+3. Chọn Action Type:
+   - Forced: cài ngay
+   - Soft: thiết bị tự quyết khi nào cài
+   - Download only: chỉ tải, chưa cài
+4. Confirm
+
+Hoặc dùng Rollouts nếu muốn triển khai cho nhiều thiết bị:
+1. Vào Rollouts → "+" tạo mới
+2. Chọn Distribution Set
+3. Chọn Target Filter (hoặc tạo filter mới trong Target Filter Queries)
+4. Cấu hình số group, error threshold
+5. Start rollout
+
+### 8.5. Cấu hình Suricatta trên thiết bị
+
+Tạo file defconfig `recipes-support/swupdate/swupdate/defconfig`:
+
+```
+CONFIG_HW_COMPATIBILITY=y
+CONFIG_SW_VERSIONS_FILE="/etc/sw-versions"
+
+# Suricatta + hawkBit
+CONFIG_SURICATTA=y
+CONFIG_SURICATTA_HAWKBIT=y
+
+# Network
+CONFIG_CURL=y
+CONFIG_CURLSSL=y
+CONFIG_SSL_IMPL_OPENSSL=y
+
+# Handlers
+CONFIG_RAW=y
+CONFIG_SHELLSCRIPTHANDLER=y
+
+# Web UI tích hợp (tùy chọn, để update thủ công qua browser)
+CONFIG_WEBSERVER=y
+CONFIG_MONGOOSE=y
+```
+
+File cấu hình `recipes-support/swupdate/swupdate/swupdate.cfg`
 
 ```
 globals: {
@@ -2237,4 +2616,49 @@ suricatta: {
     # connection_timeout = 300;      # timeout kết nối (giây)
     # max_artifacts_download = 0;    # 0 = không giới hạn download đồng thời
 };
+```
+
+Tạo bbappend `recipes-support/swupdate/swupdate_%.bbappend`:
+
+```bash
+FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}:"
+
+SRC_URI += " \
+    file://defconfig \
+    file://swupdate.cfg \
+    file://swupdate.service \
+"
+
+do_install:append() {
+    install -d ${D}/etc/swupdate
+    install -m 0644 ${WORKDIR}/swupdate.cfg ${D}/etc/swupdate/swupdate.cfg
+    
+    install -d ${D}${systemd_system_unitdir}
+    install -m 0644 ${WORKDIR}/swupdate.service \
+        ${D}${systemd_system_unitdir}/swupdate.service
+}
+
+inherit systemd
+SYSTEMD_SERVICE:${PN} = "swupdate.service"
+SYSTEMD_AUTO_ENABLE = "enable"
+```
+
+Systemd service `recipes-support/swupdate/swupdate/swupdate.service`:
+
+```ini
+[Unit]
+Description=SWUpdate Suricatta daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/swupdate -v \
+    -f /etc/swupdate/swupdate.cfg \
+    -e stable,main
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
 ```
