@@ -53,3 +53,41 @@ Closes #1234
 ```
 
 Footer thường chứa `Closes #issue`, `BREAKING CHANGE: mô tả` hoặc reference đến ticket.
+
+## Xoá các file untracked
+
+File untracked là các file chưa được git theo dõi.
+
+Để xoá các file này, ta sử dụng lệnh sau:
+
+```bash
+git clean -f
+```
+
+:::warning Lưu ý
+Các file trong `.gitignore` sẽ không bị xóa khi dùng `git clean -f`.
+:::
+
+Hoặc xoá cả các folder untracked:
+
+```bash
+git clean -fd
+```
+
+Trong đó:
+- `-f`: force (bắt buộc)
+- `-d`: bao gồm cả folder untracked
+
+Để xóa file untracked nhưng giữ lại một số file cụ thể:
+
+```bash
+git clean -fd \
+  -e config.local.json \
+  -e notes.txt
+```
+
+Hoặc giữ một folder:
+
+```bash
+git clean -fd -e uploads/
+```

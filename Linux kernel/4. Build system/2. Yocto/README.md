@@ -1806,7 +1806,24 @@ WORKDIR="/home/nguyenbui/tutorial/yocto/build/tmp/work/x86_64-linux/qtbase-nativ
 
 Sau đó, ta sẽ vào thư mục `WORKDIR\temp\log.do_<task>` và xem task log mong muốn.
 
-### 10.7. Công cụ `oe-pkgdata-util`
+### 10.7. Xem package thực sự có trong image
+
+Đọc file manifest sau khi build, file này liệt kê tất cả package trong image. Đây là danh sách package đã được package manager đưa vào root filesystem.
+
+```bash
+# File manifest liệt kê tất cả package trong image
+cat tmp/deploy/images/${MACHINE}/core-image-minimal-*.manifest
+```
+
+Mỗi dòng thường gồm:
+
+```
+<package-name> <architecture> <version>
+```
+
+Lúc này, ta có thể sử dụng công cụ `oe-pkgdata-util` để xem package thuộc recipe nào, package chứa những file gì,...
+
+### 10.8. Công cụ oe-pkgdata-util
 
 Đây là tool của Yocto dùng để tra cứu metadata của các package sau khi đã được build.
 
@@ -1814,15 +1831,15 @@ Khi ta build một recipe, Yocto tạo ra nhiều package con. Mỗi package đ�
 
 $\rightarrow$ `oe-pkgdata-util` cho phép truy vấn lại dữ liệu đó, thay vì phải mò vào trong thư mục.
 
-| Lệnh                                                 | Ý nghĩa                                                    |
-| ---------------------------------------------------- | ---------------------------------------------------------- |
-| `oe-pkgdata-util list-pkgs`                          | Liệt kê toàn bộ package đã build ra                        |
-| `oe-pkgdata-util find-path /usr/include/mosquitto.h` | Tìm xem file này thuộc gói nào                             |
-| `oe-pkgdata-util list-pkg-files mosquitto-dev`       | Liệt kê toàn bộ file có trong gói `mosquitto-dev`          |
-| `oe-pkgdata-util lookup-recipe mosquitto-dev`        | Tìm recipe gốc tạo ra gói này                              |
-| `oe-pkgdata-util list-pkg-provides mosquitto`        | Xem gói này `PROVIDES` gì                                  |
-| `oe-pkgdata-util list-pkg-rdepends mosquitto`        | Xem gói này `RDEPENDS` vào đâu (tức là dependency runtime) |
-| `oe-pkgdata-util list-pkg-builddeps mosquitto`       | Xem dependency build-time của recipe này                   |
+| Lệnh | Ý nghĩa |
+| --- | --- |
+| `oe-pkgdata-util list-pkgs`                          | Liệt kê toàn bộ package đã build ra |
+| `oe-pkgdata-util find-path /usr/include/mosquitto.h` | Tìm xem file này thuộc package nào |
+| `oe-pkgdata-util list-pkg-files mosquitto-dev`       | Liệt kê toàn bộ file có trong package `mosquitto-dev` |
+| `oe-pkgdata-util lookup-recipe mosquitto-dev`        | Xác định package được tạo bởi recipe nào |
+| `oe-pkgdata-util list-pkg-provides mosquitto`        | Xem package này `PROVIDES` gì |
+| `oe-pkgdata-util list-pkg-rdepends mosquitto`        | Xem package này `RDEPENDS` vào đâu |
+| `oe-pkgdata-util list-pkg-builddeps mosquitto`       | Xem dependency build-time của recipe này |
 
 **Ví dụ thực tế:**
 
@@ -1859,6 +1876,65 @@ oe-pkgdata-util list-pkg-files mosquitto-dev
 /usr/include/mosquitto.h
 /usr/lib/libmosquitto.so
 /usr/lib/pkgconfig/libmosquitto.pc
+```
+
+### 10.9. Phân tích dependency graph
+
+Chạy:
+
+```bash
+bitbake -g core-image-minimal
+```
+
+Lệnh này không build lại toàn bộ image mà phân tích dependency graph và tạo các file trong thư mục build, thường gồm:
+
+```bash
+pn-buildlist
+task-depends.dot
+```
+
+Trong đó:
+- `pn-buildlist` chứa danh sách `PN`, tức tên recipe mà bitbake cần build để tạo image.
+- `task-depends.dot` mô tả dependency giữa các task như `do_compile`, `do_install`, `do_package` và `do_rootfs`.
+
+Ví dụ khi đọc file `pn-buildlist` ta sẽ thấy:
+
+```
+busybox
+base-files
+base-passwd
+linux-licheepi
+u-boot-licheepi
+musl
+core-image-minimal
+```
+
+:::warning Chú ý
+Đây là recipe build-time, không phải danh sách package trong rootfs. Nó có thể gồm:
+- Native recipe như cmake-native, pkgconfig-native
+- Cross compiler và toolchain
+- Kernel và uboot
+- Recipe tạo package nhưng package không được cài vào image
+:::
+
+Ngoài ra, ta có thể sử dụng `oe-depends-dot` với file `task-depends.dot`. Đây là một script có sẵn trong poky giúp ta tìm các recipe dependency. Ví dụ:
+
+```bash
+oe-depends-dot -k libpython3 -w task-depends.dot
+```
+
+Output:
+
+```
+Because: bluez5 btrfs-tools core-image-smartfarm coreutils glib-2 gobject-introspection libxml2 nfs-utils opkg-utils python3-dbus python3-packaging python3-pycairo python3-pygobject python3-pyparsing
+core-image-smartfarm -> bluez5 -> python3-dbus -> glib-2 -> python3
+core-image-smartfarm -> bluez5 -> python3-dbus -> glib-2 -> coreutils -> opkg-utils -> python3
+core-image-smartfarm -> bluez5 -> python3-pygobject -> gobject-introspection -> glib-2 -> coreutils -> opkg-utils -> python3
+core-image-smartfarm -> btrfs-tools -> python3
+core-image-smartfarm -> libxml2 -> python3
+core-image-smartfarm -> nfs-utils -> python3
+core-image-smartfarm -> python3-packaging -> python3-pyparsing -> python3
+core-image-smartfarm -> python3-pygobject -> python3-pycairo -> python3
 ```
 
 ## Tham khảo

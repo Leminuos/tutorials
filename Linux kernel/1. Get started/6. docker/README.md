@@ -213,7 +213,7 @@ docker rm $(docker ps -aq)         # xóa tất cả container
 
 Đây là file văn bản thuần không có đuôi mở rộng, tên mặc định là `Dockerfile`. File này chứa các instruction từng bước để Docker build ra một image.
 
-### 3.3.1. Các chỉ thị quan trọng
+#### 3.3.1. Các chỉ thị quan trọng
 
 **Lệnh FORM:**
 
@@ -285,7 +285,7 @@ CMD ["app.py"]
 
 Kết hợp này có nghĩa là mặc định chạy `python app.py`, nhưng người dùng có thể đổi thành `python test.py` bằng cách gõ `docker run <image> test.py`. `ENTRYPOINT` cố định phần `python`, `CMD` cung cấp tham số mặc định.
 
-### 3.3.2. Ví dụ thực tế
+#### 3.3.2. Ví dụ thực tế
 
 Ta có một ứng dụng python với cấu trúc thư mục như sau:
 
@@ -323,7 +323,7 @@ CMD ["python", "app.py"]
 
 Mỗi dòng lệnh tạo một layer trong image. Nếu ta chỉ thay đổi mã nguồn mà không thay đổi thư viện, Docker sẽ dùng lại cache từ các layer cũ và chỉ build lại layer bị thay đổi, giúp tốc độ build nhanh hơn nhiều.
 
-### 3.3.3. File .dockerignore
+#### 3.3.3. File .dockerignore
 
 Giống `.gitignore`, file này nói cho Docker biết không copy những gì vào image. Tạo file `.dockerignore `cùng thư mục với `Dockerfile`:
 
@@ -339,7 +339,7 @@ __pycache__
 
 **Tại sao cần?** Vì khi chạy `COPY . .`, Docker copy tất cả file trong thư mục. Nếu không ignore, ta có thể vô tình đưa vào image cả thư mục `node_modules` nặng hàng trăm MB, file `.env` chứa mật khẩu hay thư mục `.git`.
 
-### 3.3.4. Cơ chế cache khi build
+#### 3.3.4. Cơ chế cache khi build
 
 Docker cache từng layer theo thứ tự từ trên xuống. Nếu một layer không thay đổi, Docker dùng lại cache. Nhưng khi một layer thay đổi, tất cả layer phía sau đều phải build lại.
 
@@ -358,7 +358,7 @@ COPY . .                             # chỉ layer này build lại khi code đ�
 
 Nguyên tắc chung: đặt những thứ ít thay đổi ở trên, thứ hay thay đổi ở dưới.
 
-### 3.3.5. Multi-stage build
+#### 3.3.5. Multi-stage build
 
 Multi-stage build cho phép ta dùng nhiều `FROM` trong cùng một `Dockerfile`. Mục đích là tách biệt giai đoạn build cần nhiều công cụ, nặng và giai đoạn chạy chỉ cần kết quả, nhẹ.
 

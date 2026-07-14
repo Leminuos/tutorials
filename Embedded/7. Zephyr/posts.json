@@ -8,8 +8,26 @@
     "tags": ["zephyr"]
   },
 
-  "2. setup": {
-    "title": "Hướng dẫn cài đặt môi trường",
+  "3. architecture": {
+    "title": "Kiến trúc Zephyr",
+    "date": "24-06-2026",
+    "author": "Peizzon",
+    "description": "...",
+    "image": "img/zephyr.png",
+    "tags": ["zephyr"]
+  },
+
+  "4. west": {
+    "title": "Công cụ West",
+    "date": "24-06-2026",
+    "author": "Peizzon",
+    "description": "...",
+    "image": "img/zephyr.png",
+    "tags": ["zephyr"]
+  },
+
+  "5. kconfig": {
+    "title": "Kconfig",
     "date": "24-06-2026",
     "author": "Peizzon",
     "description": "...",

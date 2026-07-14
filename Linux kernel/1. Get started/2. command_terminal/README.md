@@ -1,6 +1,6 @@
 # Command terminal
 
-## 1. Pipeline ( `|` )
+## 1. Pipeline
 
 Biểu tượng `|` dùng để nối đầu ra của một lệnh → làm đầu vào cho lệnh khác.
 
@@ -234,7 +234,7 @@ Trên Linux, thư mục `/dev` chứa các **device file**. Đây không phải 
  
 Phần này giới thiệu các device file đặc biệt khi ta làm việc với terminal trong linux
 
-### 9.1. `/dev/null`
+### 9.1. /dev/null
 
 Mọi dữ liệu ghi vào file này đều biến mất, không lưu ở đâu cả. Đọc từ file thì lập tức nhận EOF (end-of-life), tức không có gì để đọc. Ta có thể hình dung `/dev/null` như một thùng rác vô đáy — bỏ gì vào cũng mất, nhìn vào thì trống rỗng.
  
@@ -250,7 +250,7 @@ find / -name "*.log" 2>/dev/null
 Ta có thể dùng `/dev/null` để xóa nội dung một file mà không xóa chính file đó: `cat /dev/null > logfile.txt`. File vẫn tồn tại nhưng nội dung bên trong bị xóa sạch — rất hữu ích khi muốn làm trống file log mà không ảnh hưởng đến các chương trình đang ghi vào nó.
 :::
 
-### 9.2. `/dev/zero`
+### 9.2. /dev/zero
 
 Đọc file này sẽ nhận được một dòng byte `0x00` (null byte) vô tận, không bao giờ dừng. Ghi vào file thì giống `/dev/null`, dữ liệu biến mất.
 
@@ -266,7 +266,7 @@ Lệnh này đọc từ `/dev/zero` (input file), mỗi lần đọc 1MB (`bs=1M
 Lệnh `dd` rất mạnh và không có xác nhận trước khi ghi đè. Nếu ta nhầm `of=` thành tên ổ đĩa thật (ví dụ `of=/dev/sda`), toàn bộ dữ liệu trên ổ đĩa sẽ bị xóa sạch không thể khôi phục. Luôn kiểm tra kỹ lệnh trước khi nhấn Enter.
 :::
 
-### 9.3. `/dev/random`
+### 9.3. /dev/random
 
 Đọc từ file này sẽ nhận các byte ngẫu nhiên, được tạo ra từ **entropy pool** của kernel. Ghi vào file thì sẽ thêm dữ liệu vào entropy pool.
 
@@ -286,7 +286,7 @@ Lệnh `head -c 32` đọc đúng 32 byte ngẫu nhiên, sau đó `xxd` chuyển
 Chỉ cần dùng `/dev/random` khi ta cần tạo khóa mật mã cực kỳ quan trọng. Với hầu hết trường hợp khác, `/dev/urandom` là đủ tốt và tiện hơn.
 :::
  
-### 9.4. `/dev/urandom`
+### 9.4. /dev/urandom
  
 Giống `/dev/random`, trả về byte ngẫu nhiên. Điểm khác biệt là nó không bao giờ dừng lại chờ. Nếu entropy pool cạn, nó dùng thuật toán mật mã để tiếp tục sinh byte ngẫu nhiên dựa trên những gì đã có.
 
@@ -299,12 +299,12 @@ head -c 15 /dev/urandom | base64
 ```
 
 Đọc 15 byte ngẫu nhiên rồi mã hóa base64, cho ra chuỗi khoảng 20 ký tự gồm chữ hoa, chữ thường, số và +/=. Dùng `/dev/urandom` thay vì `/dev/random` vì ta không muốn lệnh phải treo chờ entropy — với việc sinh password, mức ngẫu nhiên của `urandom` là quá đủ.
- 
-:::warning `random` vs `urandom` — chọn cái nào?
+
+:::warning random vs urandom — chọn cái nào?
 Trên Linux hiện đại (phiên bản kernel 5.6 trở lên), cả hai gần như giống nhau về chất lượng ngẫu nhiên sau khi hệ thống đã khởi động xong. Sự khác biệt chỉ thực sự quan trọng trên kernel cũ hoặc trong giai đoạn hệ thống mới bật lên (early boot) khi entropy pool chưa có đủ dữ liệu.
 :::
  
-### 9.5. `/dev/full` — Ổ đĩa luôn đầy
+### 9.5. /dev/full
 
 Đọc từ nó thì giống `/dev/zero` (trả về null byte). Nhưng khi ghi vào nó, luôn trả về lỗi `ENOSPC` (No space left on device) — giả lập tình trạng ổ đĩa hết dung lượng.
 
@@ -321,7 +321,7 @@ echo "dữ liệu test" > /dev/full
 Nếu ta viết ứng dụng có ghi file, hãy thử chuyển hướng output sang `/dev/full` để xem ứng dụng có bắt được lỗi hay không. Nhiều bug nghiêm trọng trong phần mềm xảy ra vì lập trình viên quên kiểm tra lỗi khi ghi file.
 :::
  
-### 9.6. `/dev/tty`
+### 9.6. /dev/tty
 
 Luôn trỏ đến terminal đang điều khiển tiến trình hiện tại. Ghi vào nó thì nội dung hiện ra trên terminal, đọc từ nó thì lấy input từ bàn phím.
  
@@ -336,7 +336,7 @@ Bên trong `my_script.sh`:
  
 ```bash
 #!/bin/bash
-# Lúc này stdin là pipe, KHÔNG phải bàn phím
+# Lúc này stdin là pipe, không phải bàn phím
 # Nhưng /dev/tty luôn kết nối đến bàn phím thật
 
 read -p "Nhập mật khẩu: " password < /dev/tty

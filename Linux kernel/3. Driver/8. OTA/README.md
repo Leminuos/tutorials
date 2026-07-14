@@ -857,7 +857,7 @@ do_install:append() {
 `CONFIG_SYSTEMD=y` trong `defconfig` yêu cầu `sd-daemon.h` từ `libsystemd`. Trong Yocto, header này nằm trong package `systemd`, nhưng swupdate recipe từ `meta-swupdate` không tự động thêm dependency này khi `CONFIG_SYSTEMD=y`. Cần khai báo thủ công để Yocto đưa header vào sysroot lúc cross-compile.
 :::
 
-### 3.3. Cấu hình `libubootenv`
+### 3.3. Cấu hình libubootenv
 
 Khi SWUpdate flash kernel mới xong, ta cần U-Boot boot vào slot B. Để làm được điều này thì ta cần ghi vào biến môi trường của uboot để khi U-boot chạy, nó sẽ đọc biến môi trường này và thực hiện boot vào slot B.
 
@@ -1122,7 +1122,7 @@ CONFIG_ENV_SIZE=0x20000
 CONFIG_BOOTCOMMAND="run findfdt; run init_console; run finduuid; run envboot; run distro_bootcmd"
 ```
 
-### 3.5. Viết recipe tạo file `.swu`
+### 3.5. Viết recipe tạo file .swu
 
 Đây là bước cốt lõi — đóng gói kernel + DTB thành file `.swu` để gửi đến thiết bị.
  
@@ -1278,11 +1278,11 @@ SWUPDATE_IMAGES_FSTYPES[zImage]             = ""
 SWUPDATE_IMAGES_FSTYPES[am335x-boneblack.dtb] = ""
 ```
 
-### 3.6. Systemd service — confirm boot thành công
+### 3.6. Confirm boot thành công
 
 Sau khi boot vào slot mới thành công, systemd chạy service này để xác nhận boot — reset `ustate=0` để tránh U-Boot rollback nhầm.
 
-:::warning **Tại sao quan trọng:**
+:::warning Tại sao quan trọng
 Nếu không confirm, `ustate` mãi bằng `1`. Sau 3 lần reboot bình thường, U-Boot sẽ rollback về slot cũ dù hệ thống đang hoạt động tốt.
 :::
 
