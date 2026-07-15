@@ -2,7 +2,7 @@
 
 ## 1. Pipeline
 
-Biểu tượng `|` dùng để nối đầu ra của một lệnh → làm đầu vào cho lệnh khác.
+Biểu tượng `|` dùng để nối đầu ra của một lệnh làm đầu vào cho lệnh khác. Nó cho phép ghép nhiều lệnh thành một chuỗi xử lý:
 
 **Ví dụ 1:**
 
