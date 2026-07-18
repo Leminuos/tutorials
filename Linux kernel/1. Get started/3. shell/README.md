@@ -6,9 +6,9 @@
 
 ```text
    Ta gõ lệnh           Shell dịch lệnh         Kernel thực thi
-  ┌───────────┐        ┌──────────────┐        ┌──────────────┐
-  │  ls -l    │ ─────▶ │  Bash / sh   │ ─────▶ │   Linux OS   │
-  └───────────┘        └──────────────┘        └──────────────┘
+  +-----------+        +--------------+        +--------------+
+  |  ls -l    | -----> |  Bash / sh   | -----> |   Linux OS   |
+  +-----------+        +--------------+        +--------------+
                               ▲                        │
                               └────── kết quả ─────────┘
 ```
@@ -46,7 +46,7 @@ Xin chào, pei!
 Hôm nay là Wednesday
 ```
 
-## 1.3. Shebang
+### 1.3. Shebang
 
 ```bash
 #!/bin/bash
@@ -80,7 +80,7 @@ ls -l hello.sh
 
 Dùng `chmod +x` thêm quyền thực thi. Ta chỉ cần làm một lần cho mỗi file.
 
-## 1.5. Các cách chạy script
+### 1.5. Các cách chạy script
 
 Cách 1: chạy trực tiếp (cần quyền thực thi + đường dẫn)
 
@@ -140,7 +140,7 @@ count2="ok"      # hợp lệ
 ```
 
 :::warning Không dùng ký tự đặc biệt để đặt tên
-Không dùng các ký tự như `! * - @ $` trong tên biến, vì chúng đã mang ý nghĩa riêng với shell (xem [biến đặc biệt](#c-biến-đặc-biệt)).
+Không dùng các ký tự như `! * - @ $` trong tên biến, vì chúng đã mang ý nghĩa riêng với shell.
 :::
 
 :::warning Không có khoảng trắng quanh dấu `=`
@@ -164,13 +164,13 @@ echo $name             # Nam
 echo "${name}"         # Nam  (cách viết an toàn hơn)
 ```
 
-**Vì sao nên dùng `${...}`?** Khi biến đứng sát ký tự khác, shell không biết tên biến kết thúc ở đâu. Dấu `{ }` giúp khoanh vùng rõ ràng:
-
-```bash
-name="Nam"
-echo "Xin chao $nameoi"     # (rỗng phần tên) — shell tìm biến $nameoi (không tồn tại)
-echo "Xin chao ${name}oi"   # Xin chao Namoi — đúng ý muốn
-```
+>**Vì sao nên dùng `${...}`?** Khi biến đứng sát ký tự khác, shell không biết tên biến kết thúc ở đâu. Dấu `{ }` giúp khoanh vùng rõ ràng:
+>
+>```bash
+>name="Nam"
+>echo "Xin chao $nameoi"     # (rỗng phần tên) — shell tìm biến $nameoi (không tồn tại)
+>echo "Xin chao ${name}oi"   # Xin chao Namoi — đúng ý muốn
+>```
 
 ### 2.3. Biến chỉ đọc và hủy biến
 
@@ -186,7 +186,7 @@ echo "$name"          # (rỗng)
 ### 2.4. Nhập giá trị từ người dùng với `read`
  
 Lệnh `read` đọc dữ liệu người dùng gõ vào và lưu vào biến:
- 
+
 ```bash
 #!/bin/bash
  
@@ -196,9 +196,9 @@ echo "Chào $name!"
 read -p "Nhập tuổi: " age
 echo "Bạn $age tuổi"
 ```
- 
+
 Các tùy chọn hữu ích của `read`:
- 
+
 | Tùy chọn | Tác dụng |
 | --- | --- |
 | `-p "text"` | Hiện lời nhắc (prompt) trước khi nhập |
@@ -206,7 +206,7 @@ Các tùy chọn hữu ích của `read`:
 | `-r` | Không diễn giải dấu `\` (nên luôn dùng) |
 | `-n N` | Đọc tối đa N ký tự rồi tự dừng |
 | `-t N` | Chờ tối đa N giây rồi bỏ qua |
- 
+
 ```bash
 read -s -p "Nhập mật khẩu: " pass
 echo    # xuống dòng vì -s không tự xuống dòng
@@ -252,8 +252,8 @@ Các ký tự đặc biệt không dùng làm tên biến được vì chúng đ
 | `$?` | Exit status của lệnh vừa chạy (0 = thành công, khác 0 = lỗi). Phạm vi 0–255 |
 | `$$` | PID của script hiện tại |
 | `$!` | PID của lệnh background gần nhất |
-| `$*` | Tất cả đối số, gộp thành **một** chuỗi |
-| `$@` | Tất cả đối số, giữ **riêng lẻ** từng cái |
+| `$*` | Tất cả đối số, gộp thành một chuỗi |
+| `$@` | Tất cả đối số, giữ riêng lẻ từng cái |
 
 Xét ví dụ sau:
 
@@ -279,7 +279,7 @@ Quoted Values: Hello World
 Total Number of Parameters : 2
 ```
 
-Ta sẽ thấy variable `$*` và `$@` khá giống nhau. Về cơ bản thì 2 biến này hoạt động giống nhau, trừ khi chúng được đặt trong dấu "":
+Về cơ bản thì hai biến variable `$*` và `$@` hoạt động giống nhau, trừ khi chúng được đặt trong dấu `""`:
 - `$*` : Các đối số đưa vào sẽ được nối thành một chuỗi và được phân cách nhau bởi dấu cách.
 - `$@`: Các đối số đưa vào sẽ được phân biệt một cách riêng lẻ.
 
@@ -883,7 +883,7 @@ while IFS= read -r line; do
 done < input.txt
 ```
 
-:::info Giải thích `while IFS= read -r line`
+:::tip Giải thích `while IFS= read -r line`
 - `IFS=` : tạm bỏ trống biến phân tách, để không cắt mất khoảng trắng đầu/cuối dòng.
 - `-r` : không diễn giải dấu `\`, giữ nguyên nội dung thô.
 - `< input.txt` : lấy nội dung file làm đầu vào cho vòng lặp.
@@ -931,17 +931,17 @@ done
 ```bash
 #!/bin/bash
 
-# Cú pháp 1 — phổ biến
+# Cú pháp 1: phổ biến
 greet() {
     echo "Xin chào, $1!"
 }
 
-# Cú pháp 2 — dùng từ khóa function
+# Cú pháp 2: dùng từ khóa function
 function greet {
     echo "Xin chào, $1!"
 }
 
-# Gọi hàm — không dùng dấu ()
+# Gọi hàm: không dùng dấu ()
 greet "Nam"          # In: Xin chào, Nam!
 greet "Thế giới"
 ```
@@ -1064,7 +1064,7 @@ fi
 
 ### 6.5. Truyền mảng vào hàm
 
-Bash không truyền mảng trực tiếp, cần dùng nameref (Bash 4.3+) hoặc truyền từng phần tử:
+Bash không truyền mảng trực tiếp, cần dùng `nameref` (Bash 4.3+) hoặc truyền từng phần tử:
 
 ```bash
 # Cách 1: truyền từng phần tử
@@ -1094,7 +1094,7 @@ Script chạy được là một chuyện, script an toàn khi có sự cố l�
 
 ### 7.1. Exit status
 
-Mỗi lệnh khi kết thúc đều trả về một **mã trạng thái (exit status)**: `0` là thành công, khác `0` là có lỗi. Biến `$?` lưu mã của lệnh vừa chạy:
+Mỗi lệnh khi kết thúc đều trả về một mã trạng thái (exit status): `0` là thành công, khác `0` là có lỗi. Biến `$?` lưu mã của lệnh vừa chạy:
 
 ```bash
 ls /thu_muc_khong_ton_tai
