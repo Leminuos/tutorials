@@ -8,6 +8,15 @@
     "tags": ["zephyr"]
   },
 
+  "2. setup": {
+    "title": "Cài đặt môi trường",
+    "date": "24-06-2026",
+    "author": "Peizzon",
+    "description": "...",
+    "image": "img/zephyr.png",
+    "tags": ["zephyr"]
+  },
+
   "3. architecture": {
     "title": "Kiến trúc Zephyr",
     "date": "24-06-2026",
@@ -28,6 +37,15 @@
 
   "5. kconfig": {
     "title": "Kconfig",
+    "date": "24-06-2026",
+    "author": "Peizzon",
+    "description": "...",
+    "image": "img/zephyr.png",
+    "tags": ["zephyr"]
+  },
+
+  "6. device tree": {
+    "title": "Device tree",
     "date": "24-06-2026",
     "author": "Peizzon",
     "description": "...",
