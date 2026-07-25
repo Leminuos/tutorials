@@ -3,7 +3,7 @@
     "title": "Giới thiệu",
     "date": "24-06-2026",
     "author": "Peizzon",
-    "description": "...",
+    "description": "Zephyr là gì, các thành phần cốt lõi và kiến trúc tổng thể.",
     "image": "img/zephyr.png",
     "tags": ["zephyr"]
   },
@@ -12,16 +12,16 @@
     "title": "Cài đặt môi trường",
     "date": "24-06-2026",
     "author": "Peizzon",
-    "description": "...",
+    "description": "Yêu cầu hệ thống và các bước cài đặt môi trường phát triển Zephyr.",
     "image": "img/zephyr.png",
     "tags": ["zephyr"]
   },
 
-  "3. architecture": {
-    "title": "Kiến trúc Zephyr",
+  "3. kernel": {
+    "title": "Kernel",
     "date": "24-06-2026",
     "author": "Peizzon",
-    "description": "...",
+    "description": "Thread, scheduler, đồng bộ, bộ nhớ, ngắt và trình tự khởi động của kernel.",
     "image": "img/zephyr.png",
     "tags": ["zephyr"]
   },
@@ -30,7 +30,7 @@
     "title": "Công cụ West",
     "date": "24-06-2026",
     "author": "Peizzon",
-    "description": "...",
+    "description": "Dùng west để tạo workspace, build, flash và debug firmware.",
     "image": "img/zephyr.png",
     "tags": ["zephyr"]
   },
@@ -39,16 +39,16 @@
     "title": "Kconfig",
     "date": "24-06-2026",
     "author": "Peizzon",
-    "description": "...",
+    "description": "Cấu hình firmware bằng Kconfig: symbol, phụ thuộc và thứ tự ưu tiên.",
     "image": "img/zephyr.png",
     "tags": ["zephyr"]
   },
 
-  "6. device tree": {
+  "6. devicetree": {
     "title": "Device tree",
     "date": "24-06-2026",
     "author": "Peizzon",
-    "description": "...",
+    "description": "Mô tả phần cứng bằng devicetree và truy cập từ code C.",
     "image": "img/zephyr.png",
     "tags": ["zephyr"]
   }
