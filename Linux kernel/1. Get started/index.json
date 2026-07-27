@@ -1,0 +1,12 @@
+{
+  "title": "Get Started",
+  "toctree": [
+    { "path": "1. vim_editor", "title": "Vim Editor" },
+    { "path": "2. command_terminal", "title": "Command Terminal" },
+    { "path": "3. shell", "title": "Shell Script" },
+    { "path": "4. build_image", "title": "Build Image" },
+    { "path": "5. kconfig", "title": "Kconfig" },
+    { "path": "6. docker", "title": "Docker" },
+    { "path": "7. git", "title": "Git" }
+  ]
+}

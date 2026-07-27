@@ -1,0 +1,7 @@
+{
+  "title": "Board",
+  "toctree": [
+    { "path": "1. BBB", "title": "Beaglebone Black" },
+    { "path": "2. licheepi", "title": "LicheePi" }
+  ]
+}

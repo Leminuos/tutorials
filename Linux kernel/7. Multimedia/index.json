@@ -1,0 +1,14 @@
+{
+  "title": "Multimedia",
+  "toctree": [
+    {
+      "path": "1. Framebuffer",
+      "title": "Framebuffer",
+      "examples": [
+        "example/01_oled_framebuffer",
+        "example/02_oled_framebuffer"
+      ]
+    },
+    { "path": "2. Qt", "title": "Qt" }
+  ]
+}

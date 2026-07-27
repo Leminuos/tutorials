@@ -1,0 +1,38 @@
+{
+  "title": "Driver",
+  "toctree": [
+    { "path": "0. getting_driver", "title": "Getting Started With Driver" },
+    { "path": "1. kernel_module", "title": "Kernel Module" },
+    {
+      "path": "2. device_driver",
+      "title": "Device Driver",
+      "examples": ["example/char_device"]
+    },
+    {
+      "path": "3. misc_driver",
+      "title": "Misc Driver",
+      "examples": ["example/led_gpio"]
+    },
+    {
+      "path": "4. interrupt",
+      "title": "Interrupt",
+      "examples": [{ "name": "interrupt", "path": "example" }]
+    },
+    {
+      "path": "5. device_tree",
+      "title": "Device Tree",
+      "examples": [
+        "example/i2c_driver",
+        "example/led_solution_1",
+        "example/led_solution_2"
+      ]
+    },
+    {
+      "path": "6. pin_muxing",
+      "title": "Pin Muxing",
+      "examples": ["example/led_dimmy"]
+    },
+    { "path": "7. uboot", "title": "U-Boot" },
+    { "path": "8. OTA", "title": "OTA Update" }
+  ]
+}

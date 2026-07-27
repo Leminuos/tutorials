@@ -1,0 +1,13 @@
+{
+  "title": "Build System",
+  "toctree": [
+    {
+      "path": "1. CMake",
+      "title": "CMake",
+      "examples": ["cmake_example"]
+    },
+    { "path": "2. Yocto", "title": "Yocto" },
+    { "path": "3. Devtool", "title": "Devtool" },
+    { "path": "4. SDK", "title": "SDK / Toolchain" }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "title": "Subsystem",
+  "toctree": [
+    { "path": "1. GPIO_subsystem", "title": "GPIO Subsystem" },
+    { "path": "2. I2C_subsystem", "title": "I2C Subsystem" },
+    { "path": "3. IIO_subsystem", "title": "IIO Subsystem" },
+    { "path": "4. SPI_subsystem", "title": "SPI Subsystem" }
+  ]
+}

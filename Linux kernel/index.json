@@ -1,0 +1,15 @@
+{
+  "title": "Linux Kernel",
+  "description": "Lộ trình học Linux từ môi trường làm việc, kiến thức hệ điều hành, viết driver, build system cho tới secure boot, multimedia và network.",
+  "toctree": [
+    "1. Get started",
+    "2. OS",
+    "3. Driver",
+    "4. Build system",
+    "5. Secure boot",
+    "6. Board",
+    "7. Multimedia",
+    "8. Network",
+    "9. Subsystem"
+  ]
+}

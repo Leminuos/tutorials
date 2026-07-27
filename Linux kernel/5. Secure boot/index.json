@@ -1,0 +1,9 @@
+{
+  "title": "Secure Boot",
+  "toctree": [
+    { "path": "1. secure_boot_chain", "title": "Secure Boot Chain" },
+    { "path": "3. uboot_verified", "title": "U-Boot Verified Boot" },
+    { "path": "4. dm-verity", "title": "Dm-verity" },
+    { "path": "5. read_only_rootfs", "title": "Read Only Rootfs" }
+  ]
+}
