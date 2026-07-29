@@ -398,7 +398,7 @@ Kernel sẽ duyệt từng chuỗi trong `compatible` của node theo thứ tự
 | `"fixed-regulator"` | Nguồn cố định (không điều chỉnh được) |
 | `"fixed-clock"` | Clock có tần số cố định |
 
-`compatible` cũng xuất hiện ở root node để định danh board:
+`compatible` cũng xuất hiện ở root node dùng để định danh board:
 
 ```dts
 / {
@@ -517,7 +517,7 @@ Nếu node con nằm trong một bus, `reg` của nó là địa chỉ trong kh�
         #address-cells = <1>;
         #size-cells = <1>;
         ranges = <0x0 0x48000000 0x01000000>;
-        /*        ↑child ↑parent   ↑length
+        /*       child parent      length
          * Địa chỉ 0x0..0x1000000 trong bus tương ứng với 0x48000000..0x49000000 của CPU */
 
         uart0: serial@20000 {
@@ -638,7 +638,9 @@ static bool __of_device_is_available(const struct device_node *device)
 
 ### 5.1. Node `/chosen`
 
-Node `/chosen` không mô tả phần cứng, nó truyền tham số runtime từ firmware/bootloader cho kernel:
+Node `/chosen` là node con trực tiếp của root, không mô tả phần cứng. Nó là kênh truyền tham số runtime từ firmware/bootloader sang kernel, đây là những thứ không cố định theo board mà thay đổi theo từng lần boot (command line, vị trí initrd, seed ngẫu nhiên,...).
+
+Vì không mô tả phần cứng nên node này không có `reg`, không có `compatible` và không sinh ra device nào cả.
 
 ```dts
 / {
@@ -649,29 +651,205 @@ Node `/chosen` không mô tả phần cứng, nó truyền tham số runtime t�
 };
 ```
 
-| Property | Ý nghĩa |
+#### 5.1.1. Ai ghi vào `/chosen`?
+
+1. **DTS viết sẵn:** giá trị tĩnh, compile vào DTB.
+2. **Bootloader ghi đè lúc boot:** Uboot gọi `fdt_chosen()` trong `image-fdt.c` để tạo node `/chosen` nếu chưa có và ghi hoặc ghi đè `bootargs`, `linux,initrd-start`, `linux,initrd-end`, `kaslr-seed`,... trước khi nhảy vào kernel.
+
+Nghĩa là dòng `bootargs` viết trong DTS thường bị uboot thay bằng giá trị của biến môi trường `bootargs`. Vì lý do này mà rất nhiều DTS mainline chỉ để node rỗng:
+
+```dts
+chosen {
+    /* để trống — bootloader sẽ điền */
+};
+```
+
+Muốn giữ command line trong DTS thì phải xóa biến `bootargs` trong uboot:
+
+```bash
+=> setenv bootargs
+=> saveenv
+```
+
+hoặc dùng `CONFIG_CMDLINE_FORCE=y` phía kernel.
+
+#### 5.1.2. `bootargs` và thứ tự ưu tiên command line
+
+Kernel đọc `bootargs` rất sớm, trong `early_init_dt_scan_chosen()` (`drivers/of/fdt.c`), trước cả khi memory subsystem sẵn sàng. Giá trị được copy vào `boot_command_line[]` và sau đó trở thành nội dung của `/proc/cmdline`.
+
+Cách kernel kết hợp `bootargs` với `CONFIG_CMDLINE` phụ thuộc vào kernel config:
+
+| Kernel config | Kết quả |
 |---|---|
-| `bootargs` | Kernel command line (U-Boot thường ghi đè giá trị này lúc boot) |
-| `stdout-path` | Console mặc định cho kernel log, có thể là đường dẫn node hoặc alias kèm cấu hình |
-| `linux,initrd-start` / `linux,initrd-end` | Vị trí initrd trong RAM |
+| `CONFIG_CMDLINE` | Dùng `bootargs` từ DT, chỉ dùng `CONFIG_CMDLINE` khi DT không có `bootargs` |
+| `CONFIG_CMDLINE_EXTEND=y` | `CONFIG_CMDLINE` được nối thêm vào sau `bootargs` |
+| `CONFIG_CMDLINE_FORCE=y` | Luôn dùng `CONFIG_CMDLINE`, bỏ qua hoàn toàn `bootargs` từ DT |
+
+:::tip Debug command line
+```bash
+cat /proc/cmdline                       # command line kernel thực sự dùng
+cat /proc/device-tree/chosen/bootargs   # giá trị nằm trong DTB
+```
+Hai giá trị này khác nhau khi `CONFIG_CMDLINE_FORCE`/`EXTEND` được bật hoặc khi kernel tự thêm/sửa tham số.
+:::
+
+#### 5.1.3. `stdout-path`
+
+`stdout-path` cho biết thiết bị nào là console mặc định. Cú pháp:
+
+```dts
+stdout-path = "serial0:115200n8";       /* qua alias + tham số UART */
+stdout-path = "/soc/serial@44e09000";   /* qua đường dẫn tuyệt đối */
+stdout-path = &uart0;                   /* dtc tự chuyển thành chuỗi path */
+```
+
+Phần sau dấu `:` là tham số cấu hình theo định dạng quen thuộc của `console=`: `<baud><parity><bits><flow>`, ví dụ `115200n8`.
+
+Kernel xử lý ở hai chỗ:
+
+- `of_alias_scan()` phân giải chuỗi này thành con trỏ node và lưu vào biến toàn cục `of_stdout`.
+- Nếu command line không có tham số `console=` thì kernel sẽ dùng chính thiết bị `stdout-path` làm console. Nếu có tham số `console=` thì sử dụng thiết bị trên command line.
+- Tham số `earlycon` (không kèm giá trị) trên command line sẽ khiến `of_setup_earlycon()` lấy thông tin từ `stdout-path` để bật console cực sớm, rất hữu ích khi debug kernel treo trước khi driver UART thật probe.
+
+:::tip Kernel không in gì ra UART?
+Kiểm tra theo thứ tự: `stdout-path` có trỏ đúng node UART không -> node UART có `status = "okay"` không -> alias `serialN` được dùng trong `stdout-path` có tồn tại trong `/aliases` không. Sau đó thử boot với `earlycon` để xem kernel chết ở đâu.
+:::
+
+#### 5.1.4. Bảng property của `/chosen`
+
+| Property | Người ghi | Ý nghĩa |
+|---|---|---|
+| `bootargs` | Bootloader / DTS | Kernel command line |
+| `stdout-path` | DTS | Console mặc định cho kernel log |
+| `stdin-path` | DTS | Thiết bị nhập mặc định (ít dùng trên Linux) |
+| `linux,initrd-start` | Bootloader | Địa chỉ vật lý đầu initrd/initramfs trong RAM |
+| `linux,initrd-end` | Bootloader | Địa chỉ vật lý cuối initrd/initramfs |
+| `kaslr-seed` | Bootloader | Seed 64-bit cho KASLR (ARM64); kernel **xóa trắng** sau khi dùng |
+| `rng-seed` | Bootloader | Entropy nạp sớm cho random pool; cũng bị xóa sau khi dùng |
+| `linux,uefi-system-table` | Firmware UEFI | Địa chỉ EFI system table |
+| `linux,booted-from-kexec` | Kernel cũ | Đánh dấu kernel này được boot bằng kexec |
+
+:::warning `/chosen` không phải nơi để cấu hình driver
+Chỉ dùng các property đã được chuẩn hóa. Nhồi cấu hình riêng của board vào `/chosen` là sai, cấu hình thiết bị phải nằm trong chính node thiết bị đó.
+:::
 
 ### 5.2. Node `/aliases`
 
-Node `/aliases` định nghĩa tên ngắn cho các đường dẫn node dài và quan trọng hơn là giúp kernel xác định thứ tự thiết bị:
+Node `/aliases` gán tên ngắn cho những node quan trọng. Nó phục vụ hai mục đích khác nhau:
+
+1. **Rút gọn tham chiếu:** cho phép `stdout-path` hoặc bootloader trỏ tới node bằng `"serial0"` thay vì đường dẫn đầy đủ.
+2. **Cố định số thứ tự thiết bị:** đây mới là công dụng quan trọng nhất trên Linux.
 
 ```dts
 / {
     aliases {
-        serial0 = &uart0;       /* /dev/ttyS0 */
-        serial1 = &uart1;       /* /dev/ttyS1 */
-        ethernet0 = &eth0;      /* eth0       */
-        i2c0 = &i2c0;           /* /dev/i2c-0 */
-        mmc0 = &mmc1;           /* có thể không theo thứ tự vật lý */
+        serial0 = &uart0;       /* /dev/ttyS0  */
+        serial1 = &uart1;       /* /dev/ttyS1  */
+        ethernet0 = &eth0;      /* eth0        */
+        i2c0 = &i2c0;           /* /dev/i2c-0  */
+        i2c1 = &i2c2;           /* /dev/i2c-1  */
+        mmc0 = &mmc1;           /* mmcblk0 = eMMC */
+        mmc1 = &mmc0;           /* mmcblk1 = SD */
+        spi0 = &spi0;
     };
 };
 ```
 
-Đây là lý do đánh số thiết bị trên Linux nhúng thường ổn định giữa các lần boot — khác với PC nơi thứ tự phụ thuộc thời điểm probe. Nếu không có alias, kernel gán số theo thứ tự probe và số này có thể thay đổi.
+#### 5.2.1. Giá trị của alias là chuỗi path, không phải phandle
+
+Trong DTS thì ta viết `&uart0` cho tiện nhưng `dtc` chuyển nó thành chuỗi đường dẫn tuyệt đối, không phải số phandle như các property tham chiếu khác:
+
+```bash
+$ dtc -I dtb -O dts am335x-boneblack.dtb | sed -n '/aliases/,/};/p'
+aliases {
+    serial0 = "/ocp/serial@44e09000";
+    ethernet0 = "/ocp/ethernet@4a100000/slave@4a100200";
+    ...
+};
+```
+
+```bash
+# Kiểm tra tại runtime, nội dung là chuỗi, đọc trực tiếp được
+$ ls /proc/device-tree/aliases/
+ethernet0  i2c0  mmc0  mmc1  serial0  spi0
+
+$ cat /proc/device-tree/aliases/serial0
+/ocp/serial@44e09000
+```
+
+Quy tắc đặt tên theo spec: tên alias chỉ được chứa `[0-9a-z-]`, dài tối đa 31 ký tự và phần đuôi số là ID mà kernel sẽ dùng.
+
+#### 5.2.2. Kernel dùng alias để đánh số thiết bị
+
+`of_alias_scan()` (`drivers/of/base.c`) chạy rất sớm trong quá trình boot, duyệt toàn bộ node `/aliases`, tách phần chữ (stem) và phần số (id), rồi lưu vào danh sách `aliases_lookup`. Driver sau đó truy vấn bằng:
+
+```c
+int id = of_alias_get_id(np, "serial");   /* trả về N của "serialN" hoặc -ENODEV */
+```
+
+Ví dụ thực tế trong driver UART OMAP (`drivers/tty/serial/omap-serial.c`):
+
+```c
+static int serial_omap_probe(struct platform_device *pdev)
+{
+    ...
+    ret = of_alias_get_id(pdev->dev.of_node, "serial");
+    if (ret < 0) {
+        dev_err(&pdev->dev, "failed to get alias\n");
+        return ret;
+    }
+    up->port.line = ret;      /* line = 0 → /dev/ttyO0 hoặc /dev/ttyS0 */
+    ...
+}
+```
+
+Cơ chế tương tự được dùng ở rất nhiều subsystem:
+
+| Alias stem | Subsystem dùng | Ảnh hưởng đến |
+|---|---|---|
+| `serial` | tty / serial core | `/dev/ttyS<N>`, số `line` của port |
+| `i2c` | `i2c_add_adapter()` qua `of_alias_get_id()` | `/dev/i2c-<N>`, tên device `<N>-00xx` |
+| `spi` | SPI core | `spi<N>.<cs>` |
+| `mmc` | mmc core | `mmcblk<N>` |
+| `ethernet` | net core / of_net | Thứ tự interface, tra MAC từ NVMEM |
+| `gpio` | gpiolib | Base number của gpiochip (legacy) |
+| `rtc` | RTC core | `/dev/rtc<N>` — `rtc0` là RTC mặc định của hệ thống |
+
+Ngoài ra còn `of_alias_get_highest_id("serial")` để driver biết ID lớn nhất đã bị chiếm, và `of_alias_get_alias_list()` để lấy bitmap các ID đã dùng.
+
+#### 5.2.3. Tại sao điều này quan trọng
+
+Nếu không có alias, kernel gán số theo thứ tự probe. Thứ tự probe lại phụ thuộc vào thứ tự node trong DTB, thời điểm clock/regulator sẵn sàng, deferred probe,... nên nó có thể bị thay đổi giữa các lần boot hoặc giữa các phiên bản kernel. Hậu quả:
+
+- `root=/dev/mmcblk0p2` trong bootargs trỏ nhầm từ eMMC sang thẻ SD -> không boot được.
+- Ứng dụng userspace mở `/dev/i2c-1` bỗng nói chuyện với bus khác.
+- Script cấu hình `/dev/ttyS2` gửi dữ liệu ra sai chân.
+
+Alias khóa cứng ánh xạ này ngay trong DTB, nên đánh số thiết bị trên Linux nhúng ổn định, khác với PC nơi thứ tự phụ thuộc thời điểm enumerate.
+
+Ví dụ kinh điển trên BeagleBone Black: eMMC nằm ở controller `mmc1` còn khe thẻ SD ở `mmc0` nhưng board muốn eMMC là `mmcblk0` để boot ổn định. Alias đảo lại ánh xạ đó mà không cần đụng vào node phần cứng.
+
+#### 5.2.4. Những điểm cần lưu ý
+
+:::warning Alias không tạo ra thiết bị
+Thêm `serial3 = &uart3;` không làm UART3 hoạt động. Node `uart3` vẫn phải có `status = "okay"`. Alias chỉ quyết định *số* của thiết bị nếu nó được probe.
+:::
+
+- **Không trùng ID**: hai alias cùng stem không được cùng số. `dtc` không bắt lỗi này nhưng kernel sẽ đánh số sai một cách im lặng.
+- **Không cần liên tục**: có thể chỉ khai báo `i2c0` và `i2c2`, bỏ trống `i2c1`.
+- **Chỉ có tác dụng nếu driver hỏi**: driver không gọi `of_alias_get_id()` thì alias vô nghĩa với nó.
+- **Sửa được bằng overlay**: overlay có thể thêm alias mới cho thiết bị mà nó tạo ra.
+
+```dts
+/* Trong overlay */
+&{/aliases} {
+    spi1 = "/ocp/spi@481a0000";
+};
+```
+
+:::note Phân biệt `/aliases` với `__symbols__`
+`/aliases` là node chuẩn của Devicetree spec, dùng lúc runtime để đánh số thiết bị. `__symbols__` là bảng do `dtc -@` sinh ra, ghi lại mọi node label trong DTS, chỉ phục vụ việc phân giải tham chiếu khi apply overlay. Hai thứ hoàn toàn khác nhau.
+:::
 
 ### 5.3. Node `/memory`
 
@@ -913,9 +1091,367 @@ device@1000 {
 | `IRQ_TYPE_LEVEL_HIGH` | 4 | Mức cao |
 | `IRQ_TYPE_LEVEL_LOW` | 8 | Mức thấp |
 
-## 7. Kernel đọc DTB như thế nào
+## 7. Cơ chế Provider - Consumer
 
-### 7.1. Giai đoạn 1: Bootloader truyền DTB cho kernel
+### 7.1. Vấn đề
+
+Mục 6 vừa mô tả cách một thiết bị khai báo interrupt của nó: node UART không tự biết số IRQ, nó trỏ tới interrupt controller kèm một dãy số. Đây không phải là trường hợp duy nhất, tương tự với nó còn có clock, GPIO, regulator, DMA, reset, PWM, pinctrl, PHY,...
+
+Vì trên SoC hầu như không có thiết bị nào tự chủ hoàn toàn. Một cảm biến I2C điển hình cần:
+
+- Bus I2C để giao tiếp với cảm biến
+- Một chân GPIO làm đường interrupt
+- Một regulator cấp nguồn 3.3 V
+- Có thể thêm clock, reset line, pinmux
+
+Tất cả những tài nguyên này do thiết bị khác trên SoC cung cấp. Device Tree mô tả quan hệ đó bằng một khuôn mẫu thống nhất gọi là **provider - consumer**:
+
+- **Provider**: node *cung cấp* tài nguyên (GPIO controller, clock controller, regulator, interrupt controller,...)
+- **Consumer**: node *sử dụng* tài nguyên đó, tham chiếu tới provider bằng phandle kèm tham số
+
+Mỗi quan hệ tồn tại ở hai tầng: một liên kết tĩnh trong DTB và một liên kết runtime giữa hai driver, do framework tương ứng đứng giữa làm trung gian:
+
+```
+          DEVICE TREE                              KERNEL
+  ┌────────────────────────┐             ┌────────────────────────┐
+  │ CONSUMER  tmp102@48    │   probe     │ tmp102 driver          │
+  │   alert-gpios =        │ ──────────> │   devm_gpiod_get()     │
+  │       <&gpio1 28 LOW>; │             └───────────┬────────────┘
+  └───────────┬────────────┘                         │ xin 1 GPIO
+              │ phandle + specifier                  v
+              v                          ┌────────────────────────┐
+  ┌────────────────────────┐             │ gpiolib core           │
+  │ PROVIDER  gpio1        │   probe     │   match of_node,       │
+  │   gpio-controller;     │ ──────────> │   gọi .of_xlate()      │
+  │   #gpio-cells = <2>;   │             └───────────▲────────────┘
+  └────────────────────────┘                         │ đăng ký
+                                         ┌───────────┴────────────┐
+                                         │ gpio driver            │
+                                         │   gpiochip_add_data()  │
+                                         └────────────────────────┘
+```
+
+### 7.2. Quy ước chung
+
+Toàn bộ các loại tài nguyên đều tuân theo cùng ba quy ước:
+
+**Phía provider:** khai báo `#<type>-cells` cho biết cần bao nhiêu cell để mô tả một tài nguyên, kèm một empty property đánh dấu vai trò:
+
+```dts
+gpio1: gpio@4804c000 {
+    compatible = "ti,omap4-gpio";
+    reg = <0x4804c000 0x1000>;
+    gpio-controller;            /* marker: node này cấp GPIO */
+    #gpio-cells = <2>;          /* mỗi GPIO cần 2 cell: số chân + flags */
+    interrupt-controller;       /* marker: node này cũng cấp interrupt */
+    #interrupt-cells = <2>;
+};
+```
+
+**Phía consumer:** dùng property tên `<type>s` chứa danh sách `<&provider arg0 arg1 ...>`, kèm `<type>-names` để đặt tên cho từng entry:
+
+```dts
+tmp102@48 {
+    compatible = "ti,tmp102";
+    reg = <0x48>;
+
+    gpios = <&gpio1 28 GPIO_ACTIVE_LOW>,   /* GPIO thứ 0 */
+            <&gpio2 5  GPIO_ACTIVE_HIGH>;  /* GPIO thứ 1 — provider khác */
+    gpio-names = "alert", "reset";
+};
+```
+
+**Specifier:** các cell đi sau phandle gọi là *specifier*. Số lượng cell do `#<type>-cells` của **provider được trỏ tới** quyết định, còn ý nghĩa từng cell do **binding của provider** quy định. Đây là lý do cùng property `gpios` nhưng mỗi SoC lại có ý nghĩa cell khác nhau.
+
+:::warning Đếm cell theo provider, không theo consumer
+Trong một danh sách có thể trỏ tới nhiều provider với `#<type>-cells` khác nhau. Kernel parse từng entry: đọc phandle -> tra `#<type>-cells` của node đó -> lấy đúng số cell tương ứng -> sang entry tiếp theo. Viết sai số cell làm lệch toàn bộ phần còn lại của danh sách và `dtc` sẽ không phát hiện được nếu không chạy validate schema.
+:::
+
+### 7.3. Các loại provider phổ biến
+
+| Tài nguyên | Property phía provider | Property phía consumer | API consumer thường dùng |
+|---|---|---|---|
+| Interrupt | - `interrupt-controller;`<br/>- `#interrupt-cells` | - `interrupts`<br/>- `interrupts-extended`<br/>- `interrupt-names` | - `platform_get_irq()`<br/>- `of_irq_get()` |
+| Clock | `#clock-cells` | - `clocks`<br/>- `clock-names` | `devm_clk_get()` |
+| GPIO | - `gpio-controller;`<br/>- `#gpio-cells` | - `<name>-gpios`<br/>- `gpios` | `devm_gpiod_get()` |
+| Reset | `#reset-cells` | - `resets`<br/>- `reset-names` | `devm_reset_control_get()` |
+| PWM | `#pwm-cells` | - `pwms`<br/>- `pwm-names` | `devm_pwm_get()` |
+| DMA | `#dma-cells` | - `dmas`<br/>- `dma-names` | `dma_request_chan()` |
+| Regulator | (không có cells) | `<name>-supply` | `devm_regulator_get()` |
+| Pinctrl | `#pinctrl-cells` (hiếm dùng) | - `pinctrl-0`<br/>- `pinctrl-names` | tự động, do driver core apply |
+| PHY | `#phy-cells` | - `phys`<br/>- `phy-names` | `devm_phy_get()` |
+| IOMMU | `#iommu-cells` | `iommus` | trong suốt với driver |
+| Mailbox | `#mbox-cells` | - `mboxes`<br/>- `mbox-names` | `mbox_request_channel()` |
+| NVMEM | (node con làm cell) | - `nvmem-cells`<br/>- `nvmem-cell-names` | `devm_nvmem_cell_get()` |
+| Thermal sensor | `#thermal-sensor-cells` | `thermal-sensors` | do thermal core xử lý |
+
+### 7.4. Ví dụ chi tiết: GPIO
+
+**Provider** trong `am33xx.dtsi`:
+
+```dts
+gpio1: gpio@4804c000 {
+    compatible = "ti,omap4-gpio";
+    reg = <0x4804c000 0x1000>;
+    gpio-controller;
+    #gpio-cells = <2>;
+    ti,gpio-always-on;
+};
+```
+
+`#gpio-cells = <2>` - theo binding của `gpiolib` thì cell 0 là số chân trong bank và cell 1 là flags.
+
+**Consumer**:
+
+```dts
+#include <dt-bindings/gpio/gpio.h>
+
+leds {
+    compatible = "gpio-leds";
+
+    led-heartbeat {
+        label = "beaglebone:green:usr0";
+        gpios = <&gpio1 21 GPIO_ACTIVE_HIGH>;
+        /*        │      │   └── cell 1: flags (active high/low, open-drain) */
+        /*        │      └────── cell 0: chân 21 của bank gpio1              */
+        /*        └───────────── phandle tới provider                        */
+        linux,default-trigger = "heartbeat";
+    };
+};
+```
+
+**Đặt tên GPIO:** quy ước phổ biến hơn là dùng tiền tố thay vì `gpio-names`:
+
+```dts
+tmp102@48 {
+    compatible = "ti,tmp102";
+    reg = <0x48>;
+
+    reset-gpios = <&gpio1 10 GPIO_ACTIVE_LOW>;
+    alert-gpios = <&gpio1 28 GPIO_ACTIVE_HIGH>;
+};
+```
+
+Driver lấy đúng chân bằng tên, không cần biết index:
+
+```c
+struct gpio_desc *reset, *alert;
+
+/* Tìm property "reset-gpios", lấy entry index 0, đặt output = 0 */
+reset = devm_gpiod_get(dev, "reset", GPIOD_OUT_LOW);
+if (IS_ERR(reset))
+    return PTR_ERR(reset);
+
+alert = devm_gpiod_get_optional(dev, "alert", GPIOD_IN);
+
+/* gpiolib tự đảo mức logic theo GPIO_ACTIVE_LOW trong DTS.
+ * Driver chỉ nghĩ theo logic 0/1, không quan tâm mức điện áp thật. */
+gpiod_set_value(reset, 1);   /* assert reset */
+```
+
+:::note Vì sao nên dùng `gpiod_*` thay cho `gpio_*` cũ
+API cũ (`of_get_named_gpio()`, `gpio_request()`) làm việc với số GPIO toàn cục, không hiểu flag `GPIO_ACTIVE_LOW` nên driver phải tự đảo mức. API descriptor (`gpiod_*`) đọc flags từ DTS và xử lý -> driver viết ra ngắn hơn và đúng với mọi board.
+:::
+
+### 7.5. Ví dụ chi tiết: Clock
+
+Clock minh hoạ rõ ý nghĩa của `#<type>-cells = <0>`:
+
+```dts
+/* Provider cấp duy nhất một clock -> không cần tham số */
+uart0_clk: clock@1000 {
+    compatible = "fixed-clock";
+    #clock-cells = <0>;
+    clock-frequency = <48000000>;
+};
+
+/* Provider cấp nhiều clock -> cần 1 cell làm chỉ số */
+cru: clock-controller@ff760000 {
+    compatible = "rockchip,rk3399-cru";
+    reg = <0xff760000 0x1000>;
+    #clock-cells = <1>;
+};
+```
+
+Consumer tham chiếu tương ứng:
+
+```dts
+i2c0: i2c@ff3c0000 {
+    compatible = "rockchip,rk3399-i2c";
+    reg = <0xff3c0000 0x1000>;
+
+    clocks = <&cru SCLK_I2C0>,   /* 1 cell: ID clock trong cru */
+             <&cru PCLK_I2C0>,
+             <&uart0_clk>;       /* 0 cell: provider chỉ có 1 clock */
+    clock-names = "i2c", "pclk", "debug";
+};
+```
+
+Driver:
+
+```c
+struct clk *fclk = devm_clk_get(dev, "i2c");    /* lấy theo tên */
+struct clk *pclk = devm_clk_get(dev, "pclk");
+
+ret = clk_prepare_enable(fclk);
+if (ret)
+    return ret;
+
+unsigned long rate = clk_get_rate(fclk);
+
+/* Hoặc gộp cả cụm — kernel tự đếm và lấy hết */
+struct clk_bulk_data *clks;
+int num = devm_clk_bulk_get_all(dev, &clks);
+clk_bulk_prepare_enable(num, clks);
+```
+
+Các macro như `SCLK_I2C0` đến từ `include/dt-bindings/clock/rk3399-cru.h` - file header dùng chung cho cả DTS và driver, đảm bảo hai bên hiểu cùng một con số.
+
+### 7.6. Regulator
+
+Regulator không dùng khuôn mẫu `#<type>-cells`. Mỗi regulator là một node riêng và consumer tham chiếu bằng property có hậu tố `-supply`, không có specifier:
+
+```dts
+/* Provider */
+vmmc_reg: regulator@2 {
+    compatible = "regulator-fixed";
+    regulator-name = "vmmc_3v3";
+    regulator-min-microvolt = <3300000>;
+    regulator-max-microvolt = <3300000>;
+    gpio = <&gpio1 6 GPIO_ACTIVE_HIGH>;   /* regulator này cũng là consumer của GPIO */
+    enable-active-high;
+};
+
+/* Consumer */
+tmp102@48 {
+    compatible = "ti,tmp102";
+    reg = <0x48>;
+    vcc-supply = <&vmmc_reg>;   /* tên trước "-supply" chính là tên mà driver hỏi */
+};
+```
+
+```c
+struct regulator *vcc = devm_regulator_get(dev, "vcc");  /* → "vcc-supply" */
+ret = regulator_enable(vcc);
+```
+
+:::note `devm_regulator_get()` không bao giờ trả NULL
+Nếu DTS không khai báo `vcc-supply`, regulator core trả về một dummy regulator hoạt động bình thường (mọi thao tác đều thành công) kèm cảnh báo trong dmesg. Đây là chủ ý, driver không cần `#ifdef` cho board không có regulator. Dùng `devm_regulator_get_optional()` nếu muốn biết chính xác nguồn có tồn tại hay không.
+:::
+
+### 7.7. Kernel phân giải tham chiếu như thế nào
+
+Toàn bộ các framework trên đều dựa vào một hàm chung: `of_parse_phandle_with_args()`.
+
+```c
+struct of_phandle_args {
+    struct device_node *np;      /* node provider */
+    int args_count;              /* số cell đọc được */
+    uint32_t args[MAX_PHANDLE_ARGS];  /* nội dung specifier */
+};
+
+/* Lấy entry thứ index của "gpios", biết số cell qua "#gpio-cells" */
+struct of_phandle_args args;
+int ret = of_parse_phandle_with_args(np, "gpios", "#gpio-cells", 0, &args);
+if (ret)
+    return ret;
+
+/* args.np       = node gpio1
+ * args.args_count = 2
+ * args.args[0]  = 28
+ * args.args[1]  = GPIO_ACTIVE_LOW  */
+```
+
+Các bước kernel thực hiện khi driver gọi `devm_gpiod_get(dev, "alert", GPIOD_IN)`:
+
+1. **Tìm property**: ghép tên thành `alert-gpios` (fallback `alert-gpio`, rồi `gpios`).
+2. **Đọc phandle** ở đầu entry, tra bảng phandle toàn cục để lấy `struct device_node *` của provider.
+3. **Đọc `#gpio-cells`** trên node provider để biết cần lấy bao nhiêu cell → điền vào `of_phandle_args`.
+4. **Tìm provider đã đăng ký**: gpiolib duyệt danh sách `gpio_chip` để tìm chip có `of_node` trùng với `args.np`.
+   - Nếu **chưa có** -> trả `-EPROBE_DEFER`, driver consumer sẽ được probe lại sau.
+5. **Gọi callback `.of_xlate()`** của provider để dịch specifier thành tài nguyên cụ thể (`of_gpio_simple_xlate()` mặc định: `args[0]` = offset chân, `args[1]` = flags).
+6. **Trả về descriptor** (`struct gpio_desc *`) cho driver.
+
+Phía provider, driver đăng ký chính mình bằng:
+
+```c
+/* GPIO */
+struct gpio_chip *gc = ...;
+gc->of_node = dev->of_node;
+devm_gpiochip_add_data(dev, gc, priv);
+
+/* Clock */
+of_clk_add_hw_provider(dev->of_node, of_clk_hw_onecell_get, clk_data);
+
+/* Interrupt */
+irq_domain_add_linear(dev->of_node, nr_irqs, &my_irq_domain_ops, priv);
+
+/* Reset */
+devm_reset_controller_register(dev, &rcdev);
+```
+
+### 7.8. Thứ tự probe và deferred probe
+
+Provider: consumer tạo ra một đồ thị phụ thuộc nhưng Device Tree không mô tả thứ tự khởi tạo và kernel probe device gần như theo thứ tự node trong DTB. Hệ quả là consumer thường được probe trước provider của nó.
+
+Kernel giải quyết bằng `-EPROBE_DEFER` (chi tiết ở mục 8.5.3): consumer trả về mã lỗi này, kernel đưa nó vào danh sách chờ và thử lại sau mỗi lần có driver mới probe thành công.
+
+```c
+static int tmp102_probe(struct i2c_client *client)
+{
+    struct gpio_desc *alert;
+
+    alert = devm_gpiod_get(&client->dev, "alert", GPIOD_IN);
+    if (IS_ERR(alert))
+        /* Có thể là -EPROBE_DEFER nếu gpio1 chưa probe.
+         * KHÔNG in dev_err() cho trường hợp này — sẽ spam log. */
+        return dev_err_probe(&client->dev, PTR_ERR(alert),
+                             "failed to get alert gpio\n");
+    ...
+}
+```
+
+`dev_err_probe()` là helper chuẩn: im lặng khi lỗi là `-EPROBE_DEFER`, in lỗi bình thường trong các trường hợp còn lại, và luôn trả về đúng mã lỗi đã nhận.
+
+Từ kernel 5.x, driver core còn tự dựng **device link** từ các tham chiếu phandle trong DT (`fw_devlink`). Nhờ đó consumer bị hoãn probe cho tới khi provider sẵn sàng, giảm hẳn số vòng deferred probe, và thứ tự suspend/resume/shutdown cũng được sắp đúng: provider tắt sau consumer, bật trước consumer.
+
+```bash
+# Xem quan hệ đã dựng
+$ ls /sys/devices/platform/*/consumer:*
+$ ls /sys/devices/platform/*/supplier:*
+```
+
+### 7.9. Debug quan hệ provider - consumer
+
+```bash
+# Device nào đang chờ provider
+cat /sys/kernel/debug/devices_deferred
+# platform 48022000.serial - 0 - -EPROBE_DEFER
+
+# Cây clock: tên, số consumer đang enable, tần số
+cat /sys/kernel/debug/clk/clk_summary
+
+# Các gpiochip đã đăng ký và chân nào đang bị claim (bởi driver nào)
+cat /sys/kernel/debug/gpio
+
+# Regulator: nguồn nào, ai dùng, điện áp bao nhiêu
+cat /sys/kernel/debug/regulator/regulator_summary
+
+# Interrupt đã được map
+cat /proc/interrupts
+cat /sys/kernel/debug/irq/domains/default
+```
+
+:::warning Các lỗi hay gặp
+- **Thiếu `#<type>-cells` ở provider** → kernel không parse được specifier, consumer nhận `-EINVAL`. `dtc -Wall` bắt được lỗi này với check `interrupt_provider`, nhưng không phải với mọi loại tài nguyên.
+- **Số cell không khớp binding** → dữ liệu lệch, GPIO/clock sai hoàn toàn mà không có thông báo lỗi.
+- **Provider bị `status = "disabled"`** → consumer kẹt `-EPROBE_DEFER` vĩnh viễn. Đây là nguyên nhân phổ biến nhất khi thiết bị "không lên" dù DTS trông đúng.
+- **Quên bật driver của provider trong kernel config** → triệu chứng giống hệt trường hợp trên.
+:::
+
+## 8. Kernel đọc DTB như thế nào
+
+### 8.1. Giai đoạn 1: Bootloader truyền DTB cho kernel
 
 Trước khi kernel chạy, bootloader thực hiện:
 
@@ -927,7 +1463,7 @@ Trước khi kernel chạy, bootloader thực hiện:
    - ARM 64-bit: đặt vào thanh ghi `x0`
    - Lệnh boot: `bootz ${loadaddr} - ${fdtaddr}` — dấu `-` nghĩa là không có initrd, `${fdtaddr}` là địa chỉ DTB
 
-### 7.2. Giai đoạn 2: Early boot
+### 8.2. Giai đoạn 2: Early boot
 
 Ngay khi kernel bắt đầu chạy, trước khi bất kỳ driver nào được load:
 
@@ -960,7 +1496,7 @@ Hàm chính: `early_init_dt_scan()` và `unflatten_device_tree()` trong `drivers
 | Structure block | Cây node/property, mã hóa bằng token `FDT_BEGIN_NODE`, `FDT_PROP`, `FDT_END_NODE` |
 | Strings block | Bảng tên property dùng chung để tiết kiệm dung lượng |
 
-### 7.3. Giai đoạn 3: Platform identification
+### 8.3. Giai đoạn 3: Platform identification
 
 Kernel đọc `compatible` của root node `/` để xác định đang chạy trên machine nào:
 
@@ -981,7 +1517,7 @@ Unrecognized/unsupported machine ID
 
 (ARM64 không dùng cơ chế này — mọi thứ đều generic và điều khiển hoàn toàn bằng DT.)
 
-### 7.4. Giai đoạn 4: Tạo device từ Device Tree
+### 8.4. Giai đoạn 4: Tạo device từ Device Tree
 
 Sau khi các subsystem cơ bản sẵn sàng (memory, interrupt, clock), kernel bắt đầu tạo device. Không phải mọi node đều tạo device cùng lúc — cách tạo phụ thuộc vị trí node trong cây.
 
@@ -1027,9 +1563,9 @@ Nó tạo device cho node con trực tiếp của node được truyền vào, v
 
 **Node có `status = "disabled"` / `"fail"`** — bị bỏ qua hoàn toàn, không tạo device.
 
-### 7.5. Giai đoạn 5: Driver matching và probe
+### 8.5. Giai đoạn 5: Driver matching và probe
 
-#### 7.5.1. Matching
+#### 8.5.1. Matching
 
 Khi device được tạo, kernel tìm driver phù hợp bằng cách so từng chuỗi trong `compatible` của device với từng entry trong `of_match_table` của driver:
 
@@ -1064,7 +1600,7 @@ serial@44e09000 {
 
 `MODULE_DEVICE_TABLE(of, ...)` là bắt buộc nếu driver được build thành module — nó sinh metadata để `udev`/`modprobe` tự động load module khi gặp device có compatible tương ứng.
 
-#### 7.5.2. Probe
+#### 8.5.2. Probe
 
 Khi match thành công, kernel gọi `probe()` của driver. Đây là nơi driver đọc thông tin từ DT, cấu hình phần cứng, đăng ký interface cho userspace:
 
@@ -1105,7 +1641,7 @@ static int omap_serial_probe(struct platform_device *pdev)
 - Dependency chưa sẵn sàng (clock, regulator, pinctrl chưa probe) $\rightarrow$ trả `-EPROBE_DEFER`, kernel sẽ thử lại sau
 - Lỗi phần cứng thực sự $\rightarrow$ trả error code, device không hoạt động
 
-#### 7.5.3. Deferred probe
+#### 8.5.3. Deferred probe
 
 Thứ tự probe không được đảm bảo. Ví dụ UART cần clock nhưng clock driver chưa probe xong:
 
@@ -1135,7 +1671,7 @@ cat /sys/kernel/debug/devices_deferred
 # platform 48022000.serial - 0 - -EPROBE_DEFER
 ```
 
-### 7.6. Ví dụ end-to-end: cảm biến I2C từ DTS đến userspace
+### 8.6. Ví dụ end-to-end: cảm biến I2C từ DTS đến userspace
 
 **Device Tree:**
 
@@ -1195,13 +1731,13 @@ i2c2: i2c@4819c000 {
    25500   (= 25.5 °C)
 ```
 
-## 8. OF API
+## 9. OF API
 
 Driver truy cập DT thông qua `struct device_node *np = dev->of_node;`.
 
 Header: `#include <linux/of.h>`, `<linux/of_device.h>`, `<linux/property.h>`.
 
-### 8.1. Đọc property
+### 9.1. Đọc property
 
 ```c
 /* Số nguyên */
@@ -1249,7 +1785,7 @@ device_property_read_string(dev, "label", &s);
 device_property_present(dev, "my-feature");
 ```
 
-### 8.2. Duyệt cây
+### 9.2. Duyệt cây
 
 ```c
 /* Tìm node theo path */
@@ -1281,7 +1817,7 @@ bool is = of_device_is_compatible(np, "ti,tmp102");
 `of_find_*()`, `of_parse_phandle()` **tăng refcount** của node trả về. Phải gọi `of_node_put()` khi dùng xong, nếu không sẽ leak. Các macro `for_each_*_of_node()` tự xử lý refcount trong vòng lặp bình thường, nhưng nếu `break` giữa chừng thì phải tự `of_node_put(child)`.
 :::
 
-### 8.3. Lấy resource
+### 9.3. Lấy resource
 
 ```c
 /* Memory */
@@ -1304,7 +1840,7 @@ struct resource r;
 of_address_to_resource(np, 0, &r);
 ```
 
-### 8.4. Lấy match data
+### 9.4. Lấy match data
 
 ```c
 /* Cách hiện đại — trả về .data của entry đã match */
@@ -1316,9 +1852,9 @@ if (match)
     v = match->data;
 ```
 
-## 9. Device Tree Overlay
+## 10. Device Tree Overlay
 
-### 9.1. Vấn đề mà Overlay giải quyết
+### 10.1. Vấn đề mà Overlay giải quyết
 
 Với Device Tree thông thường, toàn bộ mô tả phần cứng được compile thành một DTB duy nhất tại build time. Muốn thay đổi bất cứ điều gì — thêm cảm biến, bật thêm SPI peripheral, đổi cấu hình pin — phải sửa DTS và compile lại DTB.
 
@@ -1330,7 +1866,7 @@ Với Device Tree thông thường, toàn bộ mô tả phần cứng được c
 
 **Giải pháp:** Device Tree Overlay — một mảnh Device Tree nhỏ (fragment) được apply lên DTB gốc tại boot time hoặc runtime, thêm hoặc sửa node mà không cần recompile DTB gốc.
 
-### 9.2. Overlay hoạt động như thế nào
+### 10.2. Overlay hoạt động như thế nào
 
 ```
 Build time:                              Boot time:
@@ -1367,7 +1903,7 @@ __symbols__ {
 
 Không có bảng này, overlay không có cách nào biết `&i2c2` trỏ đến node nào.
 
-### 9.3. Cú pháp Overlay
+### 10.3. Cú pháp Overlay
 
 File overlay có đuôi `.dtso` (convention mới) hoặc `.dts` (cũ), bắt buộc bắt đầu bằng `/dts-v1/;` và `/plugin/;`:
 
@@ -1439,7 +1975,7 @@ Hai cú pháp trên là "syntactic sugar". `dtc` khai triển chúng thành dạ
 };
 ```
 
-### 9.4. Compile và apply overlay
+### 10.4. Compile và apply overlay
 
 **Bước 1 — Compile base DTB với `-@`:**
 
@@ -1497,7 +2033,7 @@ bootz ${loadaddr} - ${fdtaddr}
 DTB được load vào RAM có kích thước vừa khít. Nếu không `fdt resize` để chừa chỗ, `fdt apply` sẽ thất bại với lỗi `FDT_ERR_NOSPACE`.
 :::
 
-### 9.5. Tự động apply overlay trong U-Boot
+### 10.5. Tự động apply overlay trong U-Boot
 
 Thay vì gõ lệnh thủ công mỗi lần boot:
 
@@ -1529,7 +2065,7 @@ dtoverlay=spi1-1cs
 dtparam=i2c_arm=on
 ```
 
-### 9.6. Overlay tại runtime (Linux kernel)
+### 10.6. Overlay tại runtime (Linux kernel)
 
 Kernel cũng hỗ trợ apply overlay sau khi đã boot, qua configfs:
 
@@ -1557,9 +2093,9 @@ rmdir /sys/kernel/config/device-tree/overlays/my-overlay
 Runtime overlay phức tạp hơn boot-time overlay vì kernel phải xử lý thêm/gỡ device động. Không phải driver nào cũng hỗ trợ tốt — một số driver có bug khi bị remove rồi probe lại. `CONFIG_OF_CONFIGFS` cũng không có trong kernel mainline (là patch của một số distro nhúng). Trong production, boot-time overlay (U-Boot) ổn định hơn.
 :::
 
-## 10. Device Tree bindings
+## 11. Device Tree bindings
 
-### 10.1. Binding là gì?
+### 11.1. Binding là gì?
 
 Binding là tài liệu mô tả quy ước sử dụng property cho một loại thiết bị cụ thể: property nào bắt buộc, property nào tùy chọn, giá trị hợp lệ của từng property, và số cell của mỗi tham chiếu.
 
@@ -1585,7 +2121,7 @@ grep -rn "ti,tmp102" Documentation/devicetree/bindings/
 # Documentation/devicetree/bindings/hwmon/ti,tmp102.yaml
 ```
 
-### 10.2. Định dạng cũ: file `.txt`
+### 11.2. Định dạng cũ: file `.txt`
 
 ```
 <Title> Device Tree Bindings
@@ -1618,7 +2154,7 @@ Example:
 | Child nodes | Nếu thiết bị là bus hoặc có node con |
 | Example | Mẫu cụ thể trong `.dts` để tham khảo |
 
-### 10.3. Định dạng mới: YAML schema
+### 11.3. Định dạng mới: YAML schema
 
 Từ kernel 5.x, binding mới bắt buộc viết bằng **YAML** theo chuẩn JSON-Schema — nhờ vậy DTS có thể được **validate tự động**:
 
@@ -1666,7 +2202,7 @@ examples:
     };
 ```
 
-### 10.4. Validate DTS
+### 11.4. Validate DTS
 
 ```bash
 # Cài đặt
@@ -1682,7 +2218,7 @@ dt-validate -s Documentation/devicetree/bindings/processed-schema.json board.dtb
 
 Việc validate phát hiện sớm: thiếu property bắt buộc, sai kiểu dữ liệu, sai số lượng cell, property không được binding định nghĩa, unit-address không khớp `reg`.
 
-### 10.5. Quy tắc viết DTS đúng chuẩn
+### 11.5. Quy tắc viết DTS đúng chuẩn
 
 - Luôn tìm và đọc binding trước khi viết node mới.
 - Tên node dùng tên **generic** (`temp-sensor@48`, không phải `tmp102@48` — dù nhiều DTS cũ vẫn dùng tên model).
@@ -1690,9 +2226,9 @@ Việc validate phát hiện sớm: thiếu property bắt buộc, sai kiểu d�
 - DT là **ABI ổn định**: DTB cũ phải boot được kernel mới. Vì vậy không đổi ý nghĩa property đã tồn tại, chỉ thêm mới.
 - Không mô tả cấu hình phần mềm trong DT (ví dụ: "bật debug log") — chỉ mô tả phần cứng.
 
-## 11. Troubleshoot & Debug
+## 12. Troubleshoot & Debug
 
-### 11.1. Kiểm tra warning khi compile
+### 12.1. Kiểm tra warning khi compile
 
 Trước khi flash DTB lên board, nên compile với kiểm tra warning:
 
@@ -1717,7 +2253,7 @@ Các warning phổ biến:
 | `simple_bus_reg` | Node con của `simple-bus` thiếu `reg` |
 | `gpios_property` | Dùng tên property GPIO sai convention |
 
-### 11.2. Decompile DTB để kiểm tra
+### 12.2. Decompile DTB để kiểm tra
 
 Cách nhanh nhất để kiểm tra DTB có đúng như mong muốn:
 
@@ -1732,7 +2268,7 @@ dtc -I dtb -O dts -o result.dts board.dtb
 - Include bị thiếu — node không xuất hiện trong output
 - Node bị `/delete-node/` ở đâu đó ngoài dự kiến
 
-### 11.3. Dump DTB tại runtime
+### 12.3. Dump DTB tại runtime
 
 ```bash
 # Nếu DTB nằm trên filesystem
@@ -1747,7 +2283,7 @@ dtc -I dtb -O dts -o /tmp/running.dts /tmp/running.dtb
 
 Đây là cách duy nhất để xem **DTB thật sự đang chạy**, đã bao gồm mọi sửa đổi của U-Boot và mọi overlay đã apply lúc boot.
 
-### 11.4. Công cụ `fdtdump`, `fdtget`, `fdtput`
+### 12.4. Công cụ `fdtdump`, `fdtget`, `fdtput`
 
 `fdtdump` — dump toàn bộ nội dung DTB ra text:
 
@@ -1784,7 +2320,7 @@ fdtget -t x board.dtb /ocp/serial@44e09000 reg
 fdtput -t s board.dtb /ocp/serial@48022000 status okay
 ```
 
-### 11.5. Duyệt Device Tree tại runtime qua sysfs
+### 12.5. Duyệt Device Tree tại runtime qua sysfs
 
 ```bash
 ls /proc/device-tree
@@ -1796,7 +2332,7 @@ Kernel expose DTB thành cây thư mục: mỗi node là một thư mục, mỗi
 
 ![debug device tree](img/debug-devicetree.png)
 
-#### 11.5.1. Tìm một node
+#### 12.5.1. Tìm một node
 
 Ví dụ có node sau trong DTS:
 
@@ -1832,7 +2368,7 @@ Output mẫu:
 /sys/firmware/devicetree/base/ocp/interconnect@48000000/segment@100000/target-module@a0000/spi@0/ili9341@0
 ```
 
-#### 11.5.2. Đọc property
+#### 12.5.2. Đọc property
 
 Khi đã có đường dẫn đến node, các property đáng quan tâm:
 
@@ -1875,7 +2411,7 @@ hexdump -C /sys/firmware/devicetree/base/ocp/.../ili9341@0/spi-max-frequency
 Nó là bản DTB gốc bootloader truyền vào, được kernel expose ra userspace — bao gồm **cả node `disabled`**. Thấy node ở đây không có nghĩa driver đã chạy. Kernel chỉ tạo device và probe driver cho node `okay`.
 :::
 
-### 11.6. Kiểm tra driver đã đăng ký chưa
+### 12.6. Kiểm tra driver đã đăng ký chưa
 
 Mọi driver đăng ký thành công đều xuất hiện tại:
 
@@ -1896,7 +2432,7 @@ ls /sys/bus/platform/drivers | head
 Driver đăng ký thành công chỉ nghĩa là module đã load và driver có mặt trong hệ thống. Việc nó có match và probe được device nào hay không là chuyện khác.
 :::
 
-### 11.7. Kiểm tra driver đã probe chưa
+### 12.7. Kiểm tra driver đã probe chưa
 
 ```
 Kiểm tra /sys/bus/<bus>/devices/<dev>/driver
@@ -1916,7 +2452,7 @@ Kiểm tra /sys/bus/<bus>/devices/<dev>/driver
                                                       hoặc DRIVER CHƯA BUILD/LOAD
 ```
 
-#### 11.7.1. dmesg
+#### 12.7.1. dmesg
 
 ```bash
 dmesg | grep -i "tps65217\|0-0024"
@@ -1944,7 +2480,7 @@ initcall_debug loglevel=8
 echo 'file drivers/base/dd.c +p' > /sys/kernel/debug/dynamic_debug/control
 ```
 
-#### 11.7.2. Kiểm tra symlink driver trong sysfs
+#### 12.7.2. Kiểm tra symlink driver trong sysfs
 
 Cách trực tiếp nhất:
 
@@ -2007,7 +2543,7 @@ ls /sys/bus/platform/drivers/omap_serial/
 # Các entry dạng "addr.name" là device đã match thành công
 ```
 
-#### 11.7.3. Bind/unbind thủ công
+#### 12.7.3. Bind/unbind thủ công
 
 Hữu ích khi debug — ép driver nhả hoặc nhận device mà không cần reboot:
 
@@ -2019,7 +2555,7 @@ echo 44e09000.serial > /sys/bus/platform/drivers/omap_serial/unbind
 echo 44e09000.serial > /sys/bus/platform/drivers/omap_serial/bind
 ```
 
-### 11.8. Các lỗi thường gặp
+### 12.8. Các lỗi thường gặp
 
 | Triệu chứng | Nguyên nhân thường gặp |
 |---|---|
@@ -2091,6 +2627,26 @@ dmesg | grep -i probe
 | `dmas` / `dma-names` | `dma_request_chan()` |
 | `pinctrl-0` | tự động apply trước `probe()` |
 | property tự định nghĩa | `of_property_read_u32()`, `of_property_read_string()`,... |
+
+**Provider - Consumer**
+
+| Tài nguyên | Provider khai báo | Consumer viết |
+|---|---|---|
+| interrupt | `interrupt-controller;` + `#interrupt-cells` | `interrupts` / `interrupts-extended` |
+| clock | `#clock-cells` | `clocks` + `clock-names` |
+| gpio | `gpio-controller;` + `#gpio-cells` | `<name>-gpios` |
+| reset | `#reset-cells` | `resets` + `reset-names` |
+| pwm | `#pwm-cells` | `pwms` + `pwm-names` |
+| dma | `#dma-cells` | `dmas` + `dma-names` |
+| regulator | *(không có cells)* | `<name>-supply` |
+
+```bash
+cat /sys/kernel/debug/devices_deferred          # ai đang chờ provider
+cat /sys/kernel/debug/clk/clk_summary           # cây clock
+cat /sys/kernel/debug/gpio                      # gpiochip + chân đang bị claim
+cat /sys/kernel/debug/regulator/regulator_summary
+ls /sys/devices/platform/*/{consumer,supplier}:*   # device link do fw_devlink dựng
+```
 
 ## Tham khảo
 

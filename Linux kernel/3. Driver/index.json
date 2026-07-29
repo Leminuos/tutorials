@@ -22,7 +22,8 @@
       "path": "5. device_tree",
       "title": "Device Tree",
       "examples": [
-        "example/i2c_driver",
+        "example/i2c_driver/bbb",
+        "example/i2c_driver/esp32",
         "example/led_solution_1",
         "example/led_solution_2"
       ]

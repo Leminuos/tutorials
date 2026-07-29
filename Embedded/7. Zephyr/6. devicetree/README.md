@@ -1,51 +1,3 @@
-## Mục lục
-
-1. [Devicetree là gì?](#1-devicetree-là-gì)
-2. [Cú pháp devicetree](#2-cú-pháp-devicetree)
-3. [Devicetree Bindings](#3-devicetree-bindings)
-   - [3.1. Vì sao cần bindings](#31-vì-sao-cần-bindings)
-   - [3.2. Build system tìm binding ở đâu](#32-build-system-tìm-binding-ở-đâu)
-   - [3.3. Quy tắc match node với binding](#33-quy-tắc-match-node-với-binding)
-   - [3.4. Cấu trúc một file binding](#34-cấu-trúc-một-file-binding)
-   - [3.5. Các kiểu property](#35-các-kiểu-property)
-   - [3.6. Ràng buộc trên từng property](#36-ràng-buộc-trên-từng-property)
-   - [3.7. Kế thừa với `include`](#37-kế-thừa-với-include)
-   - [3.8. Specifier cells](#38-specifier-cells)
-   - [3.9. Debug binding](#39-debug-binding)
-4. [Truy cập Devicetree từ code C/C++](#4-truy-cập-devicetree-từ-code-cc)
-   - [4.1. Node identifier](#41-node-identifier)
-   - [4.2. Kiểm tra node tồn tại và trạng thái](#42-kiểm-tra-node-tồn-tại-và-trạng-thái)
-   - [4.3. Đọc property](#43-đọc-property)
-   - [4.4. Đọc property `reg`](#44-đọc-property-reg)
-   - [4.5. Đọc interrupt](#45-đọc-interrupt)
-   - [4.6. Property kiểu mảng và danh sách](#46-property-kiểu-mảng-và-danh-sách)
-   - [4.7. Quan hệ giữa các node](#47-quan-hệ-giữa-các-node)
-   - [4.8. Đọc phandle và specifier](#48-đọc-phandle-và-specifier)
-   - [4.9. Tổng hợp macro hay dùng](#49-tổng-hợp-macro-hay-dùng)
-5. [Lấy con trỏ struct device từ node devicetree](#5-lấy-con-trỏ-struct-device-từ-node-devicetree)
-6. [Devicetree spec](#6-devicetree-spec)
-   - [6.1. Vấn đề của cách làm thủ công](#61-vấn-đề-của-cách-làm-thủ-công)
-   - [6.2. Giải pháp](#62-giải-pháp)
-   - [6.3. Các họ spec khác](#63-các-họ-spec-khác)
-   - [6.4. Node `zephyr,user`](#64-node-zephyruser)
-7. [API viết driver](#7-api-viết-driver)
-   - [7.1. Khai báo driver này lo cho compatible nào](#71-khai-báo-driver-này-lo-cho-compatible-nào)
-   - [7.2. Instance là gì?](#72-instance-là-gì)
-   - [7.3. Mỗi instance cần vùng data và config riêng](#73-mỗi-instance-cần-vùng-data-và-config-riêng)
-   - [7.4. Macro sinh một instance](#74-macro-sinh-một-instance)
-   - [7.5. `DT_INST_FOREACH_STATUS_OKAY`](#75-dt_inst_foreach_status_okay)
-   - [7.6. Bảo vệ khi không có instance nào](#76-bảo-vệ-khi-không-có-instance-nào)
-   - [7.7. Bảng macro `DT_INST` hay dùng](#77-bảng-macro-dt_inst-hay-dùng)
-8. [Luồng build](#8-luồng-build)
-   - [8.1. CMake gom mọi nguồn DTS](#81-cmake-gom-mọi-nguồn-dts)
-   - [8.2. Tìm binding YAML theo compatible](#82-tìm-binding-yaml-theo-compatible)
-   - [8.3. Sinh macro cho node](#83-sinh-macro-cho-node)
-   - [8.4. Sinh symbol Kconfig từ devicetree](#84-sinh-symbol-kconfig-từ-devicetree)
-   - [8.5. Kconfig tự bật driver](#85-kconfig-tự-bật-driver)
-   - [8.6. Compile driver](#86-compile-driver)
-   - [8.7. Cách tự kiểm chứng từng bước](#87-cách-tự-kiểm-chứng-từng-bước)
-9. [Debug](#9-debug)
-
 ## 1. Devicetree là gì?
 
 Devicetree là cấu trúc dữ liệu dạng cây mô tả phần cứng. Mỗi node trong cây là một thành phần phần cứng (một UART controller, một chân LED, một cảm biến trên bus I2C...) và mỗi node mang theo các property mô tả thuộc tính của thành phần đó: địa chỉ thanh ghi, số interrupt, tốc độ clock, chân GPIO...
@@ -355,7 +307,7 @@ Khi property đọc ra không đúng hoặc macro không tồn tại:
 
 ## 4. Truy cập Devicetree từ code C/C++
 
-Toàn bộ API devicetree nằm trong `<zephyr/devicetree.h>` và đều là macro preprocessor, mọi kết quả là hằng số biên dịch. Vì vậy có thể dùng chúng ở bất cứ đâu cần hằng số: khởi tạo biến `static const`, kích thước mảng, thậm chí trong `#if`.
+Toàn bộ API devicetree nằm trong `<zephyr/devicetree.h>` và đều là macro preprocessor, mọi kết quả là hằng số biên dịch.
 
 Để thống nhất cho mọi ví dụ dưới đây, ta bám vào devicetree mẫu sau:
 
@@ -797,7 +749,7 @@ i2c_write_read_dt(&i2c, &reg, 1, &val, 1);   /* không phải truyền địa ch
 
 ### 6.4. Node `zephyr,user`
 
-Đôi khi ứng dụng cần trỏ tới một chân GPIO hay một kênh ADC nhưng không thuộc thiết bị chuẩn nào để có sẵn binding. Thay vì viết binding riêng, Zephyr cho sẵn node `zephyr,user` như một chỗ chứa đồ hợp lệ:
+Đôi khi ứng dụng cần trỏ tới một chân GPIO hay một kênh ADC nhưng không thuộc thiết bị chuẩn nào đã có sẵn binding. Thay vì viết binding riêng, Zephyr cho sẵn node `zephyr,user` như một chỗ chứa đồ hợp lệ:
 
 ```dts
 / {
@@ -1085,6 +1037,25 @@ DT_INST_FOREACH_STATUS_OKAY(BME280_DEFINE)
 ```
 
 > **Vì sao macro `DT_DRV_COMPAT` phải đứng trước #include?** Vì `devicetree.h` định nghĩa các macro `DT_INST_*` dựa trên `DT_DRV_COMPAT`. Đặt sau thì preprocessor sẽ báo lỗi kiểu `DT_DRV_COMPAT` undefined hoặc âm thầm sai.
+
+Quy tắc chuyển đổi tên:
+
+```
+DTS:    compatible = "bosch,bme280"
+                        ↓
+    lowercase + thay mọi ký tự không phải [a-z0-9] bằng '_'
+                        ↓
+Driver: #define DT_DRV_COMPAT bosch_bme280
+```
+
+Vài ví dụ thực tế trong cây nguồn Zephyr:
+
+```c
+"nordic,nrf-uarte"     -> #define DT_DRV_COMPAT nordic_nrf_uarte
+"st,stm32-usart"       -> #define DT_DRV_COMPAT st_stm32_usart
+"bosch,bme280"         -> #define DT_DRV_COMPAT bosch_bme280
+"espressif,esp32-uart" -> #define DT_DRV_COMPAT espressif_esp32_uart
+```
 
 ### 8.7. Cách tự kiểm chứng từng bước
 
