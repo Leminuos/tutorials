@@ -17,6 +17,36 @@ Cú pháp device tree có thể xem chi tiết tại:
 - https://www.devicetree.org/specifications
 - https://leminuos.github.io/tutorial-dashboard/#/docs/linux-kernel/driver/device-tree
 
+Trong zephyr, ta có danh sách thuộc tính của node `/chosen` thường gặp:
+
+| Chosen key | Vai trò | Consumer |
+| --- | --- | --- |
+| `zephyr,console` | Đích của printk/console | console subsystem |
+| `zephyr,shell-uart` | UART backend cho shell | shell subsystem |
+| `zephyr,sram` | RAM chính | linker script |
+| `zephyr,flash` | Flash chính | linker + flash subsystem |
+| `zephyr,code-partition` | Partition chứa code chạy | build/linker |
+| `zephyr,flash-controller` | Controller quản lý flash | flash API |
+| `zephyr,entropy` | Nguồn entropy (RNG) | crypto/random |
+| `zephyr,bt-hci` | Controller Bluetooth HCI | BLE stack |
+| `zephyr,canbus` | CAN bus mặc định | CAN subsystem |
+| `zephyr,display` | Display mặc định | display subsystem |
+| `zephyr,uart-mcumgr` | Transport cho mcumgr | mcumgr |
+
+Ví dụ node `/chosen` tiêu biểu:
+
+```
+/ {
+    chosen {
+        zephyr,console      = &usart1;    /* printk/console đi ra usart1 */
+        zephyr,shell-uart   = &usart1;    /* shell cũng dùng usart1 */
+        zephyr,sram         = &sram0;     /* RAM chính của hệ thống */
+        zephyr,flash        = &flash0;    /* flash chính */
+        zephyr,code-partition = &slot0_partition;
+    };
+};
+```
+
 ## 3. Devicetree Bindings
 
 ### 3.1. Vì sao cần bindings

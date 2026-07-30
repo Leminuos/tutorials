@@ -847,7 +847,7 @@ Thêm `serial3 = &uart3;` không làm UART3 hoạt động. Node `uart3` vẫn p
 };
 ```
 
-:::note Phân biệt `/aliases` với `__symbols__`
+:::tip Phân biệt `/aliases` với `__symbols__`
 `/aliases` là node chuẩn của Devicetree spec, dùng lúc runtime để đánh số thiết bị. `__symbols__` là bảng do `dtc -@` sinh ra, ghi lại mọi node label trong DTS, chỉ phục vụ việc phân giải tham chiếu khi apply overlay. Hai thứ hoàn toàn khác nhau.
 :::
 
@@ -1249,7 +1249,7 @@ alert = devm_gpiod_get_optional(dev, "alert", GPIOD_IN);
 gpiod_set_value(reset, 1);   /* assert reset */
 ```
 
-:::note Vì sao nên dùng `gpiod_*` thay cho `gpio_*` cũ
+:::tip Vì sao nên dùng `gpiod_*` thay cho `gpio_*` cũ
 API cũ (`of_get_named_gpio()`, `gpio_request()`) làm việc với số GPIO toàn cục, không hiểu flag `GPIO_ACTIVE_LOW` nên driver phải tự đảo mức. API descriptor (`gpiod_*`) đọc flags từ DTS và xử lý -> driver viết ra ngắn hơn và đúng với mọi board.
 :::
 
@@ -1335,7 +1335,7 @@ struct regulator *vcc = devm_regulator_get(dev, "vcc");  /* → "vcc-supply" */
 ret = regulator_enable(vcc);
 ```
 
-:::note `devm_regulator_get()` không bao giờ trả NULL
+:::tip `devm_regulator_get()` không bao giờ trả NULL
 Nếu DTS không khai báo `vcc-supply`, regulator core trả về một dummy regulator hoạt động bình thường (mọi thao tác đều thành công) kèm cảnh báo trong dmesg. Đây là chủ ý, driver không cần `#ifdef` cho board không có regulator. Dùng `devm_regulator_get_optional()` nếu muốn biết chính xác nguồn có tồn tại hay không.
 :::
 
