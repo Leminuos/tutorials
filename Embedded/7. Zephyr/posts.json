@@ -51,5 +51,14 @@
     "description": "Mô tả phần cứng bằng devicetree và truy cập từ code C.",
     "image": "img/zephyr.png",
     "tags": ["zephyr"]
+  },
+
+  "7. peripherals": {
+    "title": "Ngoại vi",
+    "date": "30-07-2026",
+    "author": "Peizzon",
+    "description": "Ứng dụng devicetree, Kconfig và CMake để điều khiển GPIO, ngắt, I2C, PWM và ADC.",
+    "image": "img/zephyr.png",
+    "tags": ["zephyr"]
   }
 }
