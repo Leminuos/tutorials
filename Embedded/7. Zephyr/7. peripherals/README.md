@@ -197,7 +197,7 @@ leds {
 };
 ```
 
-Ba thông tin cần cho việc bật LED nằm gọn trong property `gpios`: controller (`&gpioa`), số chân (`6`) và cực tính (`GPIO_ACTIVE_LOW`). Cực tính là thứ đáng chú ý nhất. Trên F4VE, hai LED nối anode lên 3V3 và cathode xuống chân MCU nên chân phải kéo xuống mức thấp thì LED mới sáng, đó là lý do ghi `GPIO_ACTIVE_LOW`. Board nào nối LED xuống GND thì ghi `GPIO_ACTIVE_HIGH`.
+Ba thông tin cần cho việc bật LED nằm gọn trong property `gpios`: controller (`&gpioa`), số chân (`6`) và polarity (`GPIO_ACTIVE_LOW`). Polarity là thứ đáng chú ý nhất, nó cho biết LED sáng ở mức điện áp nào. Trên F4VE, anode của LED nối lên 3V3 còn cathode nối vào chân MCU, nên chân phải ở mức thấp thì LED mới sáng, vì vậy ghi `GPIO_ACTIVE_LOW`. Board nào nối LED xuống GND thì ghi `GPIO_ACTIVE_HIGH`.
 :::
 
 ```c [src/main.c]
@@ -243,8 +243,8 @@ int main(void)
 - `#define LED_NODE DT_ALIAS(led0)`: lấy node identifier từ alias, code không phụ thuộc tên label của board.
 - Khối `#if ... #error`: chặn lỗi ngay lúc biên dịch nếu board không có alias, thay cho một đống lỗi macro khó đọc. Đây là mẫu nên có ở đầu mọi file dùng devicetree.
 - `GPIO_DT_SPEC_GET`: Macro nhận hai tham số: node identifier và tên property chứa phandle GPIO (ở đây là `gpios`). Kết quả là một struct `gpio_dt_spec` gồm `port`, `pin`, `dt_flags`. Vì mọi giá trị đều là hằng số biên dịch nên biến này khai báo được `static const`, nó nằm ở flash và không tốn RAM. Nếu tự lấy ba thứ đó rời rạc thì rất dễ lấy `pin` của node này nhưng truyền `port` của node khác, mà compiler không bắt được vì cả ba đều là số hoặc con trỏ hợp lệ.
-- Nhờ `dt_flags` mang theo `GPIO_ACTIVE_LOW`/`HIGH`, toàn bộ code phía sau làm việc với mức logic: `gpio_pin_set_dt(&led, 1)` luôn có nghĩa là bật LED bất kể phần cứng nối kiểu gì.
-- `gpio_is_ready_dt(&led)`: thực chất là `device_is_ready(led.port)`. Với GPIO on chip thì gần như luôn thành công, nhưng với GPIO expander qua I2C (PCF8574, MCP23017...) đây là chốt chặn thật sự vì chip có thể không phản hồi.
+- Nhờ `dt_flags` mang theo `GPIO_ACTIVE_LOW`/`HIGH`, toàn bộ code phía sau làm việc với **logical level** chứ không phải mức điện áp trên chân: `gpio_pin_set_dt(&led, 1)` luôn có nghĩa là bật LED, bất kể phần cứng nối kiểu gì.
+- `gpio_is_ready_dt(&led)`: thực chất là `device_is_ready(led.port)`. Với GPIO on chip thì gần như luôn thành công, nhưng với GPIO expander qua I2C (PCF8574, MCP23017...) thì kiểm tra này mới thật sự có ý nghĩa, vì chip có thể không phản hồi.
 - `gpio_pin_configure_dt(..., GPIO_OUTPUT_ACTIVE)`: Tham số thứ hai là thêm vào cờ đã có trong devicetree chứ không thay thế. Các giá trị hay dùng:
 
     | Cờ | Ý nghĩa |
@@ -253,7 +253,7 @@ int main(void)
     | `GPIO_OUTPUT_ACTIVE` | Output, khởi tạo ở mức active (LED sáng) |
     | `GPIO_OUTPUT_INACTIVE` | Output, khởi tạo ở mức inactive (LED tắt) |
     | `GPIO_INPUT` | Input |
-    | `GPIO_INPUT \| GPIO_PULL_UP` | Input có điện trở pullup |
+    | `GPIO_INPUT \| GPIO_PULL_UP` | Input, bật pull-up bên trong SoC |
     | `GPIO_OUTPUT \| GPIO_OPEN_DRAIN` | Output open drain |
 
     Luôn ưu tiên `GPIO_OUTPUT_ACTIVE`/`INACTIVE` thay vì `GPIO_OUTPUT`, vì hai cờ này đặt luôn trạng thái ban đầu trong cùng một thao tác, tránh việc LED nhấp nháy một cái lúc khởi động.
@@ -348,7 +348,7 @@ CONFIG_GPIO=y
 - `compatible = "gpio-keys"`: binding chuẩn cho nút bấm, tương ứng với `gpio-leds` của LED.
 - `(GPIO_ACTIVE_LOW | GPIO_PULL_UP)`: Hai cờ này mô tả hai chuyện khác nhau:
   - `GPIO_ACTIVE_LOW` là thông tin logic: mạch nối nút xuống GND, nhấn thì chân xuống mức thấp. Nhờ nó mà `gpio_pin_get_dt()` trả về `1` khi nhấn.
-  - `GPIO_PULL_UP` là thông tin cấu hình phần cứng: yêu cầu bật điện trở kéo lên bên trong SoC. Mạch đã có điện trở kéo lên ngoài thì không cần cờ này.
+  - `GPIO_PULL_UP` là thông tin cấu hình phần cứng: bật điện trở pull-up bên trong SoC. Mạch đã có pull-up gắn ngoài thì không cần cờ này.
 
   Bắt buộc phải có dấu ngoặc đơn bao quanh biểu thức logic. Devicetree preprocessor cần nó, thiếu ngoặc sẽ báo lỗi cú pháp khó hiểu.
 
@@ -401,7 +401,7 @@ int main(void)
 ::: explain [Giải thích src/main.c]
 - Hai spec `led` và `btn` lấy từ hai alias, cùng một cách viết.
 - `gpio_pin_configure_dt(&btn, GPIO_INPUT)`: đặt chân thành đầu vào.
-- `gpio_pin_get_dt()`: trả về mức logic (1 nghĩa là đang nhấn) nhờ `GPIO_ACTIVE_LOW` trong devicetree. Muốn đọc mức điện thật thì dùng `gpio_pin_get_raw()`, nhưng ứng dụng bình thường gần như không cần bản `raw`. Hàm trả số âm khi lỗi nên `if (cur)` là cách viết sai kinh điển: `-EIO` cũng khác 0 nên bị hiểu thành đang nhấn. Luôn kiểm tra `< 0` trước.
+- `gpio_pin_get_dt()`: trả về **logical level**, `1` nghĩa là đang nhấn, nhờ `GPIO_ACTIVE_LOW` trong devicetree. Muốn đọc mức điện áp thật trên chân thì dùng `gpio_pin_get_raw()`, nhưng ứng dụng bình thường gần như không cần bản `raw`. Hàm trả số âm khi lỗi nên `if (cur)` là cách viết sai rất hay gặp: `-EIO` cũng khác 0 nên bị hiểu thành đang nhấn. Luôn kiểm tra `< 0` trước.
 - `if (cur != prev)`: chỉ xử lý khi trạng thái đổi, tránh in liên tục.
 :::
 ::::
@@ -581,17 +581,17 @@ Các kiểu ngắt chọn được:
 
 | Cờ | Kích hoạt khi |
 |---|---|
-| `GPIO_INT_EDGE_TO_ACTIVE` | Chân chuyển sang trạng thái active (theo cực tính trong DT) |
+| `GPIO_INT_EDGE_TO_ACTIVE` | Chân chuyển sang trạng thái active (theo polarity khai báo trong devicetree) |
 | `GPIO_INT_EDGE_TO_INACTIVE` | Chân rời trạng thái active |
 | `GPIO_INT_EDGE_BOTH` | Cả hai chiều |
-| `GPIO_INT_EDGE_RISING` | Cạnh lên về điện áp, bỏ qua cực tính |
-| `GPIO_INT_EDGE_FALLING` | Cạnh xuống về điện áp |
+| `GPIO_INT_EDGE_RISING` | Rising edge của điện áp thật, bỏ qua polarity |
+| `GPIO_INT_EDGE_FALLING` | Falling edge của điện áp thật, bỏ qua polarity |
 | `GPIO_INT_LEVEL_ACTIVE` | Giữ ngắt suốt thời gian chân ở mức active |
 | `GPIO_INT_DISABLE` | Tắt ngắt trên chân này |
 
-- Cặp `TO_ACTIVE`/`TO_INACTIVE` nên dùng trong ứng dụng vì chúng tự thích nghi theo cực tính trong devicetree: đổi board có nút nối ngược lại thì chỉ cần sửa overlay. Cặp `RISING`/`FALLING` chỉ dùng khi thực sự quan tâm mức điện, ví dụ đọc encoder.
+- Cặp `TO_ACTIVE`/`TO_INACTIVE` nên dùng trong ứng dụng vì chúng bám theo polarity trong devicetree: đổi sang board có nút nối ngược lại thì chỉ cần sửa overlay. Cặp `RISING`/`FALLING` chỉ dùng khi thực sự quan tâm mức điện áp trên chân, ví dụ đọc encoder.
 
-- `GPIO_INT_LEVEL_*` thì cần cẩn thận, ngắt kích hoạt liên tục suốt thời gian giữ mức, ISR không xử lý nguồn gây ngắt là hệ thống treo trong bão ngắt.
+- `GPIO_INT_LEVEL_*` thì cần cẩn thận: ngắt kích hoạt lại liên tục suốt thời gian chân còn giữ mức đó. ISR phải tự tắt ngắt hoặc xử lý nguồn gây ngắt, nếu không CPU chỉ chạy đi chạy lại trong ISR và không còn thời gian cho việc khác, hiện tượng này gọi là interrupt storm.
 
 **Đăng ký callback**
 
@@ -602,7 +602,7 @@ gpio_init_callback(&btn_cb, button_isr, BIT(btn.pin));
 gpio_add_callback_dt(&btn, &btn_cb);
 ```
 
-Tham số thứ ba của `gpio_init_callback` là bit mask, không phải số chân. Nhờ vậy một callback phục vụ được nhiều chân trên cùng controller:
+Tham số thứ ba của `gpio_init_callback` là **bitmask** của các chân, không phải số chân. Nhờ vậy một callback phục vụ được nhiều chân trên cùng controller:
 
 ```c
 gpio_init_callback(&cb, multi_isr, BIT(btn1.pin) | BIT(btn2.pin));
@@ -684,7 +684,7 @@ atomic_val_t n = atomic_clear(&press_count); /* trong thread */
 
 **Thread main sleep**
 
-`k_sleep(K_FOREVER)` khiến thread main ngủ, CPU vào idle. Toàn bộ hoạt động do ngắt và workqueue đảm nhiệm, tiêu thụ điện giảm mạnh so với bản polling. Đây là hình dạng điển hình của một firmware hướng sự kiện.
+`k_sleep(K_FOREVER)` khiến thread main ngủ, CPU vào idle. Toàn bộ hoạt động do ngắt và workqueue đảm nhiệm, tiêu thụ điện giảm mạnh so với bản polling. Đây là hình dạng điển hình của một firmware event-driven.
 :::
 ::::
 
@@ -694,7 +694,7 @@ atomic_val_t n = atomic_clear(&press_count); /* trong thread */
 |---|---|
 | `gpio_pin_interrupt_configure_dt` trả `-ENOTSUP` | Chân/controller không hỗ trợ ngắt hoặc SoC giới hạn số line ngắt |
 | Callback không bao giờ chạy | Truyền `btn.pin` thay vì `BIT(btn.pin)` vào `gpio_init_callback` |
-| Callback chạy loạn xạ | Chưa chống rung hoặc chân input đang thả nổi vì thiếu `GPIO_PULL_UP` |
+| Callback chạy nhiều lần cho một cú nhấn | Chưa debounce, hoặc chân input đang floating vì thiếu `GPIO_PULL_UP` |
 | Kernel panic ngay lần nhấn đầu | Gọi hàm có thể block (`k_msleep`, `k_mutex_lock`) trong ISR |
 | Callback chạy một lần rồi thôi | `struct gpio_callback` khai báo là biến cục bộ |
 
@@ -761,7 +761,7 @@ properties:
 Không có file YAML này thì node `sht30@44` vẫn nằm trong cây nhưng không sinh macro property nào, `I2C_DT_SPEC_GET` sẽ lỗi biên dịch. Hai dòng quan trọng nhất trong file binding:
 
 ```yaml
-compatible: "myapp,sht30"     # sợi dây nối YAML với node
+compatible: "myapp,sht30"     # khop voi compatible cua node trong overlay
 include: [i2c-device.yaml]    # kế thừa: reg bắt buộc + on-bus: i2c
 ```
 
@@ -792,7 +792,7 @@ uart:~$ i2c scan i2c@40005400
 1 devices found on i2c@40005400
 ```
 
-- Không thấy `44` ở đây thì vấn đề nằm ở phần cứng (dây, nguồn, điện trở kéo lên) hoặc pinctrl, không phải ở code. Đừng debug code C trước khi lệnh này chạy đúng.
+- Không thấy `44` ở đây thì vấn đề nằm ở phần cứng (dây, nguồn, điện trở pull-up) hoặc pinctrl, không phải ở code. Đừng debug code C trước khi lệnh này chạy đúng.
 :::
 
 ```dts [app.overlay]
@@ -938,7 +938,7 @@ Cảm biến có hai chế độ:
 
 Ta chọn cách thứ hai vì nó chạy được trên mọi controller, đổi lại phải tự `k_msleep(20)`. Con số 20 ms lấy từ datasheet (tối đa 15 ms cho độ phân giải cao) cộng biên an toàn.
 
-SHT30 gửi về 6 byte gồm 2 byte nhiệt độ + 1 byte CRC, rồi 2 byte độ ẩm + 1 byte CRC. Bỏ qua CRC nghĩa là chấp nhận đọc ra số rác khi dây nhiễu, mà số rác vẫn nằm trong dải hợp lệ nên rất khó phát hiện. Zephyr có sẵn hàm `crc8()` trong `<zephyr/sys/crc.h>`, chỉ cần `CONFIG_CRC=y`
+SHT30 gửi về 6 byte gồm 2 byte nhiệt độ + 1 byte CRC, rồi 2 byte độ ẩm + 1 byte CRC. Bỏ qua CRC nghĩa là chấp nhận nhận đọc số rác mỗi khi đường dây bị nhiễu, mà số rác đó vẫn nằm trong dải hợp lệ (ví dụ ra 31 độ C thay vì 25 độ C) nên rất khó phát hiện. Zephyr có sẵn hàm `crc8()` trong `<zephyr/sys/crc.h>`, chỉ cần `CONFIG_CRC=y`
 
 ```c
 crc8(data, 2, 0x31, 0xFF, false)   /* đa thức 0x31, init 0xFF, không reverse */
@@ -1128,13 +1128,13 @@ pwms = <&pwm3 1 PWM_MSEC(1) PWM_POLARITY_INVERTED>
 | 1 | `&pwm3` | Phandle tới PWM controller (TIM3) |
 | 2 | `1` | Số kênh, ở đây là TIM3 channel 1 |
 | 3 | `PWM_MSEC(1)` | Chu kỳ, tính bằng nano giây (1 ms tương đương 1 kHz) |
-| 4 | `PWM_POLARITY_INVERTED` | Đảo cực tính xung |
+| 4 | `PWM_POLARITY_INVERTED` | Đảo polarity của xung |
 
 Tên các ô do `pwm-cells:` trong binding của node `pwm3` quy định, đúng cơ chế specifier cells ở bài devicetree.
 
 Chu kỳ 1 ms đủ cao để mắt không thấy nhấp nháy. Với LED khoảng 500 Hz đến 20 kHz đều ổn, điều khiển động cơ thì phải cân nhắc kỹ hơn.
 
-Vì sao là `PWM_POLARITY_INVERTED`? LED trên F4VE sáng khi chân ở mức thấp. Với cực tính thường, xung càng rộng thì thời gian ở mức cao càng nhiều, tức LED càng tối. Đảo cực tính để xung rộng = sáng hơn, đúng với vòng lặp trong `main()`. Board có LED active-high thì dùng `PWM_POLARITY_NORMAL`.
+Vì sao là `PWM_POLARITY_INVERTED`? LED trên F4VE sáng khi chân ở mức thấp. Với `PWM_POLARITY_NORMAL`, xung càng rộng thì thời gian chân ở mức cao càng nhiều, tức LED càng tối, ngược với mong đợi. Đảo polarity để xung càng rộng thì LED càng sáng, đúng với vòng lặp trong `main()`. Board có LED active-high thì dùng `PWM_POLARITY_NORMAL`.
 
 Trên STM32, PWM là một chức năng của timer nên overlay phải bật hai node:
 
@@ -1151,9 +1151,9 @@ Trên STM32, PWM là một chức năng của timer nên overlay phải bật ha
 };
 ```
 
-Quên `status = "okay"` ở node `timers3` là lỗi kinh điển: build vẫn qua nhưng `pwm_is_ready_dt` trả về false hoặc tệ hơn là link error.
+Quên `status = "okay"` ở node `timers3` là lỗi rất hay gặp: build vẫn qua nhưng `pwm_is_ready_dt` trả về false hoặc tệ hơn là link error.
 
-`st,prescaler` quyết định độ phân giải. TIM3 trên F407 nằm trên APB1 và chạy ở 84 MHz. Với prescaler 1000, tần số đếm còn 84 kHz, tức một chu kỳ 1 ms chỉ đếm được 84 nấc, vẫn đủ mượt cho mắt. Muốn nhiều mức sáng hơn thì giảm prescaler xuống (ví dụ <100> cho 840 nấc). Prescaler quá lớn thì độ sáng thay đổi giật cục, quá nhỏ thì không đạt được chu kỳ dài.
+`st,prescaler` quyết định độ phân giải. TIM3 trên F407 nằm trên APB1 và chạy ở 84 MHz; với prescaler 1000, tần số đếm còn 84 kHz, nghĩa là trong một chu kỳ 1 ms timer chỉ đếm được 84 lần. Độ rộng xung vì vậy chỉ nhận được 84 giá trị khác nhau, tức LED có 84 mức sáng. Con số này đủ để mắt không nhận ra sự thay đổi theo bậc. Muốn mịn hơn thì giảm prescaler, ví dụ `<100>` cho khoảng 840 mức. Ngược lại, prescaler quá nhỏ thì timer 16 bit tràn trước khi đủ một chu kỳ dài.
 
 `pinctrl-0 = <&tim3_ch1_pa6>` nghĩa là đưa TIM3 kênh 1 đưa ra chân PA6. Tên này được định nghĩa sẵn trong file pinctrl của SoC. Không phải chân nào cũng nối được với kênh nào, bảng ánh xạ nằm trong datasheet của MCU (mục Alternate function mapping).
 
@@ -1225,7 +1225,7 @@ Vì `period` đã nằm trong spec nên ta chỉ cần đặt độ rộng xung:
 pwm_set_pulse_dt(&pwm_led, pwm_led.period * step / STEP_COUNT);
 ```
 
-Viết `pwm_led.period * step / STEP_COUN`T (nhân trước chia sau) chứ không phải `pwm_led.period / STEP_COUNT * step` vì phép chia số nguyên làm mất phần lẻ, chia trước sẽ khiến các mức sáng bị dồn cục.
+Viết `pwm_led.period * step / STEP_COUNT` (nhân trước chia sau) chứ không phải `pwm_led.period / STEP_COUNT * step`. Phép chia số nguyên cắt bỏ phần lẻ, nên nếu chia trước thì nhiều giá trị `step` liên tiếp cho ra cùng một độ rộng xung: thay vì 50 mức sáng, LED chỉ còn vài mức và nhìn thấy rõ từng bậc.
 
 Muốn đổi cả chu kỳ lẫn độ rộng thì dùng `pwm_set_dt(&spec, period_ns, pulse_ns)`.
 
@@ -1254,10 +1254,10 @@ pwm_set_dt(&servo, PWM_MSEC(20), PWM_USEC(1500));   /* vị trí giữa */
 |---|---|
 | `pwm_is_ready_dt` false | Quên `status = "okay"` ở node timer cha |
 | `pwm_set_pulse_dt` trả `-EINVAL` | Độ rộng xung lớn hơn chu kỳ, hoặc chu kỳ vượt khả năng của timer với prescaler hiện tại |
-| LED sáng ngược (kéo lên lại tối đi) | Sai cực tính, đổi giữa `PWM_POLARITY_NORMAL` và `PWM_POLARITY_INVERTED` |
+| LED sáng ngược (tăng độ rộng xung lại tối đi) | Sai polarity, đổi giữa `PWM_POLARITY_NORMAL` và `PWM_POLARITY_INVERTED` |
 | LED sáng hết cỡ hoặc tắt hẳn, không chỉnh được | Chân bị driver GPIO chiếm (node `leds` vẫn đang dùng PA6), hoặc pinctrl trỏ sai kênh |
 | Độ sáng chỉ có vài mức | `st,prescaler` quá lớn |
-| LED nhấp nháy thấy được | Chu kỳ quá dài, giảm xuống dưới `PWM_MSEC(5)` |
+| Mắt nhìn thấy LED chớp | Chu kỳ quá dài, giảm xuống dưới `PWM_MSEC(5)` |
 
 ## 7. ADC: đọc biến trở
 
@@ -1329,7 +1329,7 @@ Khác với GPIO, ADC không dùng được ngay khi bật controller. Mỗi kê
 | `reg` | Số kênh phần cứng, phải match với số trong `io-channels` |
 | `zephyr,gain` | Hệ số khuếch đại đầu vào, `ADC_GAIN_1` là không khuếch đại |
 | `zephyr,reference` | Điện áp tham chiếu, `ADC_REF_INTERNAL` hoặc `ADC_REF_VDD_1` tuỳ SoC |
-| `zephyr,acquisition-time` | Thời gian lấy mẫu, nguồn trở kháng cao cần giá trị lớn |
+| `zephyr,acquisition-time` | Thời gian lấy mẫu, nguồn tín hiệu có impedance cao cần giá trị lớn |
 | `zephyr,resolution` | Số bit, ADC của STM32F407 tối đa 12 bit |
 | `zephyr,oversampling` | Số lần lấy mẫu để lấy trung bình (tuỳ chọn), giúp giảm nhiễu |
 
@@ -1404,7 +1404,7 @@ int main(void)
 - `ADC_DT_SPEC_GET(DT_PATH(zephyr_user))`: lấy kênh đầu tiên trong danh sách `io-channels`.
 - `adc_channel_setup_dt()`: nạp cấu hình kênh xuống phần cứng, chỉ cần gọi một lần lúc khởi tạo.
 - `struct adc_sequence` mô tả một lần đọc. ADC API phức tạp hơn GPIO vì nó hỗ trợ đọc nhiều kênh liên tiếp vào một buffer, đọc theo DMA, đọc lặp... Với trường hợp đơn giản, `adc_sequence_init_dt()` điền sẵn `channels`, `resolution`, `oversampling` từ devicetree, ta chỉ phải đưa buffer.
-- Buffer khai báo `int16_t` chứ không phải `uint16_t` vì cấu hình đo vi sai có thể cho giá trị âm.
+- Buffer khai báo `int16_t` chứ không phải `uint16_t` vì cấu hình đo differential có thể cho giá trị âm.
 - `adc_raw_to_millivolts_dt()`: Hàm này lấy `vref`, `gain` và `resolution` trong spec để quy đổi giá trị thô ra điện áp thật. Hàm sửa đổi giá trị tại chỗ nên phải copy `buf` sang `int32_t mv` trước khi gọi.
     Hàm trả lỗi khi driver không biết điện áp tham chiếu là bao nhiêu, khi đó khai báo thêm trong overlay:
 
