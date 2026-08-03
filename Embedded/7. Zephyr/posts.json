@@ -57,7 +57,7 @@
     "title": "Ngoại vi",
     "date": "30-07-2026",
     "author": "Peizzon",
-    "description": "Ứng dụng devicetree, Kconfig và CMake để điều khiển GPIO, ngắt, I2C, PWM và ADC.",
+    "description": "Ứng dụng devicetree, Kconfig và CMake để điều khiển ngoại vi.",
     "image": "img/zephyr.png",
     "tags": ["zephyr"]
   }

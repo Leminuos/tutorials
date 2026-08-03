@@ -197,7 +197,7 @@ leds {
 };
 ```
 
-Ba thông tin cần cho việc bật LED nằm gọn trong property `gpios`: controller (`&gpioa`), số chân (`6`) và polarity (`GPIO_ACTIVE_LOW`). Polarity là thứ đáng chú ý nhất, nó cho biết LED sáng ở mức điện áp nào. Trên F4VE, anode của LED nối lên 3V3 còn cathode nối vào chân MCU, nên chân phải ở mức thấp thì LED mới sáng, vì vậy ghi `GPIO_ACTIVE_LOW`. Board nào nối LED xuống GND thì ghi `GPIO_ACTIVE_HIGH`.
+Ba thông tin cần cho việc bật LED nằm gọn trong property `gpios`: controller (`&gpioa`), số chân (`6`) và polarity (`GPIO_ACTIVE_LOW`). Polarity là thứ đáng chú ý nhất, nó cho biết LED sáng ở mức điện áp nào. Trên F4VE, anode của LED nối lên 3V3 còn cathode nối vào chân MCU, nên chân ở mức thấp thì LED mới sáng, vì vậy ghi `GPIO_ACTIVE_LOW`. Nếu chân anode của LED nối xuống GND thì ghi `GPIO_ACTIVE_HIGH`.
 :::
 
 ```c [src/main.c]
@@ -243,7 +243,7 @@ int main(void)
 - `#define LED_NODE DT_ALIAS(led0)`: lấy node identifier từ alias, code không phụ thuộc tên label của board.
 - Khối `#if ... #error`: chặn lỗi ngay lúc biên dịch nếu board không có alias, thay cho một đống lỗi macro khó đọc. Đây là mẫu nên có ở đầu mọi file dùng devicetree.
 - `GPIO_DT_SPEC_GET`: Macro nhận hai tham số: node identifier và tên property chứa phandle GPIO (ở đây là `gpios`). Kết quả là một struct `gpio_dt_spec` gồm `port`, `pin`, `dt_flags`. Vì mọi giá trị đều là hằng số biên dịch nên biến này khai báo được `static const`, nó nằm ở flash và không tốn RAM. Nếu tự lấy ba thứ đó rời rạc thì rất dễ lấy `pin` của node này nhưng truyền `port` của node khác, mà compiler không bắt được vì cả ba đều là số hoặc con trỏ hợp lệ.
-- Nhờ `dt_flags` mang theo `GPIO_ACTIVE_LOW`/`HIGH`, toàn bộ code phía sau làm việc với **logical level** chứ không phải mức điện áp trên chân: `gpio_pin_set_dt(&led, 1)` luôn có nghĩa là bật LED, bất kể phần cứng nối kiểu gì.
+- Nhờ `dt_flags` mang theo `GPIO_ACTIVE_LOW`/`HIGH` nên toàn bộ code phía sau làm việc với **logical level** chứ không phải mức điện áp trên chân: `gpio_pin_set_dt(&led, 1)` luôn có nghĩa là bật LED, bất kể phần cứng nối kiểu gì.
 - `gpio_is_ready_dt(&led)`: thực chất là `device_is_ready(led.port)`. Với GPIO on chip thì gần như luôn thành công, nhưng với GPIO expander qua I2C (PCF8574, MCP23017...) thì kiểm tra này mới thật sự có ý nghĩa, vì chip có thể không phản hồi.
 - `gpio_pin_configure_dt(..., GPIO_OUTPUT_ACTIVE)`: Tham số thứ hai là thêm vào cờ đã có trong devicetree chứ không thay thế. Các giá trị hay dùng:
 
@@ -256,13 +256,94 @@ int main(void)
     | `GPIO_INPUT \| GPIO_PULL_UP` | Input, bật pull-up bên trong SoC |
     | `GPIO_OUTPUT \| GPIO_OPEN_DRAIN` | Output open drain |
 
-    Luôn ưu tiên `GPIO_OUTPUT_ACTIVE`/`INACTIVE` thay vì `GPIO_OUTPUT`, vì hai cờ này đặt luôn trạng thái ban đầu trong cùng một thao tác, tránh việc LED nhấp nháy một cái lúc khởi động.
+    Luôn ưu tiên `GPIO_OUTPUT_ACTIVE`/`INACTIVE` thay vì `GPIO_OUTPUT`, vì hai cờ này đặt luôn trạng thái ban đầu trong cùng một thao tác, tránh việc LED nhấp nháy một cái lúc khởi động. Chi tiết ở mục 2.2.
 
 - `gpio_pin_toggle_dt()` + `k_msleep(CONFIG_APP_BLINK_PERIOD_MS)`: vòng lặp blink, chu kỳ lấy thẳng từ Kconfig.
 :::
 ::::
 
-### 2.2. Trường hợp board không có alias `led0`
+### 2.2. Cờ khởi tạo output
+
+`GPIO_OUTPUT_ACTIVE` là tổ hợp của ba bit độc lập trong `include/zephyr/drivers/gpio.h`:
+
+```c
+/* Bit chọn hướng của chân */
+#define GPIO_INPUT                  (1U << 16)
+#define GPIO_OUTPUT                 (1U << 17)
+
+/* Bit chỉ định trạng thái khởi tạo */
+#define GPIO_OUTPUT_INIT_LOW        (1U << 18)
+#define GPIO_OUTPUT_INIT_HIGH       (1U << 19)
+#define GPIO_OUTPUT_INIT_LOGICAL    (1U << 20)
+
+/* Tổ hợp có sẵn */
+#define GPIO_OUTPUT_LOW       (GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW)                              /* physical */
+#define GPIO_OUTPUT_HIGH      (GPIO_OUTPUT | GPIO_OUTPUT_INIT_HIGH)                             /* physical */
+#define GPIO_OUTPUT_INACTIVE  (GPIO_OUTPUT | GPIO_OUTPUT_INIT_LOW  | GPIO_OUTPUT_INIT_LOGICAL)  /* logic  */
+#define GPIO_OUTPUT_ACTIVE    (GPIO_OUTPUT | GPIO_OUTPUT_INIT_HIGH | GPIO_OUTPUT_INIT_LOGICAL)  /* logic  */
+```
+
+Bit `GPIO_OUTPUT_INIT_LOGICAL` là thứ phân biệt hai cặp cờ:
+
+- `GPIO_OUTPUT_HIGH`/`GPIO_OUTPUT_LOW` nói về điện áp thật trên chân.
+- `GPIO_OUTPUT_ACTIVE`/`GPIO_OUTPUT_INACTIVE` nói về trạng thái logic của thiết bị. `ACTIVE` nghĩa là thiết bị đang được kích hoạt (LED sáng, relay đóng) còn mức điện áp tương ứng thì do polarity trong devicetree quyết định.
+
+Cả hai chỉ mô tả trạng thái tại thời điểm cấu hình. Sau khi `gpio_pin_configure_dt()` trả về thì chân là output bình thường, `gpio_pin_set_dt()` hay `gpio_pin_toggle_dt()` muốn đổi thế nào cũng được.g
+
+**Cờ được xử lý như thế nào**
+
+Lấy ví dụ `gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE)` với devicetree ghi `<&gpioa 6 GPIO_ACTIVE_LOW>` thì quy trình xử lý diễn ra như sau:
+
+1. `gpio_pin_configure_dt()` chỉ là wrapper của `gpio_pin_configure(spec->port, spec->pin, spec->dt_flags | extra_flags)`.  Cờ ta truyền vào được OR thêm vào `dt_flags` mà `dt_flags` thì đang giữ `GPIO_ACTIVE_LOW` lấy từ devicetree. Nói cách khác, đến đây thì thông tin muốn LED sáng và thông tin LED nối kiểu active-low mới gặp nhau trong cùng một biến.
+
+2. `gpio_pin_configure()` làm đúng một việc:
+
+    ```c
+    if ((flags & GPIO_OUTPUT_INIT_LOGICAL) != 0
+        && (flags & (GPIO_OUTPUT_INIT_HIGH | GPIO_OUTPUT_INIT_LOW)) != 0
+        && (flags & GPIO_ACTIVE_LOW) != 0) {
+            flags ^= GPIO_OUTPUT_INIT_LOW | GPIO_OUTPUT_INIT_HIGH;   /* đảo hai bit cho nhau */
+    }
+
+    flags &= ~GPIO_OUTPUT_INIT_LOGICAL;   /* driver không bao giờ thấy bit này */
+    ```
+
+    Chỉ khi đủ ba điều kiện (cờ là logic, có yêu cầu init, chân active-low) thì đảo `INIT_HIGH` thành `INIT_LOW` và ngược lại. Với `GPIO_ACTIVE_HIGH` thì điều kiện thứ ba sai nên không đảo gì cả. Sau đó bit `LOGICAL` bị xoá nên driver của SoC chỉ nhận cờ vật lý, driver không cần biết khái niệm active-low tồn tại. Đây là lý do mọi driver GPIO trong Zephyr viết giống nhau.
+
+3. Cũng tại hàm `gpio_pin_configure()`, bit `GPIO_ACTIVE_LOW` được ghi vào một bitmask `invert` nằm trong RAM của device:
+
+    ```c
+    struct gpio_driver_data *data = port->data;
+
+    if ((flags & GPIO_ACTIVE_LOW) != 0) {
+            data->invert |= BIT(pin);
+    } else {
+            data->invert &= ~BIT(pin);
+    }
+    ```
+
+    Về sau `gpio_pin_set_dt(&led, 1)` tra bitmask này, thấy chân bị invert thì lật giá trị rồi mới gọi xuống `gpio_pin_set_raw()`, `gpio_pin_get_dt()` cũng vậy theo chiều ngược lại.
+
+**Vì sao không dùng `GPIO_OUTPUT` trần**
+
+`GPIO_OUTPUT` không có bit `INIT_*` nào, tức là nói với driver bật output đi, còn giá trị thì kệ. Theo tài liệu về API thì trạng thái lúc đó là không xác định, thực tế nó là giá trị đang nằm sẵn trong thanh ghi output, thường là `0` sau reset hoặc là giá trị bootloader để lại. Với LED active-low thì `0` nghĩa là LED sáng, nên ta sẽ thấy nháy sáng lúc boot rồi mới tắt khi code chạy tới lệnh set.
+
+Viết tay hai bước cũng không giải quyết được:
+
+```c
+gpio_pin_configure_dt(&led, GPIO_OUTPUT);
+gpio_pin_set_dt(&led, 0);
+```
+
+Giữa hai dòng này chân đã ở chế độ push pull và đang phát ra mức rác. Với LED thì chỉ là một nháy vô hại, nhưng với chân điều khiển MOSFET, relay hay chân enable của mạch nguồn thì đó là một xung thật sự ra tải. `GPIO_OUTPUT_ACTIVE`/`INACTIVE` gộp cả hai vào một lời gọi driver, và driver ghi giá trị trước khi bật bộ đệm output nên chân chưa bao giờ drive ra mức sai.
+
+:::tip Vài ràng buộc khác
+- `GPIO_OUTPUT_INIT_*` mà không kèm `GPIO_OUTPUT` sẽ vướng `__ASSERT` nhưng nó chỉ báo khi bật `CONFIG_ASSERT=y`, build release thì im lặng bỏ qua.
+- `GPIO_INPUT | GPIO_OUTPUT_ACTIVE` là hợp lệ trên SoC hỗ trợ đọc ngược chân output, chân nào không hỗ trợ thì `gpio_pin_configure_dt()` trả `-ENOTSUP`.
+- Với `GPIO_OPEN_DRAIN`, mức active vẫn theo polarity, nhưng mức inactive là thả nổi cho pull-up kéo lên chứ không phải đẩy lên 3V3.
+:::
+
+### 2.3. Trường hợp board không có alias `led0`
 
 Đây là tình huống rất hay gặp với board tự thiết kế hoặc board tối giản như `stm32_min_dev@blue` (Blue Pill). Ta tự khai báo node LED trong overlay:
 
@@ -302,7 +383,7 @@ my_app/
 
 CMake tự chọn đúng file theo tham số `-b`. Cả `app.overlay` lẫn `boards/<board>.overlay` đều được nạp, phần riêng của board được ghép sau nên có quyền ghi đè.
 
-### 2.3. Lỗi thường gặp
+### 2.4. Lỗi thường gặp
 
 | Triệu chứng | Nguyên nhân |
 |---|---|
@@ -319,6 +400,19 @@ Trước khi sang ngắt, làm bản polling để thấy rõ vấn đề mà ng
 **Toàn bộ project**
 
 :::: code-group
+```cmake [CMakeLists.txt]
+cmake_minimum_required(VERSION 3.20.0)
+
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(button_poll)
+
+target_sources(app PRIVATE src/main.c)
+```
+::: explain [Giải thích CMakeLists.txt]
+- Giống hệt khung ở mục 1.1, chỉ đổi tên `project(button_poll)`.
+- `target_sources`: khai báo file nguồn duy nhất của ứng dụng.
+:::
+
 ```conf [prj.conf]
 CONFIG_GPIO=y
 ```
@@ -341,6 +435,7 @@ CONFIG_GPIO=y
 
     aliases {
         sw0 = &user_btn;
+        led0 = &blue_led_1;
     };
 };
 ```
@@ -378,6 +473,8 @@ int main(void)
     gpio_pin_configure_dt(&led, GPIO_OUTPUT_INACTIVE);
     gpio_pin_configure_dt(&btn, GPIO_INPUT);
 
+    prev = gpio_pin_get_dt(&btn);
+
     while (1) {
         int cur = gpio_pin_get_dt(&btn);   /* 1 = đang nhấn, 0 = nhả */
 
@@ -413,7 +510,7 @@ Vòng `while` có 3 vấn đề:
   - **Trễ**: nhấn rồi nhả nhanh hơn 10 ms thì mất luôn sự kiện.
   - **Không mở rộng được**: thêm cảm biến, thêm nút thì `k_msleep(10)` của việc này làm chậm việc kia.
 
-Đây chính là lý do phải chuyển sang ngắt.
+Đây chính là lý do phải chuyển sang interrupt.
 
 ## 4. GPIO interrupt: nhấn nút bật/tắt LED
 
@@ -498,7 +595,6 @@ static const struct gpio_dt_spec btn = GPIO_DT_SPEC_GET(BTN_NODE, gpios);
 static struct gpio_callback btn_cb;
 static bool led_on;
 
-/* Chạy trong ngữ cảnh thread của system workqueue, không phải ISR */
 static void debounce_handler(struct k_work *work)
 {
     ARG_UNUSED(work);
@@ -515,7 +611,6 @@ static void debounce_handler(struct k_work *work)
 
 static K_WORK_DELAYABLE_DEFINE(debounce_work, debounce_handler);
 
-/* Chạy trong ngữ cảnh ngắt */
 static void button_isr(const struct device *port,
                        struct gpio_callback *cb,
                        gpio_port_pins_t pins)
@@ -546,17 +641,14 @@ int main(void)
         return ret;
     }
 
-    /* 1. Bật ngắt trên cạnh chuyển sang trạng thái active */
     ret = gpio_pin_interrupt_configure_dt(&btn, GPIO_INT_EDGE_TO_ACTIVE);
     if (ret < 0) {
         LOG_ERR("Pin %d does not support interrupts: %d", btn.pin, ret);
         return ret;
     }
 
-    /* 2. Khai báo callback và chân nào kích hoạt nó */
     gpio_init_callback(&btn_cb, button_isr, BIT(btn.pin));
 
-    /* 3. Gắn callback vào controller */
     ret = gpio_add_callback_dt(&btn, &btn_cb);
     if (ret < 0) {
         return ret;
@@ -564,7 +656,6 @@ int main(void)
 
     LOG_INF("Ready, press the button to toggle the LED");
 
-    /* Không còn vòng lặp bận rộn, thread main ngủ vĩnh viễn */
     k_sleep(K_FOREVER);
     return 0;
 }
@@ -961,6 +1052,19 @@ Chú ý `abs(t % 1000)` khi in: với nhiệt độ âm, phần dư cũng âm, k
 Zephyr đã có driver cho SHT3x với `compatible = "sensirion,sht3xd"`. Dùng nó thì không phải viết binding, không phải nhớ mã lệnh và code ứng dụng giống hệt nhau cho mọi loại cảm biến.
 
 :::: code-group
+```cmake [CMakeLists.txt]
+cmake_minimum_required(VERSION 3.20.0)
+
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(sht30_sensor)
+
+target_sources(app PRIVATE src/main.c)
+```
+::: explain [Giải thích CMakeLists.txt]
+- Giống hệt khung ở mục 1.1, chỉ đổi tên `project(sht30_sensor)`.
+- `target_sources`: khai báo file nguồn duy nhất của ứng dụng.
+:::
+
 ```conf [prj.conf]
 CONFIG_I2C=y
 CONFIG_SENSOR=y
@@ -1080,6 +1184,19 @@ Trên F4VE, LED1 nằm ở PA6 và chân này cũng chính là TIM3_CH1, nên ta
 ### 6.1. Toàn bộ project
 
 :::: code-group
+```cmake [CMakeLists.txt]
+cmake_minimum_required(VERSION 3.20.0)
+
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(pwm_led)
+
+target_sources(app PRIVATE src/main.c)
+```
+::: explain [Giải thích CMakeLists.txt]
+- Giống hệt khung ở mục 1.1, chỉ đổi tên `project(pwm_led)`.
+- `target_sources`: khai báo file nguồn duy nhất của ứng dụng.
+:::
+
 ```conf [prj.conf]
 CONFIG_PWM=y
 CONFIG_LOG=y
@@ -1268,6 +1385,19 @@ Ví dụ dùng chân PA1 = ADC1_IN1 trên hàng chân của F4VE, nối với co
 ### 7.1. Toàn bộ project
 
 :::: code-group
+```cmake [CMakeLists.txt]
+cmake_minimum_required(VERSION 3.20.0)
+
+find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
+project(adc_pot)
+
+target_sources(app PRIVATE src/main.c)
+```
+::: explain [Giải thích CMakeLists.txt]
+- Giống hệt khung ở mục 1.1, chỉ đổi tên `project(adc_pot)`.
+- `target_sources`: khai báo file nguồn duy nhất của ứng dụng.
+:::
+
 ```conf [prj.conf]
 CONFIG_ADC=y
 CONFIG_LOG=y
