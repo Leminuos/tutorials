@@ -1,6 +1,4 @@
-# Linux file system
-
-## Tổng quan
+## 1. Tổng quan
 
 Một chương trình đang chạy trên linux thì bản thân chương trình đấy cũng phải được biểu diễn thông qua một file nào đấy trong hệ thống, ta có thể thao tác với chương trình thông qua file. Hoặc một ví dụ như chuột, bàn phím, màn hình, âm thanh cũng đều được đại diện bằng một file nào đó và ta có thể thao tác với âm thanh hoặc đọc ghi qua màn hình thì đều có thể thông qua các file đại diện cho nó.
 
@@ -8,7 +6,9 @@ Một chương trình đang chạy trên linux thì bản thân chương trình 
 
 Cấu trúc `struct file` được định nghĩa trong `include/linux/fs.h`.
 
-## Các loại file và phân quyền
+## 2. Các loại file và phân quyền
+
+### 2.1. Các loại file
 
 Khi ta sử dụng lệnh bash `ls -l`
 
@@ -33,20 +33,22 @@ crw-rw-rw-   1 root tty  5,  0 Oct  9  /dev/tty
 | `p` | FIFO          | File này đại diện cho pipe, là một IPC giao tiếp giữa các tiến trình theo cơ chế FIFO. |
 | `s` | socket        | File này đại diện cho một cổng mạng, dùng để giao tiếp giữa các tiến trình trong mạng. |
 
-### Quyền truy cập (permission bits)
+### 2.2. Phân quyền (File permissions)
 
-Phần còn lại của cột đầu tiên cho biết quyền sử dụng file đó:
+Ở ví dụ trên, phần còn lại của cột đầu tiên cho biết quyền sử dụng file đó:
 - Mỗi ký tự đại diện cho một quyền.
 - Mỗi quyền lại được đại diện bởi một bit trong struct `mode_t`.
-- Các quyền này được gom theo từng nhóm: User, Group và Other.
-- Mỗi nhóm sẽ có 3 loại quyền là:
-  + read `r`: Cho phép đọc nội dung file hoặc xem file trong thư mục.
-  + write `w`: Cho phép ghi nội dung vào file hoặc xoá file trong thư mục.
-  + execute `x`: Cho phép thực thi file hoặc truy cập vào thư muc (`cd`).
-- Ký tự `-` cho biết nó không có quyền tương ứng.
-- Ngoài ra, còn có 3 bit quyền đặc biệt: bit setuid, bit setgid và bit sticky.
 
-=> Tóm lại quyền cho một file sẽ được đại diện bởi các bit gồm: **3 bit đặc biệt, 3 bit user, 3 bit group và 3 bit other**.
+Các quyền này được gom theo từng nhóm: User, Group và Other.
+- User (u): Người sở hữu file, thường là người tạo ra nó.
+- Group (g): Nhóm người dùng được gán cho file (ví dụ: team dev, team ops)
+- Other (o): Tất cả những người còn lại trên hệ thống
+
+Mỗi nhóm sẽ có 3 loại quyền là:
+- read `r`: Cho phép đọc nội dung file hoặc xem file trong thư mục.
+- write `w`: Cho phép ghi nội dung vào file hoặc xoá file trong thư mục.
+- execute `x`: Cho phép thực thi file hoặc truy cập vào thư muc (`cd`).
+- Ký tự `-` cho biết nó không có quyền tương ứng.
 
 Ví dụ như sau:
 
@@ -63,7 +65,7 @@ Giải thích:
 | Group  | `r-x`   | Đọc và thực thi    |
 | Others | `r--`	 | Chỉ được đọc       |
 
-### Bit đặc biệt
+Ngoài ra, còn có 3 bit quyền đặc biệt sau:
 
 | Bit    | Ký hiệu            | Ứng dụng       | Ý nghĩa                                       |
 | ------ | ------------------ | -------------- | --------------------------------------------- |
@@ -78,53 +80,89 @@ $ ls -ld /tmp
 drwxrwxrwt 10 root root 4096 Oct 9 /tmp
 ```
 
-→ t = sticky bit.
-→ Người dùng khác không thể xóa file trong thư mục `/tmp`.
+$\rightarrow$ t = sticky bit.
+$\rightarrow$ Người dùng khác không thể xóa file trong thư mục `/tmp`.
 
-### Thay đổi quyền
+### 2.3. Các tool phân quyền quan trọng
 
-Ta cũng có thể thay đổi quyền truy cập bằng cách sử dụng:
+Ta cũng có thể phân quyền bằng cách sử dụng:
 
-**Dùng ký hiệu**
+**`chmod` - Thay đổi quyền truy cập**
+
+- Dùng symbolic:
+
+  ```bash
+  # Symbolic
+  chmod u+x file     # thêm quyền execute cho owner
+  chmod g-w file     # bỏ quyền write cho group
+  chmod o+r file     # thêm quyền read cho others
+  chmod a+r file     # thêm quyền read cho tất cả
+  ```
+
+- Dùng mã bát phân:
+
+  | Quyền | Giá trị |
+  | ----- | ------- |
+  | r     | 4       |
+  | w     | 2       |
+  | x     | 1       |
+
+  Ví dụ:
+
+  ```bash
+  chmod 755 file   # rwxr-xr-x
+  chmod 644 file   # rw-r--r--
+  chmod 700 file   # rwx------
+  ```
+
+  Một số giá trị octal phổ biến cần nhớ:
+
+  - 755: Thư mục public, script có thể chạy
+  - 644: File văn bản, config thông thường
+  - 600: File nhạy cảm (SSH key, env,...)
+  - 700: Script chỉ owner mới chạy được
+
+- Dùng recursive:
+
+  ```bash
+  chmod -R 644 file
+  ```
+
+**chown - Đổi chủ sở hữu file**
 
 ```bash
-chmod u+x file     # thêm quyền execute cho owner
-chmod g-w file     # bỏ quyền write cho group
-chmod o+r file     # thêm quyền read cho others
-chmod a+r file     # thêm quyền read cho tất cả
+chown alice script.sh         # Đổi owner thành alice
+chown alice:devteam script.sh # đổi cả owner lẫn group
 ```
 
-**Dùng mã bát phân**
-
-| Quyền | Giá trị |
-| ----- | ------- |
-| r     | 4       |
-| w     | 2       |
-| x     | 1       |
-
-Ví dụ:
+**chgrp - Đổi nhóm sở hữu**
 
 ```bash
-chmod 755 file   # rwxr-xr-x
-chmod 644 file   # rw-r--r--
-chmod 700 file   # rwx------
+chgrp devteam script.sh
 ```
 
-**Dùng umask**
+**umask - quyền mặc định khi tạo file mới**
 
-Khi một file mới được tạo, mặc định nó sẽ có quyền 666. Ta có dùng lệnh `umask` để xác định **bit quyền sẽ bị tắt** khi tạo file mới.
+Khi một file mới được tạo, mặc định nó sẽ có quyền 666. Ta có dùng lệnh `umask` để phân quyền khi tạo file mới.
 
 ```bash
 $ umask 0022
 ```
 
--> File mới tạo sẽ có quyền `666 - 022 = 644` → `rw-r--r--`.
+$\rightarrow$ File mới tạo sẽ có quyền `666 - 022 = 644` $\rightarrow$ `rw-r--r--`.
 
-## File descriptor & File Table
+### 2.4. Tại sao cần phân quyền?
 
-### File Descriptor (fd)
+Sai phân quyền là nguyên nhân phổ biến của nhiều sự cố thực tế:
+- Web server lỗi 403 Forbidden $\rightarrow$ thường do file thiếu quyền `r` hoặc thư mục thiếu `x`
+- Script không chạy được $\rightarrow$ thiếu quyền `x`
+- Lỗ hổng bảo mật nghiêm trọng $\rightarrow$ file config bị để 777 (ai cũng có thể ghi được)
 
-**File descriptor hay fd là một số nguyên dương trỏ tới một `struct file` trong kernel và mỗi process sẽ có một bảng file descriptor table riêng.**
+## 3. File descriptor & File Table
+
+### 3.1. File Descriptor (fd)
+
+> File descriptor hay fd là một số nguyên dương trỏ tới một `struct file` trong kernel và mỗi process sẽ có một bảng file descriptor table riêng.
 
 `stdin`, `stdout`, `stderr` là 3 file descriptor mặc định được hệ điều hành mở sẵn ngay khi process được khởi tạo.
 
@@ -153,7 +191,7 @@ ls /proc/<PID>/fd
 
 Nếu một process mở quá nhiều file mà không đóng thì nó có thể gặp lỗi "Too many open files".
 
-### File Table
+### 3.2. File Table
 
 File table là một bảng chứa thông tin của một file đang mở trong hệ thống:
 - con trỏ tới inode
@@ -166,37 +204,38 @@ Mỗi process có thể mở cùng một file, nhưng sẽ có entry trong file 
 
 ![File table](img/file-table.png)
 
-## Inode table & Directory Entry
+## 4. Inode table & Directory Entry
 
-### Inode là gì
+### 4.1. Inode là gì?
 
 Để kernel biết được thông tin của một file như thời gian tạo, loại, quyền, block chứa dữ liệu của file thì làm kiểu gì? Câu trả lời chính là thông qua inode.
 
 Vậy thì inode là gì?
 
-Inode hay index node là một cấu trúc dữ liệu được lưu trên disk dùng để lưu thông tin metadata của một file hoặc directory, không bao gồm tên file.
-
-Mỗi file hoặc directory có một inode duy nhất được đánh số gọi là inode number.
+> Inode hay index node là một cấu trúc dữ liệu được lưu trên disk dùng để lưu thông tin metadata của một file hoặc directory, không bao gồm tên file.
 
 Một inode thường chứa các thông tin sau:
 
 | Thông tin  | Mô tả                          |
 | ---------- | ------------------------------ |
+| Inode number | ID duy nhất trong filesystem |
 | File type  | regular, directory, symlink... |
 | Permission | Quyền read, write, excecute.   |
 | UID/GID    | Chủ sở hữu file.               |
 | File size  | Kích thước của file tính theo byte.  |
 | Timestamp  | `atime`, `mtime`, `ctime`      |
 | Link count | Số hard link trỏ đến inode này.|
-| Block list | Danh sách block trong disk chứa dữ liệu |
+| Block list | Danh sách các data block trên disk chứa dữ liệu |
 
 Trong đó, mỗi block là một đơn vị lưu trữ vật lý, thường có kích thước 4KB hoặc 8KB.
+
+Với EXT4, mỗi inode có kích thước 256 bytes. Số lượng inode thường được cố định khi format ổ đĩa $\rightarrow$ đây là lý do đôi khi ta hết inode dù còn đầy disk space.
 
 :::warning Chú ý
 Kernel chỉ thực sự xóa file khi link count = 0 và không có process nào mở file.
 :::
 
-### Directory entry (dentry)
+### 4.2. Directory entry (dentry)
 
 Directory là một file đặc biệt, dữ liệu của nó là các directory entry. Mỗi directory entry là ánh xạ giữa tên file và inode number tương ứng. Thông qua inode ta có thể biết được thông tin của file và dữ liệu của file đó.
 
@@ -208,8 +247,8 @@ $ ls -i
 1053 note.txt
 ```
 
-→ `file.txt` có inode number = 1052
-→ `note.txt` có inode number = 1053
+$\rightarrow$ `file.txt` có inode number = 1052
+$\rightarrow$ `note.txt` có inode number = 1053
 
 Để kiểm tra thông tin của một file, ta sử dụng lệnh sau:
 
@@ -225,15 +264,57 @@ Change: 2025-10-09 13:12:03
 
 ```
 
-Khi mở một file, kernel sẽ thực hiện tra cứu đường dẫn thông qua directory entry cho đến khi tìm thấy file và inode number tương ứng.
-
 :::warning Chú ý
 inode và directory entry là một phần của virtual file system, bởi vì mỗi file system sẽ có cách lưu file trên disk khác nhau.
 :::
 
-### Hard link và Symbolic link
+Khi mở một file, kernel sẽ thực hiện tra cứu đường dẫn thông qua directory entry cho đến khi tìm thấy file và inode number tương ứng.
 
-**Hard link**
+### 4.3. Path lockup
+
+Khi ta gõ `cat /etc/nginx/nginx.conf`, kernel thực hiện từng bước:
+- Tra inode của "/" (root): inode số 2 luôn là root, cố định trong mọi EXT filesystem.
+- Đọc data block của "/": đây là directory, nội dung là bảng ánh xạ tên $\rightleftarrow$ inode. Tìm entry "etc" $\rightarrow$ inode số X.
+- Đọc inode X của "etc": xác nhận đây là directory, kiểm tra permission. Đọc data block $\rightarrow$ tìm "nginx" $\rightarrow$ inode số Y.
+- Tiếp tục với "nginx" $\rightarrow$ tìm "nginx.conf" $\rightarrow$ inode số Z.
+- Đọc inode Z: lấy block pointers, đọc data blocks thật sự, trả về nội dung file.
+
+Mỗi bước là một lần tra cứu tên tới inode. Nếu lần nào cũng phải hỏi thẳng xuống ổ đĩa (đọc block chứa thư mục, parse entry...) thì mở file sẽ chậm kinh khủng, nhất là với path sâu.
+
+Để giải quyết vấn đề này thì kernel sinh ra dentry cache hay dcache.
+
+Mỗi dentry sau khi resolve xong sẽ được cache lại trong một hash table toàn cục, key là (dentry cha, tên). Lần sau cần tra `nginx` trong `etc`, kernel tra thẳng trong RAM, không đụng tới filesystem thật bên dưới. Đây là lý do lần mở file thứ hai luôn nhanh hơn lần đầu rõ rệt.
+
+Vài điểm hay của dcache:
+- Negative dentry: kernel còn cache cả những lần tra cứu thất bại — file không tồn tại. Nhờ vậy `stat()` liên tục lên một file chưa tạo, rất phổ biến khi compiler tìm header hay shell tìm binary trong `$PATH`.
+- LRU + shrinker: dcache không giữ mọi thứ mãi mãi. Khi RAM sắp tràn, kernel có cơ chế shrink dcache dựa trên LRU, ưu tiên giữ lại những gì đang dùng.
+- RCU-walk: từ Linux 2.6.38, path lookup có chế độ đi qua dcache mà gần như không cần lock (dùng RCU), chỉ fallback về "ref-walk" có lock khi gặp trường hợp phức tạp (symlink, mount point...). Đây là một trong những tối ưu quan trọng nhất giúp lookup scale tốt trên máy nhiều core.
+
+### 4.4. Ứng dụng thực tế
+
+Hiểu inode ở mức này giúp ta giải thích nhiều hiện tượng:
+- `chmod`/`chown` chạy rất nhanh dù file 10GB: vì chỉ sửa 2-4 bytes trong inode, không đụng data.
+- `mv` file trong cùng partition tức thì: chỉ cập nhật directory entry, inode và data không di chuyển.
+- `mv` file khác partition chậm như `cp`: phải copy toàn bộ data block sang inode mới ở filesystem đích.
+- `touch` tạo file rỗng: cấp phát inode mới, `i_size = 0`, không cấp phát data block nào cả.
+
+Với embedded developer: khi thiết kế rootfs cho thiết bị IoT, hiểu block pointer giúp ta chọn block size phù hợp, block size lớn tăng tốc đọc file lớn nhưng lãng phí space với nhiều file nhỏ (internal fragmentation).
+
+## 5. Hard link và Symbolic link
+
+Đây là một trong những khái niệm dễ nhầm nhất khi học Linux File System. Cả hai đều tạo ra một shortcut trỏ đến file, nhưng cơ chế bên dưới hoàn toàn khác nhau và nếu dùng sai, ta có thể mất dữ liệu hoặc gặp lỗi khó debug.
+
+### 5.1. Hard link
+
+Trong linux, mỗi file thực chất là một inode. Hard link đơn giản là tạo thêm một directory entry khác trỏ đến inode đó.
+
+Đặc điểm của hard link:
+- Cùng inode number với file gốc
+- File chỉ bị xóa khi link count = 0, tức là tât cả hard link đều bị xóa
+- Không thể tạo hard link đến directory vì dẫn đến nguy cơ circular reference
+- Không thể cross filesystem, phải cùng partition
+
+Ví dụ:
 
 ```bash
 $ ln file.txt file_link
@@ -242,10 +323,26 @@ $ ls -li
 1052 -rw-r--r-- 2 user user 1024 Oct 9 file_link
 ```
 
-- Cả hai đều trỏ đến inode 1052, chia sẻ cùng dữ liệu.
-- Xóa một file, file kia vẫn tồn tại (vì link count > 0).
+Cả hai đều có chung inode 1052, chia sẻ cùng dữ liệu.
 
-**Symbolic link**
+Dùng hard link khi nào?
+- Cần backup an toàn trong cùng partition $\rightarrow$ xóa file gốc không mất data
+- Dùng trong backup tools như `rsync --link-dest` để tiết kiệm disk space
+- Config file cần xuất hiện ở nhiều nơi nhưng luôn đồng bộ nội dung
+
+### 5.2. Symbolic link
+
+Soft link là một file đặc biệt, bên trong chứa đường dẫn đến file gốc, không trỏ trực tiếp vào block dữ liệu.
+
+Khi ta mở soft link thì kernel đọc path bên trong rồi redirect sang file gốc. Nếu file gốc bị xóa hoặc đổi tên thì soft link trở thành dangling link.
+
+Đặc điểm của soft link:
+- Có inode riêng, khác với file gốc
+- Có thể trỏ đến directory
+- Có thể cross filesystem, cross partition 
+- Bị ảnh hưởng nếu file đích bị xóa hoặc di chuyển 
+
+Ví dụ:
 
 ```bash
 $ ln -s file.txt sym_link
@@ -254,13 +351,22 @@ $ ls -li
 1053 lrwxrwxrwx 1 user user   8 Oct 9 sym_link -> file.txt
 ```
 
-- `sym_link` có inode khác (1053).
-- Chỉ chứa đường dẫn đến file gốc, không trỏ trực tiếp vào block dữ liệu.
-- Khi file gốc xoá, symlink chết hay dangling.
+`sym_link` có inode khác (1053).
 
-## Thao tác với file
+Dùng soft link khi nào?
+- Trỏ đến directory (bắt buộc dùng soft link)
+- Cross filesystem: `/data` ở partition khác
+- Version management: `/usr/bin/python` $\rightarrow$ `/usr/bin/python3.12`
 
-**Open file**
+### 5.3. Tại sao phải hiểu rõ điều này?
+
+Trong thực tế, sai lầm phổ biến nhất là dùng soft link cho backup quan trọng khi file gốc bị xóa nhầm, soft link không cứu được gì. Ngược lại, dùng hard link cross partition sẽ báo lỗi ngay lập tức.
+
+Hiểu rõ hard link vs soft link còn giúp ta debug các vấn đề như: tại sao xóa file mà disk không giảm dung lượng? Do vẫn còn hard link khác.
+
+## 5. Thao tác với file
+
+### 5.1. Open file
 
 - OS kiểm tra xem việc thao tác với file có hợp lệ không?
   + người dùng hiện tại có quyền thao tác với file hay không?
@@ -285,42 +391,33 @@ $ ls -li
     + `O_APPEND`: Ghi vào cuối file.
     + `O_SYNC`: Ghi đồng bộ (bỏ qua catched và lưu vào ổ cứng).
 
-**Close file**
+### 5.2. Close file
 
 - sync buffer chứa dữ liệu đọc ghi của file ở trên ram xuống ổ cứng.
 - giải phóng struct file ở trong ram đi.
 
-**Lưu ý**
+### 5.3. Lưu ý
 
 - Khi đọc file lớn > GB thì cần giới hạn kích thước cho một lần đọc.
 - Luôn luôn phải kiểm tra giá trị trả về của các hàm trước khi thực hiện tiếp công việc.
 - Sau khi write, nếu chương trình bị crash trước khi gọi hàm close thì dữ liệu có thể chưa được đẩy xuống ổ cứng => gây mất dữ liệu.
 
-## Mount
+## 6. Page cache
 
-Mount là quá trình attach một file system vào một point trong cây thư mục, điều này được gọi là mount point.
+### 6.1. Page cache là gì?
 
-Tại sao cần mount? Vì Linux coi mọi thứ là file, để truy cập file thì nó phải nằm trong cây thư mục.
+Page cache là vùng nhớ nằm trên RAM dưới dạng các page, nó  dùng để lưu tạm dữ liệu đọc/ghi, giúp giảm số lần truy cập ổ đĩa.
 
-Một thiết bị ví dụ như USB, ổ cứng khác, file system ảo,...chỉ có thể truy cập được sau khi được mount.
+Truy cập ổ đĩa chậm hơn RAM hàng nghìn lần
+$\rightarrow$ Nếu mỗi lần write phải ghi ngay trực tiếp xuống disk
+$\rightarrow$ Hệ thống rất chậm
+$\rightarrow$ Giải pháp:
+- Nếu ghi, kernel không ghi ngay lập tức xuống disk mà kernel sẽ lưu dữ liệu vào page cache.
+- Nếu đọc, kernel sẽ đọc cả một sector từ disk và lưu dữ liệu này vào page cache.
 
-Ví dụ, thư mục `/proc` là một pseudo file system được kernel mount. Mỗi file trong đó như `cpuinfo`, `meminfo`, `uptime`,...được kernel tạo động khi có truy cập. Nó không có dữ liệu trên disk, chỉ có callback function để cung cấp các thông tin từ kernel.
+Ví dụ như việc đọc 1 byte từ disk, khi đó OS vẫn đọc cả một sector nên app chỉ cần lấy 1 byte còn các byte còn lại sẽ được cất vào cached nằm trên ram, nếu lần đọc data sau vẫn nằm trong sector đó thì nó sẽ lấy từ page cache mà không cần đọc xuống disk.
 
-## Cached data
-
-**Cached là gì trong hệ thống file system**
-
-Cached là vùng nhớ trung gian nằm trên RAM dùng để lưu tạm dữ liệu đọc/ghi, giúp giảm số lần truy cập ổ đĩa.
-
-Truy cập ổ đĩa chậm hơn RAM hàng nghìn lần → Nếu mỗi lần write phải ghi ngay trực tiếp xuống disk → hệ thống rất chậm.
-
-→ Giải pháp:
-- Nếu ghi, kernel không ghi ngay lập tức xuống disk, mà kernel sẽ lưu dữ liệu vào cached.
-- Nếu đọc, kernel sẽ đọc cả một sector từ disk và lưu dữ liệu này vào cached.
-
-Ví dụ như việc đọc 1 byte từ disk, khi đó OS vẫn đọc cả một sector nên app chỉ cần lấy 1 byte còn các byte còn lại sẽ được cất vào cached nằm trên ram, nếu lần đọc data sau vẫn nằm trong sector đó thì nó sẽ lấy từ cached mà không cần đọc xuống disk.
-
-**Write back và write through**
+### 6.2. Write back và write through
 
 | Cơ chế         | Mô tả | Ưu điểm | Nhược điểm |
 |----------------|-------|---------|------------|
@@ -343,7 +440,9 @@ Ví dụ:
   - Lúc này, dữ liệu trong page cache được ghi xuống block thật nằm trên disk.
   - Xoá cờ dirty.
 
-## Virtual file system
+## 7. Virtual file system
+
+### 7.1. Tổng quan
 
 Virtual file system là một lớp trung gian, nó cho phép kernel xử lý các system call về file mà không cần biết file đó là định dạng file system nào, tức là nó cung cấp một lớp interface thống nhất cho phép các chương trình user có thể thực hiện các thao tác trên các loại file system khác nhau mà không cần phải thay đổi mã nguồn.
 
@@ -353,9 +452,11 @@ Hãy tưởng tượng bạn có nhiều loại hệ thống file khác nhau:
 - Ổ mạng dùng NFS
 - Thiết bị ảo như procfs, sysfs
 
-Nếu kernel không có VFS, mỗi hệ thống file sẽ phải cung cấp hàm riêng biệt cho từng syscall như `open_ext4`, `open_fat`, `open_nfs`, v.v → Điều này rất phức tạp và không thể mở rộng.
+Nếu kernel không có VFS, mỗi hệ thống file sẽ phải cung cấp hàm riêng biệt cho từng syscall như `open_ext4`, `open_fat`, `open_nfs`,...
 
-→ VFS giải quyết điều này bằng cách tạo một lớp interface thống nhất giúp chuyển system call như `open` hoặc `read` thành các hàm tương ứng với mỗi file system. Tức là, mỗi file systen khi được đăng ký vào kernel sẽ cung cấp một bảng function table ánh xạ đến những hàm xử lý riêng của nó.
+$\rightarrow$ Điều này rất phức tạp và không thể mở rộng.
+
+$\rightarrow$ VFS giải quyết điều này bằng cách tạo một lớp interface thống nhất giúp chuyển system call như `open` hoặc `read` thành các hàm tương ứng với mỗi file system. Tức là, mỗi file systen khi muốn đăng ký vào kernel thì nó phải cung cấp một bảng function table ánh xạ đến những hàm xử lý riêng của nó.
 
 Các loại file system thường gặp:
 
@@ -364,3 +465,56 @@ Các loại file system thường gặp:
 | **Vật lý (on-disk)** | `ext4`, `vfat`, `ntfs` | Lưu dữ liệu thực trên thiết bị lưu trữ.                             |
 | **Ảo (pseudo)**      | `proc`, `sysfs`,       | Không lưu dữ liệu thật, cung cấp giao diện cho kernel hoặc tạm RAM. |
 | **Mạng (network)**   | `NFS`, `CIFS`, `SSHFS` | Lưu trữ trên máy chủ qua giao thức mạng.                            |
+
+### 7.2. 4 đối tượng cốt lõi
+
+| Đối tượng | Đại diện | Ghi chú |
+| --- | --- | --- |
+| superblock | Một filesystem đã mount | Metadata toàn cục: kích thước block, số inode, trạng thái |
+| inode | Một file hoặc object | Metadata của file, không chứa tên file |
+| dentry | Một mục trong thư mục | Ánh xạ tên $\rightarrow$ inode, được cache lại để tra path nhanh hơn |
+| file | Một file đang mở của process | Trạng thái mở: offset hiện tại, flags, quyền |
+
+Mỗi đối tượng có một bảng thao tác `inode_operations`, `file_operations`,... mà filesystem cụ thể cài đặt. Đây chính là lý do một filesystem mới chỉ cần hiện thực các hàm này là dùng được ngay với mọi công cụ có sẵn.
+
+### 7.3. Mount
+
+Mount là thao tác gắn cây thư mục của file system vào một thư mục đã có sẵn trong cây hiện tại. Thư mục được chọn làm điểm gắn được gọi là mount point.
+
+Trước khi mount:
+
+```
+/
+├── etc/
+├── home/
+└── mnt/
+    └── data/   (trống)
+
+/dev/sdb1 (XFS)
+  ├── project/
+  ├── backup/
+  └── notes.txt
+```
+
+Sau khi mount:
+
+```
+/
+├── etc/
+├── home/
+└── mnt/
+    └── data/  <- mount point
+        ├── project/
+        ├── backup/
+        └── notes.txt
+        ▲
+        └── nội dung của sdb1 hiện ra ở đây
+```
+
+Ngoài ra, ta cũng có thể hiểu mount là việc nối superblock của filesystem mới vào một dentry trong cây hiện tại. Dentry đó được đánh dấu `DCACHE_MOUNTED` và path walk khi đi tới nó sẽ nhảy sang root dentry của superblock mới.
+
+Tại sao cần mount? Vì Linux coi mọi thứ là file, để truy cập file thì nó phải nằm trong cây thư mục.
+
+Một thiết bị ví dụ như USB, ổ cứng khác, file system ảo,...chỉ có thể truy cập được sau khi được mount.
+
+Ví dụ, thư mục `/proc` là một pseudo file system được kernel mount. Mỗi file trong đó như `cpuinfo`, `meminfo`, `uptime`,...được kernel tạo động khi có truy cập. Nó không có dữ liệu trên disk, chỉ có callback function để cung cấp các thông tin từ kernel.
