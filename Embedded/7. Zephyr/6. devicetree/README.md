@@ -47,6 +47,66 @@ Ví dụ node `/chosen` tiêu biểu:
 };
 ```
 
+Ngoài ra còn hai directive dùng để xoá node, hay gặp khi đọc file DTS của SoC và khi viết overlay.
+
+**`/omit-if-no-ref/`** đặt ngay trước phần khai báo node, nó nói với trình sinh code rằng:
+
+> Nếu không có ai tham chiếu (`&label`) tới node này ở bất kỳ đâu trong devicetree thì bỏ nó đi — đừng sinh macro, đừng đưa vào build.
+
+Nó sinh ra để giải quyết đúng một bài toán: giảm dung lượng firmware do các node pinctrl không dùng đến.
+
+Một con STM32F4 có hàng nghìn tổ hợp chân và alternate function, file `.dtsi` khai báo sẵn tất cả:
+
+```dts
+/* dts/arm/st/f4/stm32f401-pinctrl.dtsi */
+
+/omit-if-no-ref/ usart1_tx_pa9: usart1_tx_pa9 {
+    pinmux = <STM32_PINMUX('A', 9, AF7)>;
+    bias-pull-up;
+};
+
+/omit-if-no-ref/ usart1_tx_pb6: usart1_tx_pb6 {
+    pinmux = <STM32_PINMUX('B', 6, AF7)>;
+    bias-pull-up;
+};
+```
+
+Board của ta chỉ dùng một trong hai:
+
+```dts
+&usart1 {
+    pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pa10>;
+    pinctrl-names = "default";
+    status = "okay";
+};
+```
+
+Kết quả: `usart1_tx_pa9` được giữ lại vì có phandle trỏ tới còn `usart1_tx_pb6` bị xoá sạch do không xuất hiện trong `build/zephyr/zephyr.dts`. Nếu không có directive này thì header sinh ra sẽ phình lên rất lớn chỉ để chứa các tổ hợp chân mà không board nào dùng.
+
+| Tình huống | Kết quả |
+|---|---|
+| `/omit-if-no-ref/`, có phandle trỏ tới, `status = "disabled"` | Node vẫn tồn tại, vẫn sinh macro |
+| `/omit-if-no-ref/`, không ai trỏ tới, `status = "okay"` | Node bị xoá hoàn toàn |
+| Không có `/omit-if-no-ref/`, không ai trỏ tới | Node vẫn tồn tại |
+
+Vì vậy nếu `DT_NODELABEL(usart1_tx_pb6)` báo lỗi biên dịch trong khi ta nhìn rõ node đó trong file `.dtsi`, gần như chắc chắn node có `/omit-if-no-ref/` và chưa ai trỏ tới nó.
+
+**`/delete-node/`** thì ngược lại, xoá vô điều kiện. Nó đặt trong overlay để gỡ bỏ một node đã có sẵn từ SoC hoặc board DTS:
+
+```dts
+&i2c2 {
+    /delete-node/ bme280@76;
+};
+```
+
+Tương tự nó còn có `/delete-property/` để gỡ một property đơn lẻ:
+
+```dts
+&usart1 {
+    /delete-property/ current-speed;
+};
+```
+
 ## 3. Devicetree Bindings
 
 ### 3.1. Vì sao cần bindings
@@ -612,7 +672,7 @@ Macro này nhận node identifier và trả về con trỏ tới `struct device`
 Điều kiện để `DEVICE_DT_GET` hoạt động thì cần phải thoả mãn hai điều kiện sau:
 
 1. Node trong devicetree có `status = "okay"`.
-2. Driver tương ứng được bật trong Kconfig và có gọi macro định nghĩa device (`DEVICE_DT_INST_DEFINE`, xem mục driver).
+2. Driver tương ứng được bật trong Kconfig và có gọi macro định nghĩa device (Xem bài **Viết driver**).
 
 `DEVICE_DT_GET` chỉ trả về con trỏ, nó không đảm bảo thiết bị đã khởi tạo thành công hay chưa, ví dụ init đọc thanh ghi lỗi. Vì vậy trước khi dùng phải kiểm tra `device_is_ready` lúc runtime:
 
@@ -801,137 +861,9 @@ static const struct adc_dt_spec   ch0   = ADC_DT_SPEC_GET(APP);
 
 Đây là cách nhanh gọn nhất để nối dây một vài chân phần cứng cho ứng dụng nhỏ mà không phải đụng tới binding.
 
-## 7. API viết driver
+## 7. Luồng build
 
-Từ mục 4 tới mục 6 là góc nhìn của người dùng thiết bị: biết trước node nào, gọi `DT_NODELABEL(bme280)` cho đúng cái mình cần. Người viết driver thì ngược lại, không biết trước hệ thống sẽ gắn bao nhiêu con cảm biến, gắn ở bus nào, địa chỉ bao nhiêu. Driver phải phục vụ được mọi node match `compatible` của nó, dù là 0, 1 hay 5 cái.
-
-Zephyr giải quyết bài toán này bằng nhóm macro `DT_INST_*`: thay vì gọi node theo tên, ta gọi theo số thứ tự instance (0, 1, 2...) và để build system tự sinh code cho từng instance có trong devicetree.
-
-### 7.1. Khai báo driver này lo cho compatible nào
-
-Mọi macro `DT_INST_*` đều ngầm hiểu chúng đang nói về một `compatible` duy nhất. Ta khai báo nó trước khi include header, bằng `#define DT_DRV_COMPAT`:
-
-```c
-#define DT_DRV_COMPAT bosch_bme280      /* từ "bosch,bme280", đổi ',' và '-' thành '_' */
-
-#include <zephyr/device.h>
-#include <zephyr/drivers/i2c.h>
-```
-
-Từ dòng này trở đi, `DT_INST_PROP(0, ...)` nghĩa là property của instance số 0 thuộc compatible `bosch,bme280`. Nhờ vậy code driver không phải nhắc lại tên compatible ở mọi macro.
-
-### 7.2. Instance là gì?
-
-Giả sử devicetree có hai node BME280 trên hai bus khác nhau:
-
-```dts
-&i2c1 { bme280@76 { compatible = "bosch,bme280"; reg = <0x76>; }; };
-&i2c2 { bme280@77 { compatible = "bosch,bme280"; reg = <0x77>; }; };
-```
-
-Build system đánh số các node okay match `bosch,bme280` thành instance `0` và `1`. Từ đó:
-
-```c
-DT_INST_REG_ADDR(0)     /* 0x76 - instance đầu */
-DT_INST_REG_ADDR(1)     /* 0x77 - instance sau */
-DT_NUM_INST_STATUS_OKAY(DT_DRV_COMPAT)   /* 2 */
-```
-
-`DT_INST_PROP(inst, prop)` chỉ là `DT_PROP(DT_DRV_INST(inst), prop)` viết gọn, bản chất vẫn là các macro devicetree ở mục 4, chỉ khác cách định danh node là qua số instance.
-
-### 7.3. Mỗi instance cần vùng data và config riêng
-
-Một driver phục vụ nhiều thiết bị nên không được dùng chung biến toàn cục, mỗi instance phải có bộ nhớ riêng. Quy ước Zephyr tách làm hai:
-
-- `config`: dữ liệu chỉ đọc, biết từ lúc compile (địa chỉ bus, chân GPIO, tần số...). Đặt `const`, nằm ở flash.
-- `data`: trạng thái thay đổi lúc chạy (giá trị đọc gần nhất, cờ, buffer...). Nằm ở RAM.
-
-```c
-struct bme280_config {
-    struct i2c_dt_spec bus;      /* bus + địa chỉ slave, lấy từ devicetree */
-};
-
-struct bme280_data {
-    int32_t temp;                /* trạng thái runtime */
-};
-```
-
-Trong các hàm của driver, lấy chúng ra từ con trỏ `dev`:
-
-```c
-static int bme280_init(const struct device *dev)
-{
-    const struct bme280_config *cfg = dev->config;   /* vùng const */
-    struct bme280_data *data = dev->data;            /* vùng RAM   */
-
-    if (!i2c_is_ready_dt(&cfg->bus)) {
-        return -ENODEV;
-    }
-    return 0;
-}
-```
-
-### 7.4. Macro sinh một instance
-
-Ta viết một macro nhận `inst` rồi tạo đủ bộ data + config + đăng ký device cho instance đó. Dấu `##inst` nối số thứ tự vào tên biến để mỗi instance có biến riêng (`bme280_data_0`, `bme280_data_1`...):
-
-```c
-#define BME280_DEFINE(inst)                                     \
-    static struct bme280_data bme280_data_##inst;               \
-    static const struct bme280_config bme280_config_##inst = {  \
-        .bus = I2C_DT_SPEC_INST_GET(inst),   /* điền bus+addr từ node inst */ \
-    };                                                          \
-    DEVICE_DT_INST_DEFINE(inst,                                 \
-                  bme280_init,      /* hàm init            */   \
-                  NULL,             /* hàm PM, không dùng  */   \
-                  &bme280_data_##inst,     /* con trỏ data  */  \
-                  &bme280_config_##inst,   /* con trỏ config*/  \
-                  POST_KERNEL,             /* init level    */  \
-                  CONFIG_SENSOR_INIT_PRIORITY,  /* độ ưu tiên */\
-                  &bme280_api);            /* bảng hàm API  */
-```
-
-`DEVICE_DT_INST_DEFINE` chính là thứ tạo ra `struct device` mà người dùng lấy bằng `DEVICE_DT_GET` ở mục 5. Hai tham số cuối đáng chú ý:
-
-- **init level + priority** quyết định *thứ tự khởi tạo*. `POST_KERNEL` nghĩa là init sau khi kernel sẵn sàng (cần thiết vì cảm biến phải chờ driver I2C lên trước). Sai thứ tự này là nguyên nhân khiến `bus` chưa ready lúc `init` chạy.
-- **`bme280_api`** là struct chứa con trỏ tới các hàm chuẩn của subsystem (ví dụ `sensor_driver_api`), để lớp trên gọi `sensor_sample_fetch()` mà không cần biết đang nói với BME280 hay cảm biến nào khác.
-
-### 7.5. `DT_INST_FOREACH_STATUS_OKAY`
-
-Cuối file, một dòng duy nhất bảo build system gọi `BME280_DEFINE(inst)` cho từng instance đang `okay`:
-
-```c
-DT_INST_FOREACH_STATUS_OKAY(BME280_DEFINE)
-```
-
-Với hai node ở ví dụ 7.2, nó bung thành `BME280_DEFINE(0)` và `BME280_DEFINE(1)`. Nếu devicetree không có node nào match, dòng này bung thành rỗng: driver vẫn biên dịch nhưng không tạo instance nào, chỉ là không có thiết bị. Đây là lý do một driver có trong source nhưng `DEVICE_DT_GET` vẫn báo thiếu: đơn giản là chưa có node nào trong devicetree.
-
-### 7.6. Bảo vệ khi không có instance nào
-
-Vì lý do trên, đầu file driver thường có một chốt chặn để không biên dịch vô ích khi không có thiết bị:
-
-```c
-#if DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT)
-/* ... toàn bộ driver ... */
-#endif
-```
-
-### 7.7. Bảng macro `DT_INST` hay dùng
-
-| Macro | Ý nghĩa |
-|---|---|
-| `DT_INST_PROP(inst, p)` | Đọc property `p` của instance |
-| `DT_INST_REG_ADDR(inst)` | Địa chỉ từ `reg` |
-| `DT_INST_IRQN(inst)` | Số IRQ |
-| `DT_INST_GPIO_PIN(inst, gpios)` | Pin của phandle GPIO |
-| `I2C_DT_SPEC_INST_GET(inst)` | Lấy `i2c_dt_spec` cho instance |
-| `DT_HAS_COMPAT_STATUS_OKAY(compat)` | Có instance nào okay không? |
-| `DT_NUM_INST_STATUS_OKAY(compat)` | Có bao nhiêu instance okay? |
-| `DT_INST_FOREACH_STATUS_OKAY(fn)` | Gọi `fn(inst)` cho mọi instance okay |
-
-## 8. Luồng build
-
-Các mục trước đã mô tả từng mảnh ghép riêng lẻ. Ở mục này, ta sẽ ghép tất cả lại thành một chuỗi liên tục thông qua việc theo dõi một node BME280 duy nhất và ở mỗi bước sẽ chỉ rõ file nào được sinh ra, nội dung thực tế là gì.
+Các mục trên đã mô tả từng mảnh ghép riêng lẻ. Ở mục này, ta sẽ ghép tất cả lại thành một chuỗi liên tục thông qua việc theo dõi một node BME280 duy nhất và ở mỗi bước sẽ chỉ rõ file nào được sinh ra, nội dung thực tế là gì.
 
 Ví dụ về node mà ta sẽ bám theo trong suốt quá trình:
 
@@ -945,7 +877,7 @@ Ví dụ về node mà ta sẽ bám theo trong suốt quá trình:
 };
 ```
 
-### 8.1. CMake gom mọi nguồn DTS
+### 7.1. CMake gom mọi nguồn DTS
 
 Đầu tiên CMake xác định danh sách các file DTS theo thứ tự ưu tiên rồi ghép lại:
 
@@ -965,17 +897,17 @@ build/zephyr/zephyr.dts.pre     (cây devicetree hợp nhất, dạng text)
 
 Đây là lúc overlay chồng lên node gốc: `status` chuyển thành `okay`, node `bme280@76` được thêm vào dưới `i2c1`.
 
-### 8.2. Tìm binding YAML theo compatible
+### 7.2. Tìm binding YAML theo compatible
 
 Script `gen_defines.py` đọc `zephyr.dts.pre` cùng với toàn bộ file YAML trong các thư mục `dts/bindings/`. Với mỗi node, nó:
 
 1. Lấy `compatible` + bus của node cha -> tra ra file binding. Ở đây: `bosch,bme280` trên bus `i2c` -> `bosch,bme280-i2c.yaml`.
 2. Validate node theo binding
-3. Gán cho node một số thứ tự phụ thuộc gọi là *dependency ordinal* - một số nguyên duy nhất, ví dụ node bme280 nhận ordinal `27`. Số này chính là mắt xích quan trọng nhất ở cuối.
+3. Gán cho node một số thứ tự phụ thuộc gọi là *dependency ordinal* - một số nguyên duy nhất, ví dụ node bme280 nhận ordinal `27`.
 
 Kết quả được dựng thành cây EDT (Enhanced DeviceTree) lưu ở `build/zephyr/edt.pickle`.
 
-### 8.3. Sinh macro cho node
+### 7.3. Sinh macro cho node
 
 Từ EDT, script `gen_defines.py` generate một file header:
 
@@ -989,7 +921,6 @@ Trong đó, với node bme280 thì sẽ có các macro như sau (rút gọn):
 /* định danh node theo path */
 #define DT_N_S_soc_S_i2c_40005400_S_bme280_76_P_reg        0x76
 #define DT_N_S_soc_S_i2c_40005400_S_bme280_76_P_status     "okay"
-#define DT_N_S_soc_S_i2c_40005400_S_bme280_76_ORD          27
 
 #define DT_N_NODELABEL_bme280   DT_N_S_soc_S_i2c_40005400_S_bme280_76
 
@@ -1011,7 +942,7 @@ DT_PROP nối "_P_reg"  ->  DT_N_S_soc_S_i2c_40005400_S_bme280_76_P_reg
 
 Đây là lý do quy tắc đổi `-` thành `_` là bắt buộc: gõ sai một ký tự là ra một tên macro không tồn tại.
 
-### 8.4. Sinh symbol Kconfig từ devicetree
+### 7.4. Sinh symbol Kconfig từ devicetree
 
 Song song, build system sinh một file Kconfig từ chính devicetree:
 
@@ -1026,7 +957,7 @@ config DT_HAS_BOSCH_BME280_ENABLED
     def_bool y
 ```
 
-### 8.5. Kconfig tự bật driver
+### 7.5. Kconfig tự bật driver
 
 File `Kconfig` của driver BME280 khai báo phụ thuộc vào symbol này:
 
@@ -1054,40 +985,7 @@ DTS có node okay
 
 Ngược lại, nếu node BME `status = "disabled"` thì file `.c` không được compile chút nào.
 
-### 8.6. Compile driver
-
-Bây giờ mới đến lượt file driver `drivers/sensor/bme280.c`:
-
-```c
-#define DT_DRV_COMPAT bosch_bme280          /* Phải đứng trước mọi #include */
-#include <zephyr/device.h>
-#include <zephyr/devicetree.h>
-...
-DT_INST_FOREACH_STATUS_OKAY(BME280_DEFINE)
-```
-
-> **Vì sao macro `DT_DRV_COMPAT` phải đứng trước #include?** Vì `devicetree.h` định nghĩa các macro `DT_INST_*` dựa trên `DT_DRV_COMPAT`. Đặt sau thì preprocessor sẽ báo lỗi kiểu `DT_DRV_COMPAT` undefined hoặc âm thầm sai.
-
-Quy tắc chuyển đổi tên:
-
-```
-DTS:    compatible = "bosch,bme280"
-                        ↓
-    lowercase + thay mọi ký tự không phải [a-z0-9] bằng '_'
-                        ↓
-Driver: #define DT_DRV_COMPAT bosch_bme280
-```
-
-Vài ví dụ thực tế trong cây nguồn Zephyr:
-
-```c
-"nordic,nrf-uarte"     -> #define DT_DRV_COMPAT nordic_nrf_uarte
-"st,stm32-usart"       -> #define DT_DRV_COMPAT st_stm32_usart
-"bosch,bme280"         -> #define DT_DRV_COMPAT bosch_bme280
-"espressif,esp32-uart" -> #define DT_DRV_COMPAT espressif_esp32_uart
-```
-
-### 8.7. Cách tự kiểm chứng từng bước
+### 7.6. Cách tự kiểm chứng từng bước
 
 | Muốn xem | Mở file |
 |---|---|
@@ -1096,6 +994,65 @@ Vài ví dụ thực tế trong cây nguồn Zephyr:
 | Symbol `DT_HAS_*` sinh ra | `build/zephyr/Kconfig/Kconfig.dts` |
 | Driver có được bật không | `build/zephyr/.config` (tìm `CONFIG_BME280`) |
 | Ordinal của một node | tìm `_ORD` trong `devicetree_generated.h` |
+
+## 8. Dependency ordinal
+
+Sau khi ghép xong toàn bộ DTS và overlay, script `gen_defines.py` dựng một **đồ thị phụ thuộc** giữa các node. Node A được gọi là phụ thuộc vào node B nếu:
+- B là cha của A
+- B là bus mà A kết nối
+- A trỏ tới B qua một phandle bất kỳ (`gpios`, `clocks`, `pinctrl-0`...).
+
+Đồ thị này được sắp xếp topo rồi mỗi node nhận một số nguyên duy nhất theo thứ tự đó, gọi là *dependency ordinal*. Node gốc `/` nhận số 0.
+
+Tính chất quan trọng nhất: **node phụ thuộc luôn có ordinal nhỏ hơn node phụ thuộc vào nó**. Với ví dụ BME280:
+
+```
+/                 -> ord 0
+  soc             -> ord 3
+    i2c1          -> ord 12      <- bus
+      bme280@76   -> ord 27      <- nằm trên i2c1 nên ordinal lớn hơn
+```
+
+Trong `devicetree_generated.h`, mỗi node có ba macro liên quan:
+
+```c
+#define DT_N_S_soc_S_i2c_40005400_S_bme280_76_ORD             47
+#define DT_N_S_soc_S_i2c_40005400_S_bme280_76_REQUIRES_ORDS   3, 20
+#define DT_N_S_soc_S_i2c_40005400_S_bme280_76_SUPPORTS_ORDS   /* rỗng */
+```
+
+Đọc chúng từ code bằng:
+
+```c
+DT_DEP_ORD(DT_NODELABEL(bme280))             /* 47 */
+DT_REQUIRES_DEP_ORDS(DT_NODELABEL(bme280))   /* 3, 20  — những node nó cần */
+DT_SUPPORTS_DEP_ORDS(DT_NODELABEL(bme280))   /* những node cần tới nó */
+```
+
+Nhưng ta hiếm khi gọi trực tiếp. Chúng chủ yếu phục vụ ba việc bên trong Zephyr:
+
+**Đặt tên cho device symbol.** Macro `DEVICE_DT_GET` ở mục 5 thực chất chỉ là lấy địa chỉ của biến có tên ghép từ ordinal:
+
+```c
+DEVICE_DT_GET(DT_NODELABEL(bme280))   ->   &__device_dts_ord_27
+```
+
+Đây chính là lý do lỗi link ở cuối mục 5 luôn hiện ra dưới dạng một con số vô nghĩa `undefined reference to __device_dts_ord_27`. Muốn biết `27` là node nào thì tìm chuỗi `_ORD 27` trong `devicetree_generated.h`, tên macro đứng trước nó là path của node.
+
+**Thứ tự khởi tạo.** Hai device cùng init level và cùng priority thì xếp theo ordinal. Vì ordinal đến từ sắp xếp topo nên device luôn được init sau những thứ nó phụ thuộc, kể cả khi lập trình viên quên chỉnh priority:
+
+```
+i2c1   (ord 12) init trước
+bme280 (ord 27) init sau
+```
+
+Cơ chế này chỉ cứu được trường hợp cùng level và priority. Nếu đặt cảm biến ở `POST_KERNEL` priority 40 còn driver I2C ở priority 50 thì cảm biến vẫn init trước và `i2c_is_ready_dt()` sẽ trả về false.
+
+**Mô tả quan hệ phụ thuộc lúc runtime.** Khi bật `CONFIG_DEVICE_DEPS`, danh sách `REQUIRES_ORDS` được nhúng thẳng vào `struct device` để subsystem power management biết thứ tự bật/tắt thiết bị.
+
+:::warning Ordinal không phải là hằng số cố định
+Thêm một node vào bất kỳ đâu trong cây cũng có thể đánh số lại toàn bộ, kể cả việc một node `/omit-if-no-ref/` được tham chiếu hay không cũng làm ordinal xê dịch. Ordinal khác nhau giữa các board, giữa các cấu hình build và giữa các phiên bản Zephyr nên đừng bao giờ hard code nó vào code hay script.
+:::
 
 ## 9. Debug
 

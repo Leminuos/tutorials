@@ -513,7 +513,7 @@ Sau khi mount:
 
 Ngoài ra, ta cũng có thể hiểu mount là việc nối superblock của filesystem mới vào một dentry trong cây hiện tại. Dentry đó được đánh dấu `DCACHE_MOUNTED` và path walk khi đi tới nó sẽ nhảy sang root dentry của superblock mới.
 
-Tại sao cần mount? Vì Linux coi mọi thứ là file, để truy cập file thì nó phải nằm trong cây thư mục.
+**Tại sao cần mount?** Vì Linux coi mọi thứ là file, để truy cập file thì nó phải nằm trong cây thư mục.
 
 Một thiết bị ví dụ như USB, ổ cứng khác, file system ảo,...chỉ có thể truy cập được sau khi được mount.
 

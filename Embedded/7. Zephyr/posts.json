@@ -60,5 +60,14 @@
     "description": "Ứng dụng devicetree, Kconfig và CMake để điều khiển ngoại vi.",
     "image": "img/zephyr.png",
     "tags": ["zephyr"]
+  },
+
+  "8. driver": {
+    "title": "Tìm hiểu cấu trúc file driver",
+    "date": "08-08-2026",
+    "author": "Peizzon",
+    "description": "Cách driver match với device tree thông qua compatible và cấu trúc struct device.",
+    "image": "img/zephyr.png",
+    "tags": ["zephyr"]
   }
 }
