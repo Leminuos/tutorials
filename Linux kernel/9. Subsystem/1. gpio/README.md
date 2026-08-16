@@ -241,10 +241,240 @@ static int my_gpio_probe(struct platform_device *pdev)
 
 Tham số cuối của `devm_gpiochip_add_data()` chính là con trỏ mà `gpiochip_get_data()` trả về trong callback. Bản `devm_` tự gỡ chip khi driver unbind nên không cần `.remove`.
 
-Mỗi `gpio_chip` được đăng ký sẽ tạo ra một node `/dev/gpiochipN` và một entry trong `/sys/bus/gpio/devices/`. Trên BBB có 4 bank nên có 4 node, từ `gpiochip0` đến `gpiochip3`.
+Mỗi `gpio_chip` được đăng ký sẽ tạo ra một node `/dev/gpiochipN` và một entry trong `/sys/bus/gpio/devices/`. Trên BBB, driver `gpio-omap.c` probe 4 lần cho 4 node DT nên có 4 chip từ `gpiochip0` đến `gpiochip3`. Đây không phải quy luật chung: xem [3.4](#34-phân-biệt-gpiochip-và-bank) để biết vì sao có SoC chỉ hiện đúng một `gpiochip` cho toàn bộ các bank.
 
-:::note Offset và global number
+:::tip Offset và global number
 Bên trong một chip, chân được đánh số `0..ngpio-1` (offset). Cách đánh số global (`base + offset`) là di sản của sysfs API cũ, đã deprecated. Code mới luôn làm việc với cặp `(gpiochip, offset)`: chân P9_12 của BBB là `(gpiochip1, 28)` chứ không phải "gpio60".
+:::
+
+### 3.4. Phân biệt gpiochip và bank
+
+Người mới hay ngầm hiểu một bank của SoC = một `/dev/gpiochipN`. Điều đó đúng trên BBB nhưng sai trên nhiều SoC khác và khi sai thì mọi phép tính offset đều lệch.
+
+**Bank là chuyện của phần cứng.** Nhà sản xuất SoC gom một nhóm chân dùng chung một cụm thanh ghi, thường là 32 chân. Nhóm đó được đặt tên trong datasheet: GPIO0..GPIO3 trên AM335x, PA..PF trên Allwinner, GPIOA..GPIOK trên STM32.
+
+**gpiochip là chuyện của Linux.** Nó chỉ xuất hiện lúc chạy, khi một driver gọi `gpiochip_add_data()`. Mỗi lần gọi thì core tạo ra một `gpio_device` kèm một node `/dev/gpiochipN` và một entry trong `/sys/bus/gpio/devices/`. Chân trong chip được đánh số lại từ 0 đến `ngpio-1`, gọi là offset. Số `N` thì do core cấp theo thứ tự probe nên nó có thể đổi khi ta sửa Device Tree, nâng kernel hay cắm thêm expander.
+
+Nói ngắn gọn: **bank là cách phần cứng nhóm các chân lại, gpiochip là cách driver trình bày các chân đó cho Linux.** Ánh xạ giữa hai bên hoàn toàn do driver quyết định và user space chỉ nhìn thấy vế sau.
+
+Mấu chốt ánh xạ này nằm ở số lần driver gọi `gpiochip_add_data()`. Gọi bao nhiêu lần thì hệ thống có bấy nhiêu `/dev/gpiochipN`, bất kể phần cứng có bao nhiêu bank. Con số đó phụ thuộc cách Device Tree mô tả controller: mỗi node có `gpio-controller` là một lần probe.
+
+**Kiểu A:** 4 bank $\rightarrow$ 4 node DT $\rightarrow$ gpio-omap probe 4 lần $\rightarrow$ 4 gpiochip
+
+```
+bank GPIO0 ──► gpio@44e07000 ──┐
+bank GPIO1 ──► gpio@4804c000 ──┤  mỗi node gọi
+bank GPIO2 ──► gpio@481ac000 ──┤  gpiochip_add_data() một lần
+bank GPIO3 ──► gpio@481ae000 ──┘
+                               └──► /dev/gpiochip0..3, mỗi chip 32 line
+                                    offset = đúng số chân trong bank
+```
+
+**Kiểu B:** 6 bank $\rightarrow$ 1 node DT $\rightarrow$ pinctrl-sunxi probe 1 lần $\rightarrow$ 1 gpiochip
+
+```
+bank PA ┐
+bank PB │
+bank PC ├──► pinctrl@1c20800 ──►  gpiochip_add_data() gọi đúng một lần
+bank PD │                      └──► /dev/gpiochip0, 192 line
+bank PE │                           offset = bank_index * 32 + pin
+bank PF ┘
+```
+
+**Ví dụ kiểu A: mỗi bank một gpiochip (AM335x)**
+
+Device Tree khai báo 4 node độc lập, driver `gpio-omap.c` probe 4 lần:
+
+```dts
+gpio1: gpio@4804c000 {
+    compatible = "ti,omap4-gpio";
+    reg = <0x4804c000 0x1000>;
+    gpio-controller;
+    #gpio-cells = <2>;          /* pin, flags */
+    ...
+};
+```
+
+```bash
+$ gpiodetect
+gpiochip0 [gpio-0-31]   (32 lines)
+gpiochip1 [gpio-32-63]  (32 lines)
+gpiochip2 [gpio-64-95]  (32 lines)
+gpiochip3 [gpio-96-127] (32 lines)
+```
+
+Ở kiểu này bank và gpiochip trùng khít nên không phải quy đổi gì: chân GPIO1_28 chính là `(gpiochip1, offset 28)`.
+
+**Kiểu B: một gpiochip cho tất cả bank (Allwinner F1C100s)**
+
+Allwinner đặt toàn bộ các bank PA..PF trong cùng một vùng thanh ghi tại `0x01C20800` nên Device Tree chỉ có một node và node đó vừa là pinctrl vừa là gpio-controller:
+
+```dts
+pio: pinctrl@1c20800 {
+    compatible = "allwinner,suniv-f1c100s-pinctrl";
+    reg = <0x01c20800 0x400>;
+    gpio-controller;
+    #gpio-cells = <3>;          /* bank, pin, flags */
+    ...
+};
+```
+
+`pinctrl-sunxi.c` đăng ký đúng một `gpio_chip` phủ hết mọi bank và tự tính `ngpio` từ chân có số thứ tự cao nhất:
+
+```c
+/* drivers/pinctrl/sunxi/pinctrl-sunxi.c */
+last_pin = pctl->desc->pins[pctl->desc->npins - 1].pin.number;
+pctl->chip->ngpio = round_up(last_pin, PINS_PER_BANK) - pctl->desc->pin_base;
+pctl->chip->label = dev_name(&pdev->dev);               /* "1c20800.pinctrl" */
+ret = gpiochip_add_data(pctl->chip, pctl);              /* gọi đúng một lần */
+```
+
+F1C100s có chân cao nhất là PF5 với số thứ tự `5 * 32 + 5 = 165`, làm tròn lên bội của 32 thành 192:
+
+```bash
+$ gpiodetect
+gpiochip0 [1c20800.pinctrl] (192 lines)
+```
+
+Hai chi tiết đọc được ngay từ dòng output này:
+
+- Label là `1c20800.pinctrl` chứ không phải dạng `...gpio`, dấu hiệu cho biết chip do driver pinctrl đăng ký, tức là kiểu gộp.
+- 192 là số slot chứ không phải số chân vật lý. F1C100s thật ra chỉ có 53 chân.
+
+Công thức quy đổi từ tên chân trong datasheet sang offset:
+
+```
+offset = bank_index * 32 + pin_number
+```
+
+Trong đó: PA=0, PB=1, PC=2, PD=3, PE=4, PF=5
+
+| Bank | Dải offset | Chân thật sự có trên F1C100s | Ví dụ |
+| --- | --- | --- | --- |
+| PA | 0 – 31 | PA0 – PA3 | PA3 $\rightarrow$ 3 |
+| PB | 32 – 63 | PB0 – PB3 | PB2 $\rightarrow$ 34 |
+| PC | 64 – 95 | PC0 – PC3 | PC1 $\rightarrow$ 65 |
+| PD | 96 – 127 | PD0 – PD21 | PD14 $\rightarrow$ 110 |
+| PE | 128 – 159 | PE0 – PE12 | PE6 $\rightarrow$ 134 |
+| PF | 160 – 191 | PF0 – PF5 | PF5 $\rightarrow$ 165 |
+
+:::tip Thông tin bổ sung
+Một số SoC Allwinner khác còn có bank PL do khối R_PIO quản lý, khai báo bằng node riêng `r_pio: pinctrl@1f02c00`. Node riêng nghĩa là thêm một lần probe nên board đó có hai gpiochip dù vẫn là Allwinner. Chip thứ hai có `pin_base` khác 0 và phép trừ `- pctl->desc->pin_base` trong đoạn code trên chính là để nó đếm offset lại từ 0.
+:::
+
+### 3.5. Ánh xạ node Device Tree và gpiochip
+
+Mục 3.4 nói về việc một gpiochip có thể gộp nhiều bank. Ở đây là một cái bẫy khác, xảy ra ngay cả khi mỗi bank đúng một gpiochip: số trong tên node DT và số trong tên `/dev/gpiochipN` là hai hệ đánh số hoàn toàn độc lập. Viết `&gpio2` trong DTS không có nghĩa là chân đó sẽ hiện ra ở `gpiochip2`.
+
+
+**Hiện tượng**
+
+Trên BeagleBone Black, khai báo một `gpio-hog` giữ hai chân P8_7 và P8_8 của bank GPIO2:
+
+```dts
+&gpio2 {
+    smartfarm_hog {
+        pinctrl-names = "default";
+        pinctrl-0 = <&smartfarm_gpio_pins>;
+
+        gpio-hog;
+        gpios = <2 GPIO_ACTIVE_HIGH>, <3 GPIO_ACTIVE_HIGH>;
+        output-low;
+        line-name = "smartfarm";
+    };
+};
+```
+
+Nhưng khi boot lên thì hai chân bị giữ lại nằm ở `gpiochip1` chứ không phải `gpiochip2`:
+
+```bash
+$ gpioinfo
+gpiochip1 - 32 lines:
+        line   0: "P9_15B"    unused      input  active-high
+        line   1: "P8_18"     unused      input  active-high
+        line   2: "P8_7"      "smartfarm" output active-high [used]
+        line   3: "P8_8"      "smartfarm" output active-high [used]
+gpiochip2 - 32 lines:
+        line   0: "[mii col]" unused      input  active-high
+        line   1: "[mii crs]" unused      input  active-high
+        ...
+```
+
+Bản thân việc hog hoạt động là đúng, chỉ là nó không nằm ở chỗ ta tưởng. Nếu lúc này viết script theo giả định `&gpio2` $\rightarrow$ `gpiochip2` thì `gpioset` sẽ tác động lên một chân hoàn toàn khác mà không hề báo lỗi.
+
+**Nguyên nhân: thứ tự probe**
+
+Như đã nói ở 3.4, `N` là ID core cấp tuần tự mỗi lần `gpiochip_add_data()` được gọi. Thứ tự các lần gọi đó là thứ tự driver bind được vào từng node, không phải thứ tự viết trong DTS cũng không phải thứ tự địa chỉ thanh ghi: một node còn chờ clock, pinctrl hay power domain sẽ bị deferred probe và bind sau.
+
+Trên board này bank GPIO0 bind sau cùng nên ba bank còn lại dồn lên một bậc:
+
+| Node DT | Bank phần cứng | Thứ tự bind | Kết quả |
+| --- | --- | --- | --- |
+| `&gpio1` | GPIO1 | 1 | `gpiochip0` |
+| `&gpio2` | GPIO2 | 2 | `gpiochip1` |
+| `&gpio3` | GPIO3 | 3 | `gpiochip2` |
+| `&gpio0` | GPIO0 | 4 | `gpiochip3` |
+
+**Label cũng không dùng để suy ra bank được**
+
+Nhìn `gpiodetect` thấy `gpiochip1 [gpio-32-63]` rất dễ kết luận chip này là bank có global number 32..63, tức GPIO1. Kết luận đó sai, vì `gpio-omap.c` sinh label từ một biến đếm tĩnh cộng dồn qua từng lần probe chứ không tính từ địa chỉ bank:
+
+```c
+/* drivers/gpio/gpio-omap.c */
+static int gpio;
+...
+label = devm_kasprintf(bank->chip.parent, GFP_KERNEL, "gpio-%d-%d",
+                       gpio, gpio + bank->width - 1);
+bank->chip.label = label;                /* "gpio-0-31", "gpio-32-63"... */
+...
+gpio += bank->width;                     /* lần probe sau lấy dải kế tiếp */
+```
+
+Nên `gpio-32-63` chỉ có nghĩa đây là chip được đăng ký thứ hai, giống hệt thông tin mà số `1` trong `gpiochip1` đã nói. Cả hai đều là hệ quả của thứ tự probe.
+
+**Cách xác định ánh xạ chắc chắn**
+
+Thứ duy nhất buộc chặt gpiochip với node DT là platform device đứng làm parent của nó, mà tên platform device thì lấy từ địa chỉ trong `reg`:
+
+```bash
+$ cat /sys/kernel/debug/gpio
+gpiochip0: 32 GPIOs, parent: platform/4804c000.gpio, gpio-0-31:
+gpiochip1: 32 GPIOs, parent: platform/481ac000.gpio, gpio-32-63:
+gpiochip2: 32 GPIOs, parent: platform/481ae000.gpio, gpio-64-95:
+gpiochip3: 32 GPIOs, parent: platform/44e07000.gpio, gpio-96-127:
+
+# hoặc đọc đường dẫn sysfs, thư mục cha của gpiochipN chính là platform device
+$ ls -l /sys/bus/gpio/devices/
+gpiochip1 -> ../../../devices/platform/ocp/481ac000.gpio/gpiochip1
+```
+
+Đối chiếu `481ac000.gpio` với `gpio2: gpio@481ac000` trong DTS là ra ngay node cần tìm.
+
+**Cách để không phải quan tâm tới số chip nữa**
+
+Đặt `gpio-line-names` cho từng node provider. Tên gắn theo node DT nên nó vừa lộ ra ánh xạ khi chạy `gpioinfo`, vừa cho phép gọi chân theo tên:
+
+```dts
+&gpio2 {
+    gpio-line-names = "P9_15B", "P8_18", "P8_7", "P8_8", "P8_10", "P8_9", ...;
+};
+
+&gpio3 {
+    gpio-line-names = "[mii col]", "[mii crs]", "[mii rx err]", "[mii tx en]", ...;
+};
+```
+
+Chính nhờ bảng tên này mà ở phần hiện tượng bên trên ta khẳng định được `&gpio2` ra `gpiochip1`: tên khai trong `&gpio2` hiện dưới `gpiochip1`, tên khai trong `&gpio3` hiện dưới `gpiochip2`. Sau đó thì script không cần biết số chip:
+
+```bash
+$ gpioset $(gpiofind P8_7)=1      # v1
+$ gpioset P8_7=1                  # v2
+```
+
+:::warning Chú ý
+`gpio-line-names` không phải nguyên nhân gây lệch, nó chỉ là thứ giúp nhìn thấy sự lệch. Nguyên nhân luôn là thứ tự probe.
+
+Consumer trong kernel không bao giờ dính lỗi này vì tham chiếu node qua phandle (`<&gpio2 2 GPIO_ACTIVE_HIGH>`) và core tự tra ra đúng `gpio_device`. Chỉ user space mới phải làm việc với con số `N`, nên tuyệt đối không hardcode `gpiochip2` chỉ vì DTS ghi `&gpio2`.
 :::
 
 ## 4. GPIO core
@@ -403,9 +633,20 @@ my-device {
 
 Quy ước tên: property phải kết thúc bằng `-gpios` (hoặc `-gpio`), và `con_id` truyền vào `gpiod_get()` là phần đứng trước. Ví dụ `reset-gpios` → `gpiod_get(dev, "reset", ...)`. Nếu chỉ có property tên `gpios` thì truyền `con_id = NULL`.
 
-Số cell (`#gpio-cells`) tuỳ SoC: AM335x và đa số SoC dùng 2 (`pin, flags`) vì mỗi bank là một node riêng (`gpio0`..`gpio3`); một số SoC như Allwinner gom mọi bank vào một node nên cần 3 (`bank, pin, flags`).
+Số cell (`#gpio-cells`) tuỳ SoC: AM335x và đa số SoC dùng 2 (`pin, flags`) vì mỗi bank là một node riêng (`gpio0`..`gpio3`); một số SoC như Allwinner gom mọi bank vào một node nên cần 3 (`bank, pin, flags`). Chi tiết về hai kiểu tổ chức này và cách quy đổi sang offset mà user space nhìn thấy nằm ở [3.4](#34-phân-biệt-gpiochip-và-bank).
 
 Flags thông dụng (`include/dt-bindings/gpio/gpio.h`): `GPIO_ACTIVE_HIGH`, `GPIO_ACTIVE_LOW`, `GPIO_OPEN_DRAIN`, `GPIO_PULL_UP`, `GPIO_PULL_DOWN`.
+
+Provider node còn nhận thêm `gpio-line-names`, một mảng chuỗi đặt tên cho từng line theo thứ tự offset. Tên này không ảnh hưởng gì tới kernel, nó chỉ đi thẳng ra user space cho `gpioinfo`, `gpiofind` và các API tra cứu theo tên của libgpiod:
+
+```dts
+&gpio1 {
+    /* phần tử thứ i đặt tên cho offset i, để "" cho chân không muốn đặt tên */
+    gpio-line-names = "", "", ..., "P9_12", ...;
+};
+```
+
+Nên khai báo property này cho mọi board dùng lâu dài: nó vừa giúp ứng dụng gọi chân theo tên thay vì nhớ offset, vừa là cách nhanh nhất để kiểm tra node DT nào ứng với `/dev/gpiochipN` nào — vấn đề nói ở [3.5](#35-ánh-xạ-node-device-tree-và-gpiochip).
 
 ## 7. Interface phía user-space
 
@@ -729,59 +970,285 @@ leds-gpio: gpiod_set_value(led, 1)
 
 Phần từ `gpiolib.c` trở xuống giống hệt đường của user space. Khác biệt duy nhất là driver kernel lấy `gpio_desc` từ Device Tree, còn user space lấy theo cặp chip và offset qua ioctl.
 
-:::note
+:::tip Note
 Tên hàm trong các call chain trên bám theo mã nguồn kernel 6.x. Giữa các phiên bản, tên hàm nội bộ của `gpiolib-cdev.c` có thể lệch chút ít, nhưng trình tự các tầng thì không đổi.
 :::
 
 ## 9. libgpiod
 
-Viết ioctl rất dài dòng nên kernel community cung cấp libgpiod, thư viện C wrapper lại character device ABI, kèm một bộ công cụ dòng lệnh.
+Viết ioctl trực tiếp rất dài dòng nên kernel community cung cấp libgpiod: thư viện C wrapper character device ABI kèm bộ công cụ dòng lệnh. Đây là cách dùng GPIO từ user space được khuyến nghị chính thức thay cho sysfs.
 
-| Phiên bản | Ghi chú |
-| --- | --- |
-| libgpiod v1.x | API `gpiod_chip_open()`, `gpiod_line_request_output()`... Rất phổ biến, còn nhiều trên các distro cũ |
-| libgpiod v2.x | Viết lại API quanh `line_request` + `line_config`, chỉ dùng ABI v2, cần kernel ≥ 5.10 |
+Điểm cần nắm trước khi bắt đầu: libgpiod có hai nhánh không tương thích nhau là v1.x và v2.x. Chúng khác nhau cả ở API C lẫn cú pháp công cụ dòng lệnh nhưng lại cùng tên header `<gpiod.h>`, cùng tên lệnh `gpioget`/`gpioset`/`gpiomon`. Đây là nguyên nhân của phần lớn lỗi sao lệnh này chạy trên board này mà không chạy được trên board khác.
 
-Hai API không tương thích ngược. Kiểm tra phiên bản bằng `gpiodetect --version`.
+### 9.1. Phân biệt hai nhánh v1 và v2
 
-### 9.1. Công cụ dòng lệnh
+libgpiod v1 vẫn chạy được trên kernel mới miễn là kernel bật `CONFIG_GPIO_CDEV_V1`. Nếu tắt option này thì toàn bộ tool và chương trình v1 sẽ fail ở bước `ioctl()` với `ENOTTY`/`EINVAL` dù `/dev/gpiochipN` vẫn tồn tại. Ngược lại, libgpiod v2 chạy trên kernel < 5.10 sẽ fail ngay từ lúc request line.
+
+Kiểm tra trên board đang có bản nào:
 
 ```bash
-# Liệt kê các gpiochip trong hệ thống: AM335x có 4 bank, mỗi bank 32 chân
+# Cách 1
+$ gpiodetect --version
+
+# Cách 2: hỏi pkg-config khi build (chính xác nhất cho SDK/Yocto)
+$ pkg-config --modversion libgpiod
+2.1.3
+
+# Cách 3: nhìn SONAME của thư viện đã cài
+$ ldconfig -p | grep libgpiod
+        libgpiod.so.3 (libc6,AArch64) => /usr/lib/libgpiod.so.3
+
+# Cách 4: kiểm tra kernel có bật ABI v1 hay không
+$ zcat /proc/config.gz | grep GPIO_CDEV
+CONFIG_GPIO_CDEV=y
+CONFIG_GPIO_CDEV_V1=y
+```
+
+Bảng tham khảo nhanh phiên bản theo distro (nên kiểm tra lại bằng lệnh trên thay vì tin bảng):
+
+| Môi trường | libgpiod |
+| --- | --- |
+| Debian 11/12, Ubuntu 20.04/22.04, Raspberry Pi OS bookworm | 1.6.x |
+| Debian 13 (trixie), Ubuntu 24.04 trở lên, Fedora mới | 2.x |
+| Yocto kirkstone | 1.6.x |
+| Yocto scarthgap trở đi | 2.x |
+
+:::warning Chú ý
+Không cài song song hai bản `-dev` trên cùng một rootfs: cả hai đều đặt file `/usr/include/gpiod.h` và cùng file `libgpiod.pc`. Phần runtime thì có thể sống chung vì khác SONAME (`.so.2` và `.so.3`), nhưng các lệnh `gpioget`/`gpioset` thì đè lên nhau.
+:::
+
+Nếu buộc phải viết code chạy được với cả hai thì cần phân nhánh lúc biên dịch. Macro `GPIOD_LINE_BULK_MAX_LINES` chỉ tồn tại trong header v1:
+
+```c
+#include <gpiod.h>
+
+#ifdef GPIOD_LINE_BULK_MAX_LINES
+  #define LIBGPIOD_V1 1     /* header 1.6.x */
+#else
+  #define LIBGPIOD_V1 0     /* header 2.x   */
+#endif
+```
+
+Hoặc quyết định từ Makefile, cách này rõ ràng hơn:
+
+```make
+GPIOD_MAJOR := $(shell pkg-config --modversion libgpiod | cut -d. -f1)
+CFLAGS      += -DLIBGPIOD_MAJOR=$(GPIOD_MAJOR) $(shell pkg-config --cflags libgpiod)
+LDLIBS      += $(shell pkg-config --libs libgpiod)
+```
+
+### 9.2. Công cụ dòng lệnh
+
+#### Tổng quan
+
+| Lệnh | v1.x | v2.x | Công dụng |
+| --- | --- | --- | --- |
+| `gpiodetect` | ✔ | ✔ | Liệt kê các gpiochip trong hệ thống |
+| `gpioinfo` | ✔ | ✔ | In chi tiết từng line: tên, hướng, consumer |
+| `gpiofind` | ✔ | ✘ | Tra chip + offset theo tên line (v2 gộp chức năng này vào `gpioinfo`) |
+| `gpioget` | ✔ | ✔ | Đọc giá trị một hoặc nhiều line |
+| `gpioset` | ✔ | ✔ | Ghi giá trị một hoặc nhiều line |
+| `gpiomon` | ✔ | ✔ | Theo dõi sự kiện cạnh (edge event) |
+| `gpionotify` | ✘ | ✔ | Theo dõi sự kiện thay đổi trạng thái line: request / release / reconfigure |
+
+Ba khác biệt xuyên suốt, nắm trước thì đọc phần sau:
+
+**1. Cách định danh chân.** v1 luôn là cặp `<chip> <offset>`. v2 lấy tên line làm định danh chính và tự quét mọi chip để tìm tên đó. Muốn chỉ định bằng offset thì bắt buộc thêm `-c/--chip` để giới hạn phạm vi.
+
+```bash
+$ gpioget gpiochip1 28          # v1: bắt buộc chip đứng trước offset
+$ gpioget P9_12                 # v2: theo tên, không cần biết chân ở chip nào
+$ gpioget -c gpiochip1 28       # v2: theo offset thì phải có -c
+```
+
+**2. Cách viết khoảng thời gian.** v1 dùng option riêng cho từng đơn vị (`-s` giây, `-u` micro giây). v2 dùng chuỗi có hậu tố, mặc định là mili giây nếu không ghi hậu tố: `10us`, `500ms`, `2s`, `1m`.
+
+**3. Cách in kết quả.** v1 in giá trị trần (`0`, `1`), v2 in dạng `"<line>"=<active|inactive>` và có `--unquoted`, `--numeric` để đổi lại. Đây là chỗ làm script shell cũ sai âm thầm khi nâng cấp.
+
+#### gpiodetect
+
+Liệt kê các gpiochip cùng label và số line. Cú pháp lẫn output giống nhau ở hai version.
+
+```bash
+# AM335x có 4 bank, mỗi bank 32 chân
 $ gpiodetect
 gpiochip0 [gpio-0-31]   (32 lines)
 gpiochip1 [gpio-32-63]  (32 lines)
 gpiochip2 [gpio-64-95]  (32 lines)
 gpiochip3 [gpio-96-127] (32 lines)
+```
 
-# Xem chi tiết từng line: tên, hướng, ai đang giữ
+Đừng suy ra "một chip = một bank 32 chân" từ output này. Số chip và số line hoàn toàn phụ thuộc cách driver đăng ký: trên Allwinner F1C100s chẳng hạn, cả 6 bank PA..PF nằm trong đúng một chip và `gpiodetect` báo `gpiochip0 [1c20800.pinctrl] (192 lines)` dù SoC chỉ có 53 chân thật. Cách quy đổi từ tên chân trong datasheet sang offset của libgpiod nằm ở [3.4](#34-phân-biệt-gpiochip-và-bank).
+
+#### gpioinfo
+
+In chi tiết từng line. Đây là lệnh dùng nhiều nhất khi debug vì nó cho biết chân đang bị ai giữ.
+
+| version | Cú pháp |
+| --- | --- |
+| v1 | `gpioinfo [<chip>...]`: không có tham số thì in toàn bộ chip |
+| v2 | `gpioinfo [OPTIONS] [<line>...]`: lọc theo tên line hoặc theo chip qua `-c` |
+
+Output v1: `<tên line> <consumer> <hướng> <active state>` và cờ `[used]` nếu chân đang bị giữ.
+
+```bash
 $ gpioinfo gpiochip1
 gpiochip1 - 32 lines:
         line  21: unnamed "beaglebone:green:usr0" output active-high [used]
-        ...
-        line  28: unnamed  unused  input  active-high
-        ...
-
-# Đọc giá trị chân P9_12 (GPIO1_28)
-$ gpioget gpiochip1 28            # v1
-$ gpioget -c gpiochip1 28         # v2
-
-# Ghi giá trị rồi giữ 2 giây (thoát là chân được release!)
-$ gpioset -m time -s 2 gpiochip1 28=1     # v1
-$ gpioset -t 2s -c gpiochip1 28=1         # v2
-
-# Theo dõi sự kiện cạnh, ví dụ nút nhấn nối vào P9_15 (GPIO1_16)
-$ gpiomon -f -n 5 gpiochip1 16            # v1: 5 sự kiện cạnh xuống
-$ gpiomon -e falling -c gpiochip1 16      # v2
+        line  28: unnamed unused                  input  active-high
 ```
 
-Hai điểm cần biết khi chạy trên BBB:
-- Chân LED user (line 21..24 của gpiochip1) đã bị driver `leds-gpio` giữ nên `gpioset` sẽ báo `Device or resource busy`. Muốn thử thì dùng chân trống trên header P8/P9.
-- `gpiofind` chỉ tra được khi Device Tree có khai báo `gpio-line-names`; DTS gốc của AM335x không có nên mọi line đều hiện `unnamed`.
+Output v2: bỏ cột `unused`/`[used]`, consumer in dạng `consumer="..."` và chỉ in ra thuộc tính nào khác mặc định (active-low, bias, edge detection, debounce) nên dòng thường ngắn hơn.
 
-Bẫy hay gặp: `gpioset` giải phóng chân ngay khi thoát, nên mức output trở về mặc định. Muốn giữ mức phải giữ tiến trình sống (`-m wait`, `-t 0`, hoặc viết chương trình C).
+```bash
+$ gpioinfo -c gpiochip1
+gpiochip1 - 32 lines:
+        line  21:  unnamed   output consumer="beaglebone:green:usr0"
+        line  28:  unnamed   input
 
-### 9.2. Lập trình C: libgpiod v1
+# tra cứu theo tên line, in kèm chip và offset
+$ gpioinfo P9_12
+gpiochip1 28   "P9_12"   input
+```
+
+#### gpiofind
+
+Chỉ có ở v1: tra chip và offset từ tên line, in ra đúng định dạng mà các lệnh v1 khác nhận vào.
+
+```bash
+$ gpiofind P9_12
+gpiochip1 28
+
+$ gpioget $(gpiofind P9_12)      # thành ngữ quen thuộc của v1
+```
+
+v2 bỏ lệnh này vì mọi công cụ đã tự phân giải được tên line, việc tra cứu tương đương là `gpioinfo <tên line>`.
+
+#### gpioget
+
+Đọc giá trị. Mặc định cả hai bản đều ép chân về hướng input trước khi đọc.
+
+| | Cú pháp |
+| --- | --- |
+| v1 | `gpioget [OPTIONS] <chip> <offset>...` |
+| v2 | `gpioget [OPTIONS] <line>...` (offset thì kèm `-c <chip>`) |
+
+Output v1 là giá trị trần, nhiều chân thì cách nhau bởi dấu cách:
+
+```bash
+$ gpioget gpiochip1 28
+0
+$ gpioget gpiochip1 28 29 30
+0 1 1
+```
+
+Output v2 mặc định là cặp `"<line>"=<trạng thái>`, muốn về dạng cũ thì thêm `--numeric`:
+
+```bash
+$ gpioget -c gpiochip1 28
+"28"=inactive
+$ gpioget -c gpiochip1 28 29 30
+"28"=inactive "29"=active "30"=active
+
+$ gpioget -c gpiochip1 --numeric 28
+0
+```
+
+:::warning Chú ý
+Script cũ dạng `if [ "$(gpioget gpiochip1 28)" = "1" ]` sẽ luôn sai trên v2 vì kết quả là `"28"=inactive`. Khi port script, thêm `--numeric` cho mọi lời gọi `gpioget`.
+:::
+
+#### gpioset
+
+Ghi giá trị. Điểm chung của hai bản: line bị giải phóng ngay khi thoát process, chân trở về mức mặc định của phần cứng. Muốn giữ mức thì phải giữ process. Nhưng hành vi mặc định lại ngược nhau:
+
+- v1 mặc định `-m exit`: đặt giá trị rồi thoát ngay, tức là gần như không có tác dụng gì.
+- v2 mặc định: đặt giá trị rồi block cho đến khi bị kill (SIGINT/SIGTERM).
+
+| | Cú pháp |
+| --- | --- |
+| v1 | `gpioset [OPTIONS] <chip> <offset>=<value>...` |
+| v2 | `gpioset [OPTIONS] <line>=<value>...` (offset thì kèm `-c <chip>`) |
+
+Hành vi sau khi đặt giá trị của v1 do tham số `-m/--mode` quyết định:
+
+```bash
+$ gpioset gpiochip1 28=1                     # mặc định: đặt rồi thoát ngay
+$ gpioset -m wait   gpiochip1 28=1           # giữ cho tới khi người dùng bấm ENTER
+$ gpioset -m signal gpiochip1 28=1           # giữ cho tới khi nhận SIGINT/SIGTERM
+$ gpioset -m time -s 2 gpiochip1 28=1        # giữ 2 giây rồi tự động thoát
+$ gpioset -m time -u 500 -b gpiochip1 28=1   # giữ 500us, chạy nền
+```
+
+Ở v2, việc giữ giá trị sau khi đặt là mặc định, còn tham số `-t/--toggle` lo phần thay đổi theo thời gian:
+
+```bash
+$ gpioset -c gpiochip1 28=1                  # đặt rồi giữ cho tới khi Ctrl-C
+$ gpioset -c gpiochip1 -t0 28=1              # đặt rồi thoát ngay
+$ gpioset -c gpiochip1 -t 2s,0 28=1          # giữ 2 giây rồi thoát
+$ gpioset -c gpiochip1 -t 500ms 28=1         # nhấp nháy: đảo mức mỗi 500ms, lặp mãi
+$ gpioset -c gpiochip1 -z 28=1               # giữ nhưng detach ra chạy nền
+$ gpioset -c gpiochip1 -i 28=1               # chế độ tương tác, gõ set/toggle tại prompt
+```
+
+:::tip Note
+`-i/--interactive` chỉ có khi libgpiod được build kèm libedit. Nhiều bản đóng gói sẵn (kể cả Debian) không bật nên option này không xuất hiện. Kiểm tra bằng `gpioset --help` trước khi dùng trong script.
+:::
+
+#### gpiomon
+
+Theo dõi sự kiện cạnh trên một hoặc nhiều line.
+
+| | Cú pháp |
+| --- | --- |
+| v1 | `gpiomon [OPTIONS] <chip> <offset>...` |
+| v2 | `gpiomon [OPTIONS] <line>...` (offset thì kèm `-c <chip>`) |
+
+v1 chọn cạnh bằng hai cờ riêng, không ghi cờ nào thì bắt cả hai cạnh:
+
+```bash
+$ gpiomon -f -n 5 gpiochip1 16             # 5 sự kiện cạnh xuống rồi thoát
+$ gpiomon -r gpiochip1 16                  # chỉ cạnh lên
+event:  FALLING EDGE offset: 16 timestamp: [    1234.567890123]
+```
+
+v2 gộp lại thành một option `-e/--edges`, đồng thời mở ra các tính năng chỉ ABI v2 mới có (debounce trong kernel, chọn nguồn clock):
+
+```bash
+$ gpiomon -c gpiochip1 -e falling -n 5 16
+$ gpiomon -c gpiochip1 -e both -p 10ms 16       # debounce 10ms, do kernel làm
+$ gpiomon -c gpiochip1 --idle-timeout 30s 16    # 30s không có sự kiện thì tự thoát
+$ gpiomon -c gpiochip1 --localtime 16
+1234.567890123  falling gpiochip1 16
+```
+
+Timestamp mặc định lấy từ `CLOCK_MONOTONIC` nên không đối chiếu được với giờ hệ thống. Muốn giờ thật thì v2 dùng `-E realtime` còn v1 phải tự cộng offset.
+
+#### gpionotify
+
+Chỉ có ở v2. Lệnh này không đọc mức logic mà theo dõi ai đang dùng chân: kernel phát sự kiện `requested` / `released` / `reconfigured` qua `GPIO_V2_GET_LINEINFO_WATCH_IOCTL` mỗi khi một consumer xin hoặc trả line. Rất hữu ích để tìm xem driver nào đang giành mất chân của mình.
+
+```bash
+$ gpionotify -c gpiochip1 28
+1234.567890123  requested       gpiochip1 28
+1240.111222333  released        gpiochip1 28
+
+# chỉ quan tâm lúc bị chiếm, và tự thoát nếu 10s không có gì xảy ra
+$ gpionotify -c gpiochip1 -e requested --idle-timeout 10s 28
+```
+
+### 9.3. Lập trình C với libgpiod v1
+
+Mô hình tuần tự các bước: mở chip, lấy `struct gpiod_line *` theo offset, request line đó rồi đọc/ghi trực tiếp trên nó.
+
+```
+gpiod_chip_open_by_name()  ──►  gpiod_chip_get_line()  ──►  gpiod_line_request_output()
+                                                              │
+                                                              ├─ gpiod_line_set_value()
+                                                              └─ gpiod_line_release()
+```
+
+Ví dụ blink led:
 
 ```c
 #include <gpiod.h>
@@ -792,11 +1259,11 @@ int main(void)
     struct gpiod_chip *chip;
     struct gpiod_line *line;
 
-    chip = gpiod_chip_open_by_name("gpiochip1");
+    chip = gpiod_chip_open_by_name("gpiochip1");   /* hoặc gpiod_chip_open("/dev/gpiochip1") */
     if (!chip)
         return 1;
 
-    line = gpiod_chip_get_line(chip, 28);   /* P9_12 = GPIO1_28 */
+    line = gpiod_chip_get_line(chip, 28);          /* P9_12 = GPIO1_28 */
     if (!line)
         goto close_chip;
 
@@ -811,12 +1278,12 @@ int main(void)
 
     gpiod_line_release(line);
 close_chip:
-    gpiod_chip_close(chip);
+    gpiod_chip_close(chip);   /* đóng chip cũng giải phóng mọi line của nó */
     return 0;
 }
 ```
 
-Đọc input và chờ sự kiện:
+Đọc input và chờ sự kiện cạnh:
 
 ```c
 struct gpiod_line_event ev;
@@ -836,7 +1303,49 @@ while (1) {
 }
 ```
 
-### 9.3. Lập trình C: libgpiod v2
+Muốn ghép vào event loop có sẵn (`poll`/`epoll`) thì lấy fd bằng `gpiod_line_event_get_fd(line)`.
+
+Nhiều chân cùng lúc phải qua `gpiod_line_bulk` (tối đa 64 line):
+
+```c
+struct gpiod_line_bulk bulk;
+int values[3] = { 1, 0, 1 };
+
+gpiod_line_bulk_init(&bulk);
+gpiod_chip_get_lines(chip, (unsigned int[]){ 28, 29, 30 }, 3, &bulk);
+gpiod_line_request_bulk_output(&bulk, "blinky", (const int[]){ 0, 0, 0 });
+gpiod_line_set_value_bulk(&bulk, values);      /* 3 chân đổi mức trong một ioctl */
+gpiod_line_release_bulk(&bulk);
+```
+
+Nếu chỉ cần một thao tác duy nhất rồi thoát, v1 có nhóm hàm `ctxless` gói trọn mở chip - request - thao tác - đóng:
+
+```c
+int val = gpiod_ctxless_get_value("gpiochip1", 28, false, "myapp");
+gpiod_ctxless_set_value("gpiochip1", 28, 1, false, "myapp", NULL, NULL);
+```
+
+Nhóm hàm này không có ở v2 và đây là phần code hay phải viết lại nhiều nhất khi nâng cấp.
+
+### 9.4. Lập trình C với libgpiod v2
+
+Mô hình được viết lại quanh ý tưởng: cấu hình được tách khỏi request. Ta mô tả muốn gì trong `line_settings`, gắn nó cho một nhóm offset trong `line_config`, đặt tên consumer trong `request_config` rồi nộp tất cả cho chip một lần để nhận về `line_request`.
+
+```
+gpiod_chip_open("/dev/gpiochipN")  ─┐
+gpiod_line_settings_new()  ──► set_direction/set_edge_detection/set_bias/set_debounce
+       │                            │
+       └──► gpiod_line_config_add_line_settings(offsets[], n)  ─┼──► gpiod_chip_request_lines()
+gpiod_request_config_set_consumer() ─┘                          │
+                                                                ▼
+                                                       struct gpiod_line_request *
+                                                         ├─ set_value / get_value
+                                                         ├─ read_edge_events
+                                                         ├─ reconfigure_lines
+                                                         └─ release
+```
+
+Nhấp nháy một chân, viết đúng theo kiểu của upstream (giải phóng ngay các object cấu hình sau khi request xong):
 
 ```c
 #include <gpiod.h>
@@ -851,7 +1360,9 @@ int main(void)
     struct gpiod_line_request *req;
     unsigned int offset = 28;    /* P9_12 = GPIO1_28 */
 
-    chip = gpiod_chip_open("/dev/gpiochip1");
+    chip = gpiod_chip_open("/dev/gpiochip1");   /* v2 chỉ nhận đường dẫn đầy đủ */
+    if (!chip)
+        return 1;
 
     settings = gpiod_line_settings_new();
     gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_OUTPUT);
@@ -865,6 +1376,16 @@ int main(void)
 
     req = gpiod_chip_request_lines(chip, rcfg, lcfg);
 
+    /* Cấu hình đã nằm trong kernel, các object này không cần giữ nữa.
+       Kể cả chip cũng đóng được: line_request giữ fd riêng của nó. */
+    gpiod_request_config_free(rcfg);
+    gpiod_line_config_free(lcfg);
+    gpiod_line_settings_free(settings);
+    gpiod_chip_close(chip);
+
+    if (!req)
+        return 1;
+
     for (int i = 0; i < 10; i++) {
         gpiod_line_request_set_value(req, offset,
               (i & 1) ? GPIOD_LINE_VALUE_ACTIVE : GPIOD_LINE_VALUE_INACTIVE);
@@ -872,31 +1393,108 @@ int main(void)
     }
 
     gpiod_line_request_release(req);
-    gpiod_request_config_free(rcfg);
-    gpiod_line_config_free(lcfg);
-    gpiod_line_settings_free(settings);
-    gpiod_chip_close(chip);
     return 0;
 }
 ```
 
-Biên dịch:
+Điểm khác biệt dễ nhầm: `gpiod_chip_close()` ở v1 sẽ giết luôn các line đang giữ, còn ở v2 thì `line_request` sống độc lập với chip.
+
+Sự kiện cạnh ở v2 đọc theo lô qua một buffer, nên xử lý được cả chuỗi xung dồn dập:
+
+```c
+struct gpiod_edge_event_buffer *buf;
+struct gpiod_edge_event *ev;
+int n;
+
+/* lúc cấu hình: */
+gpiod_line_settings_set_direction(settings, GPIOD_LINE_DIRECTION_INPUT);
+gpiod_line_settings_set_edge_detection(settings, GPIOD_LINE_EDGE_BOTH);
+gpiod_line_settings_set_bias(settings, GPIOD_LINE_BIAS_PULL_UP);
+gpiod_line_settings_set_debounce_period_us(settings, 10000);   /* 10ms, v1 không có */
+
+buf = gpiod_edge_event_buffer_new(16);
+
+for (;;) {
+    /* chờ có timeout, đơn vị nanosecond; -1 là chờ mãi */
+    int ret = gpiod_line_request_wait_edge_events(req, 5000000000);
+    if (ret < 0) break;
+    if (ret == 0) continue;                    /* timeout */
+
+    n = gpiod_line_request_read_edge_events(req, buf, 16);
+    for (int i = 0; i < n; i++) {
+        ev = gpiod_edge_event_buffer_get_event(buf, i);
+        printf("offset %u  %s  ts=%" PRIu64 "ns  seqno=%lu\n",
+               gpiod_edge_event_get_line_offset(ev),
+               gpiod_edge_event_get_event_type(ev) == GPIOD_EDGE_EVENT_RISING_EDGE
+                     ? "rising" : "falling",
+               gpiod_edge_event_get_timestamp_ns(ev),
+               gpiod_edge_event_get_line_seqno(ev));
+    }
+}
+gpiod_edge_event_buffer_free(buf);
+```
+
+Bảng tra cứu khi port code từ v1 sang v2:
+
+|  | v1.x | v2.x |
+| --- | --- | --- |
+| Mở chip | `gpiod_chip_open_by_name("gpiochip1")`, `..._by_number(1)` | `gpiod_chip_open("/dev/gpiochip1")` |
+| Lấy đối tượng line | `gpiod_chip_get_line(chip, 28)` | Không còn đối tượng line, làm việc theo offset |
+| Tra line theo tên | `gpiod_chip_find_line(chip, "P9_12")` | `gpiod_chip_get_line_offset_from_name(chip, "P9_12")` |
+| Request output | `gpiod_line_request_output(line, "app", 0)` | `line_settings` + `line_config` + `gpiod_chip_request_lines()` |
+| Request nhiều chân | `gpiod_line_request_bulk_*()` | Thêm nhiều offset vào cùng `line_config` |
+| Ghi giá trị | `gpiod_line_set_value(line, 1)` | `gpiod_line_request_set_value(req, offset, GPIOD_LINE_VALUE_ACTIVE)` |
+| Đọc giá trị | `gpiod_line_get_value(line)` | `gpiod_line_request_get_value(req, offset)` |
+| Bật edge detect | `gpiod_line_request_both_edges_events()` | `gpiod_line_settings_set_edge_detection(s, GPIOD_LINE_EDGE_BOTH)` |
+| Chờ sự kiện | `gpiod_line_event_wait(line, &timespec)` | `gpiod_line_request_wait_edge_events(req, timeout_ns)` |
+| Đọc sự kiện | `gpiod_line_event_read(line, &ev)` | `gpiod_line_request_read_edge_events(req, buf, max)` |
+| Lấy fd để `poll()` | `gpiod_line_event_get_fd(line)` | `gpiod_line_request_get_fd(req)` |
+| Đổi cấu hình khi đang giữ | `gpiod_line_set_flags()`, `gpiod_line_set_direction_output()` | `gpiod_line_request_reconfigure_lines(req, lcfg)` |
+| Xem thông tin line | `gpiod_line_name()`, `gpiod_line_consumer()`, `gpiod_line_is_used()` | `gpiod_chip_get_line_info()` → `gpiod_line_info_get_name()`, `..._get_consumer()` |
+| Giải phóng | `gpiod_line_release()` / `gpiod_chip_close()` | `gpiod_line_request_release()` |
+| Thao tác one-shot | `gpiod_ctxless_get_value()`, `..._set_value()` | Không có, phải viết đủ chuỗi request |
+| Kiểu giá trị | `int` 0/1 | `enum gpiod_line_value`: `..._INACTIVE`, `..._ACTIVE`, `..._ERROR` |
+
+Quy ước báo lỗi thì giống nhau ở cả hai bản: hàm trả con trỏ thì `NULL` là lỗi, hàm trả `int` thì `-1` là lỗi, chi tiết nằm trong `errno`. Lỗi hay gặp nhất vẫn là `EBUSY` (chân đã bị driver khác giữ) và `EACCES` (thiếu quyền trên `/dev/gpiochipN` nên thêm user vào group `gpio` thay vì chạy `sudo`).
+
+### 9.5. Biên dịch và đóng gói
+
+Cả hai bản dùng chung tên module pkg-config nên lệnh biên dịch không đổi:
 
 ```bash
 gcc blinky.c -o blinky $(pkg-config --cflags --libs libgpiod)
 ```
 
-Trên Yocto: thêm `libgpiod` (runtime), `libgpiod-dev` (header cho SDK), `libgpiod-tools` (các lệnh CLI). Recipe nằm ở `meta-openembedded/meta-oe/recipes-support/libgpiod/`.
-
-### 9.4. Python
+Trên Yocto, thêm vào image: `libgpiod` (runtime), `libgpiod-dev` (header cho SDK), `libgpiod-tools` (các lệnh CLI). Recipe nằm ở `meta-openembedded/meta-oe/recipes-support/libgpiod/`. Kiểm tra layer đang cho phiên bản nào trước khi viết code:
 
 ```bash
-pip install gpiod        # binding chính thức, version bám theo thư viện C
+$ bitbake -e libgpiod | grep "^PV="
+PV="2.1.3"
 ```
+
+Nếu layer chỉ có v1 mà code cần v2 thì phải bump recipe hoặc thêm bbappend, chứ không có cách nào ép v1 hiểu API v2.
+
+### 9.6. Binding cho ngôn ngữ khác
+
+Các binding bám theo đúng thế hệ của thư viện C, nên cũng chia hai nhánh không tương thích.
+
+Python — bản v1 thường lấy từ gói distro `python3-libgpiod`:
 
 ```python
 import gpiod
-from gpiod.line import Direction, Value
+
+chip = gpiod.Chip("gpiochip1")
+line = chip.get_line(28)
+line.request(consumer="blinky", type=gpiod.LINE_REQ_DIR_OUT)
+line.set_value(1)
+line.release()
+```
+
+Python — bản v2 có trên PyPI (`pip install gpiod` hiện cho bản 2.x), API xoay quanh `request_lines()` và dùng được với `with`:
+
+```python
+import gpiod
+from gpiod.line import Direction, Edge, Value
 
 with gpiod.request_lines(
     "/dev/gpiochip1",
@@ -904,7 +1502,18 @@ with gpiod.request_lines(
     config={28: gpiod.LineSettings(direction=Direction.OUTPUT)},
 ) as request:
     request.set_value(28, Value.ACTIVE)
+
+# đọc sự kiện cạnh
+with gpiod.request_lines(
+    "/dev/gpiochip1",
+    consumer="button",
+    config={16: gpiod.LineSettings(edge_detection=Edge.FALLING)},
+) as request:
+    for event in request.read_edge_events():
+        print(event.line_offset, event.event_type, event.timestamp_ns)
 ```
+
+Ngoài ra còn binding C++ (`gpiod.hpp`, cả hai bản đều có, namespace `gpiod::`) và binding Rust (crate `libgpiod`, chỉ có từ v2.0). Riêng v2 còn thêm một daemon D-Bus (`gpio-manager` trong thư mục `dbus/`) cho phép giữ line liên tục và cho nhiều tiến trình cùng điều khiển qua D-Bus — giải quyết đúng cái bẫy "thoát là mất mức" nói ở trên.
 
 ## 10. Cấu hình kernel
 
@@ -946,10 +1555,14 @@ Các lỗi thường gặp:
 | Triệu chứng | Nguyên nhân thường gặp |
 | --- | --- |
 | `gpiod_get()` trả `-ENOENT` | Sai tên property trong DT, hoặc thiếu hậu tố `-gpios` |
-| `-EBUSY` / `Device or resource busy` | Chân đã bị driver khác giữ (xem cột `[used]` trong `gpioinfo`) |
+| `-EBUSY` / `Device or resource busy` | Chân đã bị driver khác giữ (`gpioinfo`: cột `[used]` ở v1, `consumer="..."` ở v2) |
 | Ghi giá trị nhưng chân không đổi | pinctrl chưa mux chân về function GPIO |
 | Mức logic bị ngược | Nhầm `GPIO_ACTIVE_LOW`, hoặc dùng `gpiod_set_raw_value()` |
-| `gpioset` xong chân về mức cũ | Tiến trình thoát → line request bị release |
+| `gpioset` xong chân về mức cũ | Tiến trình thoát → line request bị release (v1 mặc định thoát ngay, xem [9.2](#92-công-cụ-dòng-lệnh)) |
+| Tool báo `ENOTTY`/`Inappropriate ioctl` | Dùng libgpiod v1 trên kernel không bật `CONFIG_GPIO_CDEV_V1` |
+| Chương trình không compile sau khi đổi board | Lẫn API v1 và v2 của libgpiod, kiểm tra `pkg-config --modversion libgpiod` |
+| Script chạy sai chân sau khi nâng kernel | Hardcode `gpiochipN`, số này đổi theo thứ tự probe. Tra theo `label` hoặc `gpio-line-names`, xem [3.5](#35-ánh-xạ-node-device-tree-và-gpiochip) |
+| Hog/consumer khai trong `&gpioN` lại hiện ở `gpiochipM` | Bình thường: node DT và `/dev/gpiochipN` là hai hệ đánh số độc lập, xem [3.5](#35-ánh-xạ-node-device-tree-và-gpiochip) |
 
 ## Tham khảo
 
@@ -957,4 +1570,6 @@ Các lỗi thường gặp:
 - `Documentation/devicetree/bindings/gpio/gpio.txt`: quy ước Device Tree.
 - `include/linux/gpio/consumer.h`, `include/linux/gpio/driver.h`.
 - `include/uapi/linux/gpio.h`: định nghĩa ABI của character device.
-- https://git.kernel.org/pub/scm/libs/libgpiod/libgpiod.git: source libgpiod.
+- https://git.kernel.org/pub/scm/libs/libgpiod/libgpiod.git: source libgpiod (nhánh `master` là v2.x, nhánh `v1.6.x` là bản v1 cuối cùng).
+- https://libgpiod.readthedocs.io/: tài liệu API v2.
+- Thư mục `examples/` và `tools/` trong source libgpiod: code mẫu chính chủ cho từng bản.
