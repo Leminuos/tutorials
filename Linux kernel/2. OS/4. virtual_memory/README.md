@@ -2,11 +2,11 @@
 
 ## 1. Từ Physical Addressing đến Virtual Memory
  
-### 1.1. Mô hình bộ nhớ trên MCU — Physical Addressing
+### 1.1. Mô hình bộ nhớ trên MCU
  
-Trước khi tìm hiểu virtual memory, ta cần hiểu cách bộ nhớ hoạt động trên các hệ thống không có virtual memory — điển hình là các vi điều khiển như STM32, ESP32, AVR,...
+Trước khi tìm hiểu virtual memory, ta cần hiểu cách bộ nhớ hoạt động trên các hệ thống không có virtual memory, điển hình là các vi điều khiển như STM32, ESP32, AVR,...
 
-Khi lập trình trên vi điều khiển, chương trình làm việc trực tiếp với địa chỉ vật lý. Nếu ta ghi vào địa chỉ 0x20001000, đó chính xác là ô nhớ vật lý 0x20001000 trên chip RAM. Mô hình này đơn giản, nhanh, và phù hợp với các hệ thống nhúng chạy một hoặc vài tác vụ cố định. Nhưng khi hệ thống phức tạp hơn — nhiều chương trình chạy đồng thời, bộ nhớ lớn hơn, yêu cầu bảo mật cao hơn — thì mô hình này bộc lộ nhiều hạn chế nghiêm trọng.
+Khi lập trình trên vi điều khiển, chương trình làm việc trực tiếp với địa chỉ vật lý. Nếu ta ghi vào địa chỉ 0x20001000, đó chính xác là ô nhớ vật lý 0x20001000 trên chip RAM. Mô hình này đơn giản, nhanh, và phù hợp với các hệ thống nhúng chạy một hoặc vài tác vụ cố định. Nhưng khi hệ thống phức tạp hơn, nhiều chương trình chạy đồng thời, bộ nhớ lớn hơn, yêu cầu bảo mật cao hơn thì mô hình này bộc lộ nhiều hạn chế nghiêm trọng.
 
 ### 1.2. Những hạn chế của Physical Addressing
 
@@ -22,7 +22,7 @@ graph LR
     style SRAM fill:#ffcccc,color:#333
 ```
 
- $\rightarrow$ **Hậu quả:** Một task bị lỗi, ví dụ tràn mảng hay con trỏ sai, có thể ghi đè lên vùng nhớ của task khác hoặc thậm chí ghi đè lên code đang chạy. Không có cơ chế phần cứng nào ngăn chặn điều này trên hầu hết MCU thông thường.
+$\rightarrow$ **Hậu quả:** Một task bị lỗi, ví dụ tràn mảng hay con trỏ sai, có thể ghi đè lên vùng nhớ của task khác hoặc thậm chí ghi đè lên code đang chạy. Không có cơ chế phần cứng nào ngăn chặn điều này trên hầu hết MCU thông thường.
 
 Giả sử ta dùng FreeRTOS trên STM32F4 với hai task:
 
@@ -48,12 +48,12 @@ void Task_Motor(void *param) {
 }
 ```
 
-Hai biến `sensor_buffer` và `motor_config` cùng nằm trong SRAM, có thể chỉ cách nhau vài byte. Nếu `Task_Sensor` có lỗi tràn bộ đệm — ví dụ cảm biến gửi về nhiều hơn 64 byte — dữ liệu tràn ra sẽ ghi đè thẳng lên `motor_config` hoặc thậm chí lên stack của `Task_Motor`. Kết quả là motor hoạt động sai mà ta debug rất khó tìm ra nguyên nhân, vì lỗi xảy ra ở task hoàn toàn khác.
+Hai biến `sensor_buffer` và `motor_config` cùng nằm trong SRAM, có thể chỉ cách nhau vài byte. Nếu `Task_Sensor` có lỗi tràn bộ đệm. Ví dụ cảm biến gửi về nhiều hơn 64 byte - dữ liệu tràn ra sẽ ghi đè thẳng lên `motor_config` hoặc thậm chí lên stack của `Task_Motor`. Kết quả là motor hoạt động sai mà ta debug rất khó tìm ra nguyên nhân vì lỗi xảy ra ở task hoàn toàn khác.
 
 #### 1.2.2. Địa chỉ cố định, không linh hoạt
 
-Khi biên dịch cho vi điều khiển, linker script quy định rõ code nằm ở vùng Ffash nào, ram bắt đầu từ đâu. Nếu ta muốn chạy hai chương trình độc lập, ta phải tự tay chia vùng nhớ cho từng chương trình và đảm bảo chúng không chồng lấn. Việc này cực kỳ cứng nhắc — ta không thể dễ dàng load một chương trình mới vào một vị trí bất kỳ trong RAM.
- 
+Khi biên dịch cho vi điều khiển, linker script quy định rõ code nằm ở vùng Ffash nào, ram bắt đầu từ đâu. Nếu ta muốn chạy hai chương trình độc lập, ta phải tự tay chia vùng nhớ cho từng chương trình và đảm bảo chúng không chồng lấn. Việc này cực kỳ cứng nhắc, ta không thể dễ dàng load một chương trình mới vào một vị trí bất kỳ trong RAM.
+
 Khi ta viết linker script cho STM32F103, ta cần quy định rõ ràng:
 
 ```
@@ -65,7 +65,8 @@ MEMORY
 ```
 
 Code luôn chạy từ 0x08000000, RAM luôn bắt đầu từ 0x20000000. Mọi con trỏ hàm, mọi biến toàn cục đều được linker gán địa chỉ cố định tại thời điểm biên dịch.
-Bây giờ nếu ta muốn chạy hai chương trình độc lập trên cùng chip — ví dụ một bootloader và một application — ta phải tự tay chia vùng:
+
+Bây giờ nếu ta muốn chạy hai chương trình độc lập trên cùng chip. Ví dụ một bootloader và một application, ta phải tự tay chia vùng:
 
 ```
 Bootloader: 64KB đầu */
@@ -77,7 +78,7 @@ FLASH (rx) : ORIGIN = 0x08010000, LENGTH = 960K
 SRAM  (rwx): ORIGIN = 0x20008000, LENGTH = 96K
 ```
 
-Mỗi chương trình phải được biên dịch với linker script riêng, biết trước chính xác vùng nhớ của mình. Ta không thể lấy một firmware đã biên dịch cho vùng 0x08010000 rồi chạy nó ở 0x08040000 — các địa chỉ đã được link cứng vào binary. Nếu muốn thay đổi layout, ta phải biên dịch lại toàn bộ.
+Mỗi chương trình phải được biên dịch với linker script riêng, biết trước chính xác vùng nhớ của mình. Ta không thể lấy một firmware đã biên dịch cho vùng 0x08010000 rồi chạy nó ở 0x08040000 vì các địa chỉ đã được link cứng vào binary. Nếu muốn thay đổi layout, ta phải biên dịch lại toàn bộ.
 
 #### 1.2.3. Giới hạn phần cứng
 
@@ -112,23 +113,23 @@ vPortFree(c);   // trống 0x20002000..0x20002FFF
 void *e = pvPortMalloc(8192);   // cần 8KB liên tục → THẤT BẠI!
 ```
 
-Ta còn 8KB trống nhưng chúng nằm ở hai vùng rời rạc, mỗi vùng 4KB. Trên MCU không có cách nào dồn chúng lại vì các con trỏ đang giữ tham chiếu đến địa chỉ vật lý cố định — di chuyển dữ liệu sẽ làm hỏng toàn bộ con trỏ đang trỏ vào đó.
+Ta còn 8KB trống nhưng chúng nằm ở hai vùng rời rạc, mỗi vùng 4KB. Trên MCU không có cách nào dồn chúng lại vì các con trỏ đang giữ tham chiếu đến địa chỉ vật lý cố định, di chuyển dữ liệu sẽ làm hỏng toàn bộ con trỏ đang trỏ vào đó.
 
 ### 1.3. Ý tưởng của virtual memory
 
-Virtual memory ra đời từ nhu cầu vượt qua chính những hạn chế trên khi hệ thống máy tính phát triển lên quy mô lớn hơn. Ý tưởng cốt lõi là đặt một lớp trừu tượng giữa chương trình và bộ nhớ vật lý. Thay vì làm việc trực tiếp với địa chỉ RAM thật, mỗi chương trình được hệ điều hành cung cấp một không gian địa chỉ ảo riêng biệt. Khi chương trình truy cập một địa chỉ ảo, phần cứng MMU sẽ dịch địa chỉ đó sang địa chỉ vật lý thực sự tại thời điểm truy cập — hoàn toàn trong suốt với chương trình.
+Virtual memory ra đời từ nhu cầu vượt qua chính những hạn chế trên khi hệ thống máy tính phát triển lên quy mô lớn hơn. Ý tưởng cốt lõi là đặt một lớp trừu tượng giữa chương trình và bộ nhớ vật lý. Thay vì làm việc trực tiếp với địa chỉ RAM thật, mỗi chương trình được hệ điều hành cung cấp một không gian địa chỉ ảo riêng biệt. Khi chương trình truy cập một địa chỉ ảo, phần cứng MMU sẽ dịch địa chỉ đó sang địa chỉ vật lý thực sự tại thời điểm truy cập, hoàn toàn trong suốt với chương trình.
 
 ![Virtual memory](img/virtual-memory.png)
 
 Nhờ đó, các chương trình được cô lập hoàn toàn với nhau, có thể được load vào bất kỳ vị trí nào trong RAM vật lý mà không cần biết, có thể sử dụng nhiều bộ nhớ hơn RAM thực có (thông qua swap), và vấn đề phân mảnh được giải quyết ở mức vật lý mà chương trình không hề hay biết.
 
-Lấy ví dụ cụ thể: trên Linux 64-bit, khi ta chạy hai chương trình A và B, cả hai đều có thể có một biến nằm ở địa chỉ ảo 0x00007fff5a3b0000. Nhưng chương trình A thực tế đang dùng ô nhớ vật lý ở 0x1A3F0000, còn chương trình B đang dùng ô nhớ vật lý ở 0x2B710000. Cả hai đều không biết và không cần biết điều này — chúng chỉ làm việc với địa chỉ ảo của mình.
+Lấy ví dụ cụ thể: trên Linux 64-bit, khi ta chạy hai chương trình A và B, cả hai đều có thể có một biến nằm ở địa chỉ ảo 0x00007fff5a3b0000. Nhưng chương trình A thực tế đang dùng ô nhớ vật lý ở 0x1A3F0000, còn chương trình B đang dùng ô nhớ vật lý ở 0x2B710000. Cả hai đều không biết và không cần biết điều này, chúng chỉ làm việc với địa chỉ ảo của mình.
 
 ## 2. Đặc điểm của Virtual Memory
 
 ### 2.1. Lợi ích của Virtual Memory
 
-#### 2.1.1. Isolation – Cô lập process
+#### 2.1.1. Isolation - Cô lập process
 
 Trên hệ điều hành có virtual memory, mỗi tiến trình có một không gian địa chỉ bộ nhớ riêng biệt, điều này làm cho:
 - Tiến trình A không thể đọc hoặc ghi vào địa chỉ bộ nhớ của tiến trình B.
@@ -141,7 +142,7 @@ $\rightarrow$ Giúp OS ngăn việc tiến trình A đọc hoặc ghi trái phé
 
 Tuy nhiên, khi ở kernel mode thì sẽ chỉ có một không gian địa chỉ ảo duy nhất gọi là không gian hệ thống và các đoạn code chạy ở kernel có thể truy cập vào toàn bộ tài nguyên trong hệ thống.
 
-#### 2.1.2. Abstraction – Giấu đi chi tiết vật lý
+#### 2.1.2. Abstraction - Giấu đi chi tiết vật lý
 
 Trước khi có virtual memory, chương trình phải biết mình nằm ở chỗ nào trong bộ nhớ vật lý như đã nói ở phần [Địa chỉ cố định, không linh hoạt](#122-địa-chỉ-cố-định-không-linh-hoạt). Giờ thì mọi chương trình đều được biên dịch với cùng một layout địa chỉ ảo — code segment, data segment, heap, stack đều ở những vùng địa chỉ ảo quen thuộc. OS lo việc ánh xạ chúng đến bất kỳ vùng RAM vật lý nào còn trống. Chương trình không cần biết và không cần quan tâm mình thực sự nằm ở đâu.
 
@@ -163,7 +164,7 @@ graph LR
     VAddr -.->|"OS remap"| PA2
 ```
 
-#### 2.1.3. Efficiency – Tăng hiệu quả dùng RAM
+#### 2.1.3. Efficiency - Tăng hiệu quả dùng RAM
 
 Nhờ cơ chế phân trang (paging) của virtual memory, việc sử dụng ram được tối ưu đáng kể:
 
@@ -175,7 +176,7 @@ Nhờ cơ chế phân trang (paging) của virtual memory, việc sử dụng ra
 
 Dù các process được cô lập, OS vẫn có thể ánh xạ cùng một page vật lý vào không gian địa chỉ ảo của nhiều process khi cần. Ví dụ điển hình là shared libraries — thư viện libc chỉ cần load một lần vào RAM vật lý, nhưng hàng trăm process đều có thể ánh xạ nó vào không gian ảo của mình. Mỗi process thấy libc ở một địa chỉ ảo nào đó trong không gian của mình, nhưng tất cả đều trỏ đến cùng các page vật lý. Tiết kiệm rất nhiều RAM.
 
-#### 2.1.4. Protection – Bảo vệ truy cập
+#### 2.1.4. Protection - Bảo vệ truy cập
 
 Mỗi page table không chỉ chứa ánh xạ địa chỉ, mà còn chứa các permission bits đại diện cho các quyền riêng:
 | Bit | Ý nghĩa |
@@ -194,19 +195,19 @@ Nếu chương trình vi phạm (ví dụ ghi vào page read-only hoặc truy c�
 
 #### 2.1.5. Flexibility – Quản lý vùng nhớ linh hoạt
 
-Chương trình luôn nhìn thấy bộ nhớ của mình như một dải liên tục. Bên dưới, OS có thể ánh xạ các virtual page liên tục đến các page vật lý nằm rải rác khắp nơi trong RAM. Quay lại ví dụ phân mảnh trên STM32 — hai khối 4KB rời rạc không thể ghép thành 8KB liên tục. Với virtual memory, OS chỉ cần ánh xạ hai virtual page liền kề đến hai page vật lý rời rạc đó, chương trình thấy 8KB liên tục mà không biết sự phân mảnh bên dưới.
+Chương trình luôn nhìn thấy bộ nhớ của mình như một dải liên tục. Bên dưới, OS có thể ánh xạ các virtual page liên tục đến các page vật lý nằm rải rác khắp nơi trong RAM. Quay lại ví dụ phân mảnh trên STM32, hai khối 4KB rời rạc không thể ghép thành 8KB liên tục. Với virtual memory, OS chỉ cần ánh xạ hai virtual page liền kề đến hai page vật lý rời rạc đó, chương trình thấy 8KB liên tục mà không biết sự phân mảnh bên dưới.
 
-Ngoài ra, khi chương trình yêu cầu cấp phát bộ nhớ, OS có thể chỉ đánh dấu vùng địa chỉ ảo đó là đã cấp phát mà chưa gán page vật lý nào. Page vật lý chỉ thực sự được cấp khi chương trình lần đầu truy cập vào địa chỉ đó — lúc đó xảy ra page fault và OS mới cấp page thật. Nhờ vậy, một chương trình malloc(1GB) không thực sự chiếm 1GB RAM ngay lập tức, mà chỉ chiếm dần khi nó thực sự sử dụng. Đây chính là đặc điểm của virtual memory để hỗ trợ các API như malloc(), mmap(), fork(), copy-on-write,...
+Ngoài ra, khi chương trình yêu cầu cấp phát bộ nhớ, OS có thể chỉ đánh dấu vùng địa chỉ ảo đó là đã cấp phát mà chưa gán page vật lý nào. Page vật lý chỉ thực sự được cấp khi chương trình lần đầu truy cập vào địa chỉ đó, lúc đó xảy ra page fault và OS mới cấp page thật. Nhờ vậy, một chương trình `malloc(1GB)` không thực sự chiếm 1GB RAM ngay lập tức, mà chỉ chiếm dần khi nó thực sự sử dụng. Đây chính là đặc điểm của virtual memory để hỗ trợ các API như `malloc()`, `mmap()`, `fork()`, copy-on-write,...
 
 ### 2.2. Hạn chế của Virtual Memory
 
 #### 2.2.1. Cần phần cứng chuyên dụng
 
-Việc dịch địa chỉ ảo sang địa chỉ vật lý xảy ra ở mọi lần truy cập bộ nhớ — mỗi lần CPU đọc một instruction, đọc một biến, ghi một giá trị, tất cả đều phải đi qua bước dịch địa chỉ. Nếu làm bằng phần mềm thì chậm không thể chấp nhận được, nên cần một đơn vị phần cứng riêng là MMU tích hợp trong CPU. Đây là lý do các MCU nhỏ như Cortex-M0, M3, M4 không có virtual memory — chúng không có MMU, vì thêm MMU làm tăng độ phức tạp thiết kế, và tiêu thụ năng lượng. Chỉ các processor lớn hơn như Cortex-A mới có MMU.
+Việc dịch địa chỉ ảo sang địa chỉ vật lý xảy ra ở mọi lần truy cập bộ nhớ, mỗi lần CPU đọc một instruction, đọc một biến, ghi một giá trị, tất cả đều phải đi qua bước dịch địa chỉ. Nếu làm bằng phần mềm thì chậm không thể chấp nhận được, nên cần một đơn vị phần cứng riêng là MMU tích hợp trong CPU. Đây là lý do các MCU nhỏ như Cortex-M0, M3, M4 không có virtual memory vì chúng không có MMU, vì thêm MMU làm tăng độ phức tạp thiết kế và tiêu thụ năng lượng. Chỉ các processor lớn hơn như Cortex-A mới có MMU.
 
 #### 2.2.2. Hiệu năng không dự đoán được
 
-Đây là hạn chế quan trọng nhất trong ngữ cảnh real-time. Trên MCU, ta có thể tính chính xác một hàm mất bao nhiêu CPU cycle vì mọi truy cập bộ nhớ đều có thời gian cố định. Với virtual memory, cùng một dòng code có thể chạy trong 10ns (dữ liệu trong cache, TLB hit) hoặc 10ms (TLB miss, page fault, đọc từ swap) — chênh lệch cỡ một triệu lần. Đối với hệ thống điều khiển cần phản hồi trong vài microsecond, sự bất định này là không chấp nhận được.
+Đây là hạn chế quan trọng nhất trong ngữ cảnh real-time. Trên MCU, ta có thể tính chính xác một hàm mất bao nhiêu CPU cycle vì mọi truy cập bộ nhớ đều có thời gian cố định. Với virtual memory, cùng một dòng code có thể chạy trong 10ns (dữ liệu trong cache, TLB hit) hoặc 10ms (TLB miss, page fault, đọc từ swap) - chênh lệch cỡ một triệu lần. Đối với hệ thống điều khiển cần phản hồi trong vài microsecond, sự bất định này là không chấp nhận được.
 
 
 | Tình huống | Thời gian truy cập | Ghi chú |
@@ -220,13 +221,13 @@ Việc dịch địa chỉ ảo sang địa chỉ vật lý xảy ra ở mọi l
 
 #### 2.2.3. Tiêu tốn bộ nhớ
 
-Page table, các cấu trúc VMA (Virtual Memory Area) trong kernel, metadata cho mỗi page vật lý — tất cả đều chiếm RAM. Trên Linux, mỗi page vật lý 4KB có một struct `page` khoảng 64 bytes để quản lý. Một máy 16GB RAM có khoảng 4 triệu page, riêng các struct `page` đã chiếm khoảng 256MB. Thêm page table cho mỗi process, mỗi process có thể chiếm vài KB đến vài MB chỉ riêng cho page table. Trên MCU với vài chục KB RAM, việc dành bộ nhớ cho overhead như vậy là không thể chấp nhận được.
+Page table, các cấu trúc VMA (Virtual Memory Area) trong kernel, metadata cho mỗi page vật lý - tất cả đều chiếm RAM. Trên Linux, mỗi page vật lý 4KB có một struct `page` khoảng 64 bytes để quản lý. Một máy 16GB RAM có khoảng 4 triệu page, riêng các struct `page` đã chiếm khoảng 256MB. Thêm page table cho mỗi process, mỗi process có thể chiếm vài KB đến vài MB chỉ riêng cho page table. Trên MCU với vài chục KB RAM, việc dành bộ nhớ cho overhead như vậy là không thể chấp nhận được.
 
 ## 3. Page Table
 
 ### 3.1. Khái niệm
 
-Như chúng ta đã thảo luận, virtual memory tạo ra một lớp trừu tượng — mỗi process làm việc với địa chỉ ảo, còn MMU dịch sang địa chỉ vật lý. Vậy câu hỏi đặt ra là: MMU dựa vào đâu để biết địa chỉ ảo X ánh xạ đến địa chỉ vật lý Y? Câu trả lời chính là page table.
+Như chúng ta đã thảo luận, virtual memory tạo ra một lớp trừu tượng, mỗi process làm việc với địa chỉ ảo còn MMU dịch sang địa chỉ vật lý. Vậy câu hỏi đặt ra là: MMU dựa vào đâu để biết địa chỉ ảo X ánh xạ đến địa chỉ vật lý Y? Câu trả lời chính là page table.
 
 Page table là một cấu trúc dữ liệu do kernel quản lý được lưu trong RAM, đóng vai trò như một bảng tra cứu cho MMU. Mỗi process có một page table riêng và khi process đó đang chạy, MMU sử dụng page table của nó để dịch mọi địa chỉ ảo sang địa chỉ vật lý mà CPU phát ra.
 
@@ -236,7 +237,7 @@ Cách đơn giản nhất là lưu ánh xạ cho từng byte: byte ảo 0 nằm 
 
 Thay vì ánh xạ từng byte, hệ thống gom nhiều byte liền kề thành một khối có kích thước cố định gọi là page. Kích thước thông thường của một page là 4KB, nhưng kích thước này có thể thay đổi tùy thuộc vào kiến trúc hệ thống. Ví dụ: 2MB hoặc 1GB trong các hệ thống với page lớn.
 
-Bên phía physical memory, RAM cũng được chia thành các khối có cùng kích thước gọi là page frame. Page table lúc này chỉ cần lưu ánh xạ giữa virtual page và page frame — số lượng entry giảm đi hàng nghìn lần.
+Bên phía physical memory, RAM cũng được chia thành các khối có cùng kích thước gọi là page frame. Page table lúc này chỉ cần lưu ánh xạ giữa virtual page và page frame - số lượng entry giảm đi hàng nghìn lần.
 
 Tính lại: trên hệ thống 32-bit, 4GB / 4KB = khoảng 1 triệu page. Mỗi entry 4 byte, bảng chỉ cần 4MB.
 
@@ -244,7 +245,7 @@ Tính lại: trên hệ thống 32-bit, 4GB / 4KB = khoảng 1 triệu page. M�
 
 Một virtual address được chia thành 2 phần chính:
 - Index của page table: Dựa vào index này để tìm page frame tương ứng
-- Page offset: Được giữ nguyên vì bên trong mỗi page, cấu trúc dữ liệu không thay đổi — chỉ có khối page được đặt ở vị trí khác trong RAM vật lý.
+- Page offset: Được giữ nguyên vì bên trong mỗi page, cấu trúc dữ liệu không thay đổi. chỉ có khối page được đặt ở vị trí khác trong RAM vật lý.
 
 Ví dụ: Khi process truy cập địa chỉ ảo `0x00007005` trên hệ thống 32-bit với page 4KB, hệ thống tách địa chỉ đó thành hai phần:
 
@@ -254,7 +255,7 @@ Nhìn vào hình vẽ trên, hệ thống lấy số thứ tự page bằng 7 l�
 
 ### 3.4. Page table entry
 
-Mỗi dòng trong page table được gọi là page table entry — PTE. Nó không chỉ chứa địa chỉ page frame mà còn chứa các bit trạng thái quan trọng.
+Mỗi dòng trong page table được gọi là Page Table Entry (PTE). Nó không chỉ chứa địa chỉ page frame mà còn chứa các bit trạng thái quan trọng.
 
 Ví dụ: Mỗi PTE trên x86-64 chứa:
 
@@ -279,15 +280,15 @@ OS sẽ sử dụng các bit trạng thái này để quản lý bộ nhớ thô
 
 ### 3.5. Multi-level Page Table
 
-Trên hệ thống 64-bit sử dụng 48 bit cho địa chỉ ảo. Với page 4KB thì page table cần `2^48 / 4096 = 2^36`, tức khoảng 68 tỷ entry. Mỗi entry 8 byte thì riêng page table đã chiếm `68 tỷ × 8 = 512GB`. Đó là cho một process, và đa số các entry sẽ trống vì một process thông thường chỉ dùng một phần rất nhỏ của không gian địa chỉ ảo — có thể chỉ vài MB đến vài GB. Lãng phí khổng lồ. $\rightarrow$ Tổ chức page table thành nhiều cấp
+Trên hệ thống 64-bit sử dụng 48 bit cho địa chỉ ảo. Với page 4KB thì page table cần `2^48 / 4096 = 2^36`, tức khoảng 68 tỷ entry. Mỗi entry 8 byte thì riêng page table đã chiếm `68 tỷ × 8 = 512GB`. Đó là cho một process và đa số các entry sẽ trống vì một process thông thường chỉ dùng một phần rất nhỏ của không gian địa chỉ ảo, có thể chỉ vài MB đến vài GB. Lãng phí khổng lồ. $\rightarrow$ Tổ chức page table thành nhiều cấp
 
 #### 3.5.1. Ý tưởng
 
-Hãy hình dung một cuốn danh bạ điện thoại cho cả nước Việt Nam. Cách đơn giản nhất là liệt kê tất cả mọi người theo thứ tự — một danh sách duy nhất hàng chục triệu dòng. Đây giống page table một cấp.
+Hãy hình dung một cuốn danh bạ điện thoại cho cả nước Việt Nam. Cách đơn giản nhất là liệt kê tất cả mọi người theo thứ tự, một danh sách duy nhất hàng chục triệu dòng. Đây giống page table một cấp.
 
-Cách thực tế hơn là chia theo cấp: đầu tiên tra theo tỉnh/thành phố, rồi tra theo quận/huyện, rồi tra theo phường/xã, cuối cùng mới đến danh sách cụ thể. Nếu một tỉnh không có ai bạn cần tìm, bạn bỏ qua toàn bộ tỉnh đó — không cần giữ danh sách chi tiết cho tỉnh đó.
+Cách thực tế hơn là chia theo cấp: đầu tiên tra theo tỉnh/thành phố, rồi tra theo quận/huyện, rồi tra theo phường/xã, cuối cùng mới đến danh sách cụ thể. Nếu một tỉnh không có ai bạn cần tìm, bạn bỏ qua toàn bộ tỉnh đó, không cần giữ danh sách chi tiết cho tỉnh đó.
 
-Page table nhiều cấp hoạt động y hệt. Thay vì một bảng khổng lồ, chúng ta tách thành nhiều bảng nhỏ liên kết với nhau theo cấp. Bảng cấp trên chứa con trỏ đến bảng cấp dưới. Nếu một vùng địa chỉ ảo không được sử dụng, bảng cấp trên ghi "không có gì" tại entry đó, và toàn bộ các bảng cấp dưới tương ứng không cần tồn tại.
+Page table nhiều cấp hoạt động y hệt. Thay vì một bảng khổng lồ, chúng ta tách thành nhiều bảng nhỏ liên kết với nhau theo cấp. Bảng cấp trên chứa con trỏ đến bảng cấp dưới. Nếu một vùng địa chỉ ảo không được sử dụng, bảng cấp trên ghi không có gì tại entry đó và toàn bộ các bảng cấp dưới tương ứng không cần tồn tại.
 
 #### 3.5.2. Cách hoạt động
 

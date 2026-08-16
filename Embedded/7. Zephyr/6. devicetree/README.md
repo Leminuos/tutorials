@@ -4,8 +4,8 @@ Devicetree là cấu trúc dữ liệu dạng cây mô tả phần cứng. Mỗi
 
 Ý tưởng giống Kconfig ở chỗ tách cấu hình ra khỏi source code, nhưng phân chia vai trò rõ ràng:
 
-- **Kconfig** trả lời câu hỏi *phần mềm nào được biên dịch vào firmware?* (bật driver I2C, bật bluetooth, chọn kích thước stack).
-- **Devicetree** trả lời câu hỏi *phần cứng có những gì và nằm ở đâu?* (I2C1 nằm ở địa chỉ `0x40005400`, cảm biến BME280 nằm ở address `0x76` trên bus đó).
+- **Kconfig** trả lời câu hỏi phần mềm nào được biên dịch vào firmware? (bật driver I2C, bật bluetooth, chọn kích thước stack).
+- **Devicetree** trả lời câu hỏi phần cứng có những gì và nằm ở đâu? (I2C1 nằm ở địa chỉ `0x40005400`, cảm biến BME280 nằm ở address `0x76` trên bus đó).
 
 Hai hệ thống này bổ trợ cho nhau. Một driver chỉ thực sự hoạt động khi vừa được bật trong Kconfig, vừa có node tương ứng trong devicetree với `status = "okay"`.
 
@@ -174,9 +174,9 @@ properties:
     required: true
 ```
 
-Sợi dây nối hai file này là property `compatible`. Node khai báo `compatible = "foo-company,bar-device"`, giá trị đó trùng đúng với dòng `compatible:` trong binding, nên build system biết phải áp luật của binding này lên node.
+Sợi dây nối hai file này là property `compatible`. Node khai báo `compatible = "foo-company,bar-device"`, giá trị đó trùng đúng với dòng `compatible:` trong binding nên build system biết phải áp luật của binding này lên node.
 
-Binding nói rằng `num-foos` bắt buộc phải có (`required: true`) và phải là một số nguyên (`type: int`). Build system kiểm tra và thấy node khai báo `num-foos = <3>` — hợp lệ. Nếu node thiếu hẳn dòng đó, hoặc viết `num-foos = "three"`, build sẽ dừng lại kèm thông báo lỗi chỉ rõ node nào và binding nào.
+Binding nói rằng `num-foos` bắt buộc phải có `required: true` và phải là một số nguyên `type: int`. Build system kiểm tra và thấy node khai báo `num-foos = <3>` $\rightarrow$ hợp lệ. Nếu node thiếu hẳn dòng đó hoặc viết `num-foos = "three"` thì build sẽ dừng lại kèm thông báo lỗi chỉ rõ node nào và binding nào.
 
 Sau khi validate xong, build system sinh macro trong header để code C đọc được giá trị:
 
@@ -184,11 +184,11 @@ Sau khi validate xong, build system sinh macro trong header để code C đọc 
 DT_PROP(DT_NODELABEL(bar_device), num_foos)   /* bung ra thành 3 */
 ```
 
-Chú ý `num-foos` trong DTS thành `num_foos` trong macro — dấu `-` luôn được đổi thành `_`.
+Chú ý `num-foos` trong DTS thành `num_foos` trong macro (dấu `-` luôn được đổi thành `_`).
 
-Nếu ta thêm vào node một property mà binding không khai báo, ví dụ `num-bars = <5>`, thì build **báo lỗi** vì binding đóng vai trò schema đầy đủ, không cho phép property lạ. Ngược lại, nếu node dùng một `compatible` không có binding nào tương ứng thì build vẫn qua nhưng không macro property nào được sinh ra.
+Nếu ta thêm vào node một property mà binding không khai báo, ví dụ `num-bars = <5>`, thì build báo lỗi vì binding đóng vai trò schema đầy đủ, không cho phép property lạ. Ngược lại, nếu node dùng một `compatible` không có binding nào tương ứng thì build vẫn qua nhưng không macro property nào được sinh ra.
 
-Với node có nhiều `compatible`, build system duyệt danh sách **từ trái sang phải**, dùng binding đầu tiên tìm thấy:
+Với node có nhiều `compatible` thì build system duyệt danh sách từ trái sang phải, dùng binding đầu tiên tìm thấy:
 
 ```dts
 compatible = "st,stm32f401-uart", "st,stm32-uart";
@@ -251,7 +251,7 @@ Các key ở cấp cao nhất:
 
 ### 3.5. Các kiểu property
 
-Đây là bảng cần thuộc, vì `type:` sai thì macro sinh ra sẽ khác hoàn toàn:
+Đây là bảng cần thuộc vì `type:` sai thì macro sinh ra sẽ khác hoàn toàn:
 
 | `type` | Ví dụ trong DTS | Ghi chú |
 |---|---|---|
@@ -265,7 +265,7 @@ Các key ở cấp cao nhất:
 | `phandles` | `pinctrl-0 = <&pin_a &pin_b>;` | Nhiều tham chiếu, không có specifier |
 | `phandle-array` | `dmas = <&dma0 2>, <&dma0 3>;` | Tham chiếu kèm specifier |
 | `path` | `zephyr,uart = &uart0;` | Đường dẫn tới node khác |
-| `compound` | `foo = <&lbl>, [01 02];` | Hỗn hợp — **không sinh macro**, tránh dùng |
+| `compound` | `foo = <&lbl>, [01 02];` | Hỗn hợp - không sinh macro, tránh dùng |
 
 ### 3.6. Ràng buộc trên từng property
 
@@ -308,7 +308,7 @@ properties:
 Ý nghĩa từng key:
 
 - `required: true` - thiếu property này thì build fail. Mặc định là `false`.
-- `default:` - giá trị dùng khi DTS không khai báo. **Không được đi cùng `required: true`** (mâu thuẫn logic: đã bắt buộc thì không cần default).
+- `default:` - giá trị dùng khi DTS không khai báo. Không được đi cùng `required: true` (mâu thuẫn logic: đã bắt buộc thì không cần default).
 - `enum:` - danh sách giá trị hợp lệ.
 - `const:` - property phải đúng bằng giá trị này.
 - `min` / `max` - chặn khoảng giá trị cho kiểu số.
@@ -337,7 +337,7 @@ Các file hay dùng:
 | `uart-controller.yaml` | `current-speed`, `parity`, `stop-bits`... |
 | `gpio-controller.yaml` | `gpio-controller`, `#gpio-cells` |
 
-Khi include nhiều file, chúng được merge đệ quy. Quy tắc xử lý xung đột: `required: true` **thắng** `required: false`, nhưng không có chiều ngược lại — tức là ta có thể siết chặt thêm ràng buộc kế thừa, không thể nới lỏng.
+Khi include nhiều file, chúng được merge đệ quy. Quy tắc xử lý xung đột: `required: true` ghi đè `required: false` nhưng không có chiều ngược lại, tức là ta có thể siết chặt thêm ràng buộc kế thừ nhưng không thể nới lỏng.
 
 Nếu chỉ muốn lấy một phần:
 
@@ -352,7 +352,7 @@ include:
 
 ### 3.8. Specifier cells
 
-Với property kiểu `phandle-array`, các số đi sau phandle cần được đặt tên thì mới truy cập được từ code C. Việc đặt tên nằm ở binding của **node được trỏ tới**, không phải node trỏ đi.
+Với property kiểu `phandle-array`, các số đi sau phandle cần được đặt tên thì mới truy cập được từ code C. Việc đặt tên nằm ở binding của node được trỏ tới, không phải node trỏ đi.
 
 ```yaml
 # binding của GPIO controller

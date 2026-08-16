@@ -4,9 +4,9 @@
 
 Với MCU, khi muốn thêm tính năng mới — ví dụ hỗ trợ thêm một loại cảm biến thì ta phải làm gì? Sửa code, biên dịch lại toàn bộ firmware, flash lại chip. Nếu sản phẩm đang chạy ngoài hiện trường, đây là một vấn đề thực sự.
 
-Linux kernel ban đầu được thiết kế theo kiến trúc **monolithic** — toàn bộ kernel (scheduler, memory manager, driver, filesystem...) được biên dịch thành một binary duy nhất chạy trong kernel space. Về lý thuyết, điều này có nghĩa là mỗi khi muốn thêm driver mới, ta phải biên dịch lại toàn bộ kernel và reboot hệ thống.
+Linux kernel ban đầu được thiết kế theo kiến trúc **monolithic**, toàn bộ kernel (scheduler, memory manager, driver, filesystem...) được biên dịch thành một binary duy nhất chạy trong kernel space. Về lý thuyết, điều này có nghĩa là mỗi khi muốn thêm driver mới, ta phải biên dịch lại toàn bộ kernel và reboot hệ thống.
 
-Thực tế, đây là điều không thể chấp nhận được trong môi trường production — server không thể reboot mỗi khi cần thêm driver card mạng mới, hay thiết bị nhúng không thể reflash mỗi khi cần hỗ trợ thêm một peripheral.
+Thực tế, đây là điều không thể chấp nhận được trong môi trường production, server không thể reboot mỗi khi cần thêm driver card mạng mới hay thiết bị nhúng không thể reflash mỗi khi cần hỗ trợ thêm một peripheral.
 
 $\rightarrow$ Giải pháp: Loadable Kernel Module
 
@@ -51,11 +51,11 @@ Ta không thể remove một kernel module khi trường `Used by` khác 0 vì c
 
 ### File `.ko` là gì?
 
-Khi ta biên dịch một ứng dụng userspace, kết quả là một ELF binary có thể chạy độc lập. Kernel module cũng là ELF, nhưng có những section đặc biệt mà binary userspace không có:
+Khi ta biên dịch một ứng dụng userspace, kết quả là một ELF binary có thể chạy độc lập. Kernel module cũng là ELF nhưng có những section đặc biệt mà binary userspace không có:
 
-- **`.modinfo`** — chứa metadata: tên module, license, author, và quan trọng nhất là **vermagic**
-- **`.gnu.linkonce.this_module`** — struct mô tả module với kernel
-- **`Module.symvers`** — bảng các symbol mà module export ra cho module khác dùng
+- **`.modinfo`** - chứa metadata: tên module, license, author, và quan trọng nhất là vermagic
+- **`.gnu.linkonce.this_module`** - struct mô tả module với kernel
+- **`Module.symvers`** - bảng các symbol mà module export ra cho module khác dùng
 
 Ta có thể kiểm tra bằng:
 
@@ -278,19 +278,19 @@ static void __exit timer_exit(void)
 
 Timer callback chạy trong softirq context — ràng buộc tương tự interrupt handler: không được sleep, không được dùng `GFP_KERNEL`.
 
-## `container_of`
+## Macro `container_of`
 
 Đây là một trong những macro quan trọng nhất trong toàn bộ Linux kernel source. Hiểu `container_of` là hiểu một phần lớn tư duy thiết kế của kernel.
 
 ### Vấn đề: callback chỉ nhận được một pointer
 
-Khi timer callback được gọi, signature cố định:
+Khi timer callback được gọi, prototype cố định:
 
 ```c
 static void timer_callback(struct timer_list *t);
 ```
 
-Chỉ nhận được `struct timer_list *t`. Nhưng trong thực tế, ta cần truy cập vào toàn bộ context của driver — ví dụ GPIO base address, IRQ number, trạng thái LED. Làm thế nào?
+Chỉ nhận được tham số `struct timer_list *t`. Nhưng trong thực tế, ta cần truy cập vào toàn bộ context của driver. Ví dụ GPIO base address, IRQ number, trạng thái LED. Vậy thì phải Làm thế nào?
 
 ### Giải pháp của kernel
 
@@ -330,21 +330,21 @@ static void timer_callback(struct timer_list *t)
     ((type *)((char *)(ptr) - offsetof(type, member)))
 ```
 
-`offsetof(type, member)` trả về khoảng cách byte từ đầu struct đến member. Trừ offset đó khỏi địa chỉ của member → thu được địa chỉ đầu struct.
+`offsetof(type, member)` trả về khoảng cách byte từ đầu struct đến member. Trừ offset đó khỏi địa chỉ của member $\rightarrow$ thu được địa chỉ đầu struct.
 
 Minh họa trong bộ nhớ:
 
 ```
 Địa chỉ thấp
-┌─────────────────────────┐  ← &my_dev  (container_of trả về đây)
-│ gpio_base   (8 bytes)   │
-├─────────────────────────┤
-│ irq         (4 bytes)   │
-├─────────────────────────┤
-│ led_state   (4 bytes)   │
-├─────────────────────────┤
-│ timer       (N bytes)   │  ← t  (kernel truyền vào đây)
-└─────────────────────────┘
++-------------------------+  ← &my_dev  (container_of trả về đây)
+| gpio_base   (8 bytes)   |
++-------------------------+
+| irq         (4 bytes)   |
++-------------------------+
+| led_state   (4 bytes)   |
++-------------------------+
+| timer       (N bytes)   |  ← t  (kernel truyền vào đây)
++-------------------------+
 Địa chỉ cao
 
 container_of(t, struct led_dev, timer)
@@ -356,10 +356,10 @@ container_of(t, struct led_dev, timer)
 
 Pattern này không chỉ dùng cho timer. Bất cứ khi nào kernel callback chỉ truyền vào một pointer đến một member cụ thể, `container_of` là cách lấy lại context:
 
-- `struct list_head` — linked list của kernel
-- `struct work_struct` — workqueue
-- `struct kobject` — device model
-- `struct file_operations` — character device
+- `struct list_head`- linked list của kernel
+- `struct work_struct`- workqueue
+- `struct kobject`- device model
+- `struct file_operations`- character device
 
 ## Debug
 

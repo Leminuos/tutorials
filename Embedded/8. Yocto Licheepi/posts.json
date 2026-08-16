@@ -1,0 +1,10 @@
+{
+  "1. add-usb-wifi-driver": {
+    "title": "Thêm driver cho USB wifi",
+    "date": "15-08-2026",
+    "author": "Peizzon",
+    "description": "Zephyr là gì, các thành phần cốt lõi và kiến trúc tổng thể.",
+    "image": "",
+    "tags": ["yocto"]
+  }
+}

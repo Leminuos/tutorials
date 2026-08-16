@@ -3,15 +3,15 @@ Các topic trước đã trình bày mọi thứ dưới góc nhìn của ngư�
 Khi viết driver thì ngược lại, ta không biết trước hệ thống sẽ gắn bao nhiêu con cảm biến, gắn ở bus nào, địa chỉ bao nhiêu... nên driver phải phục vụ được mọi node match `compatible` của nó, dù là 0, 1 hay 5 node.
 
 Bài này trình bày cách viết một driver như vậy, theo mạch sau:
-1. Driver gắn với node devicetree bằng cách nào? |
-2. Nhiều node cùng loại thì phân biệt ra sao? |
-3. Mỗi thiết bị lấy bộ nhớ riêng ở đâu? |
-4. Gói tất cả lại thành một device object như thế nào? |
-5. Làm sao lặp việc đó cho mọi node? |
-6. Device object sinh ra có những gì bên trong? |
-7. Nó được khởi tạo vào lúc nào trong quá trình boot? |
-8. Trường hợp một driver phục vụ nhiều loại chip |
-9. Tra cứu macro |
+1. Driver gắn với node devicetree bằng cách nào?
+2. Nhiều node cùng loại thì phân biệt ra sao?
+3. Mỗi thiết bị lấy bộ nhớ riêng ở đâu?
+4. Gói tất cả lại thành một device object như thế nào?
+5. Làm sao lặp việc đó cho mọi node?
+6. Device object sinh ra có những gì bên trong?
+7. Nó được khởi tạo vào lúc nào trong quá trình boot?
+8. Trường hợp một driver phục vụ nhiều loại chip
+9. Tra cứu macro
 
 ## Ví dụ
 
@@ -57,9 +57,9 @@ Giả sử `i2c1` nằm ở địa chỉ `0x40005400` và `i2c2` ở `0x40005800
 
 Trước tiên, ta cần phải hiểu là làm thế nào để driver match được với node device tree?
 
-Câu trả lời nằm ở macro `DT_DRV_COMPAT`. Macro này cho biết driver xử lý mọi node có compatible nào và nó phải nằm trước mọi include header `#include`.
+> Câu trả lời nằm ở macro `DT_DRV_COMPAT`. Macro này cho biết driver xử lý mọi node có compatible nào.
 
-Ví dụ:
+Nó phải nằm trước mọi include header `#include`. Ví dụ:
 
 ```c
 #define DT_DRV_COMPAT bosch_bme280
@@ -102,7 +102,7 @@ Trong file `devicetree.h`, nó định nghĩa các macro `DT_INST_*` dựa trên
 
 Do đó, nếu đặt sau thì preprocessor sẽ báo lỗi kiểu `DT_DRV_COMPAT` undefined hoặc âm thầm sai.
 
-Ta thấy các macro trên đều cần một tham số `inst` — đó là viết tắt của instance và ý nghĩa của nó được giải thích ngay sau đây.
+Ta thấy các macro trên đều cần một tham số `inst` - đó là viết tắt của instance và ý nghĩa của nó được giải thích ngay sau đây.
 
 > Một driver phục vụ nhiều compatible cùng lúc thì không dùng được `DT_DRV_COMPAT`. Trường hợp đó xem [mục 8](#8-khi-driver-không-có-dt_drv_compat).
 
