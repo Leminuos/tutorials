@@ -13,11 +13,11 @@
     - [5.1. Cơ chế hoạt động](#51-cơ-chế-hoạt-động)
     - [5.2. Thứ tự ưu tiên scheduling](#52-thứ-tự-ưu-tiên-scheduling)
     - [5.3. USB Frame và Microframe](#53-usb-frame-vàng-microframe)
-- [6. Mối quan hệ tổng thể: Endpoint — Pipe — URB — HCD](#6-mối-quan-hệ-tổng-thể-endpoint-pipe-urb-hcd)
+- [6. Mối quan hệ tổng thể: Endpoint - Pipe - URB - HCD](#6-mối-quan-hệ-tổng-thể-endpoint-pipe-urb-hcd)
 
 ## 1. Pipe là gì?
  
-Trong USB, **pipe** là một **kênh giao tiếp logic** kết nối giữa phần mềm phía host và một endpoint cụ thể trên device. Pipe không phải là đường truyền vật lý — nó là một khái niệm trừu tượng đại diện cho một luồng dữ liệu riêng biệt mà host sử dụng để giao tiếp với thiết bị.
+Trong USB, **pipe** là một **kênh giao tiếp logic** kết nối giữa phần mềm phía host và một endpoint cụ thể trên device. Pipe không phải là đường truyền vật lý - nó là một khái niệm trừu tượng đại diện cho một luồng dữ liệu riêng biệt mà host sử dụng để giao tiếp với thiết bị.
 
 Có thể hình dung: nếu endpoint là **hộp thư** trên device, thì pipe là **tuyến đường bưu điện** nối từ host đến hộp thư đó. Mỗi tuyến đường có quy tắc riêng về loại thư, tốc độ, kích thước gói hàng.
  
@@ -42,14 +42,14 @@ USB định nghĩa hai loại pipe với đặc tính khác nhau:
  
 ### 2.1. Control pipe (Message pipe)
  
-- Truyền dữ liệu hai chiều (bidirectional) — cả IN và OUT trên cùng một pipe.
+- Truyền dữ liệu hai chiều (bidirectional) - cả IN và OUT trên cùng một pipe.
 - Sử dụng cấu trúc message có format cố định: Setup Stage $\rightarrow$ Data Stage (optional) $\rightarrow$ Status Stage.
 - Chỉ dùng cho Control Transfer.
 - Default Control Pipe (gắn với EP0) luôn tồn tại ngay khi device được kết nối, trước cả khi enumeration hoàn tất.
  
 ### 2.2. Stream pipe
  
-- Truyền dữ liệu một chiều (unidirectional) — mỗi pipe chỉ IN hoặc OUT.
+- Truyền dữ liệu một chiều (unidirectional) - mỗi pipe chỉ IN hoặc OUT.
 - Dữ liệu là stream không có format cố định, host và device tự quy ước ý nghĩa.
 - Dùng cho 3 loại transfer còn lại: Bulk, Interrupt, Isochronous.
 
@@ -113,7 +113,7 @@ URB có thể hiểu là một request mà host gửi cho USB driver, mô tả �
 | **Transfer Type** | Bulk, Interrupt, hoặc Isochronous |
 | **Transfer Buffer** | Con trỏ đến vùng nhớ chứa data cần gửi (OUT) hoặc vùng trống để nhận data (IN) |
 | **Buffer Length** | Kích thước buffer (số byte cần truyền hoặc nhận) |
-| **Interval** | Chu kỳ polling — chỉ có ý nghĩa với Interrupt và Isochronous transfer |
+| **Interval** | Chu kỳ polling - chỉ có ý nghĩa với Interrupt và Isochronous transfer |
 | **Completion Callback** | Hàm callback được gọi khi URB hoàn thành (thành công hoặc thất bại) |
 | **Status** | Trạng thái kết quả sau khi URB hoàn thành (success, error, cancelled,...) |
  
@@ -121,7 +121,7 @@ URB có thể hiểu là một request mà host gửi cho USB driver, mô tả �
 
 Hai lý do chính khiến URB cần được quản lý qua queue:
  
-**Lý do 1 — Giới hạn max packet size**:
+**Lý do 1 - Giới hạn max packet size**:
  
 Mỗi endpoint có giá trị `wMaxPacketSize` xác định kích thước tối đa của một packet đơn lẻ. Nếu dữ liệu cần truyền lớn hơn max packet size, USB stack phải chia nhỏ thành nhiều packet và gửi tuần tự. URB queue giúp quản lý quá trình chia nhỏ và gửi lần lượt này.
  
@@ -131,7 +131,7 @@ Ví dụ: Truyền 4096 byte qua endpoint Bulk có `wMaxPacketSize = 512`:
 4096 ÷ 512 = 8 packet cần gửi tuần tự qua cùng một pipe
 ```
  
-**Lý do 2 — Nhiều yêu cầu đồng thời**:
+**Lý do 2 - Nhiều yêu cầu đồng thời**:
  
 Ứng dụng có thể tạo ra nhiều URB cùng lúc trên cùng một pipe hoặc trên các pipe khác nhau. Ví dụ:
 - In tài liệu dài $\rightarrow$ hàng loạt URB gửi data qua Bulk OUT pipe.
@@ -175,7 +175,7 @@ USB spec quy định bandwidth trên bus được phân bổ theo thứ tự ưu
  
 | Ưu tiên | Transfer Type | Lý do |
 |---|---|---|
-| 1 (cao nhất) | **Isochronous** | Yêu cầu thời gian thực, không retry — nếu miss thì mất frame |
+| 1 (cao nhất) | **Isochronous** | Yêu cầu thời gian thực, không retry - nếu miss thì mất frame |
 | 2 | **Interrupt** | Yêu cầu độ trễ thấp, đảm bảo polling đúng interval |
 | 3 | **Control** | Cần thiết cho enumeration và quản lý device |
 | 4 (thấp nhất) | **Bulk** | Không yêu cầu thời gian thực, sử dụng bandwidth còn lại |
@@ -210,7 +210,7 @@ flowchart LR
 Host phát một SOF packet ở đầu mỗi frame (FS) hoặc microframe (HS) để tất cả device trên bus đồng bộ thời gian. SOF cũng giữ cho bus không rơi vào trạng thái suspend khi không có data transfer.
 :::
 
-## 6. Mối quan hệ tổng thể: Endpoint — Pipe — URB — HCD
+## 6. Mối quan hệ tổng thể: Endpoint - Pipe - URB - HCD
  
 ```mermaid
 flowchart TD

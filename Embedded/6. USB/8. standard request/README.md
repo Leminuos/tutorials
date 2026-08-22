@@ -123,7 +123,7 @@ sequenceDiagram
 ```
  
 :::tip Tại sao đọc Device Descriptor hai lần?
-Lần đầu, host chỉ đọc 8 byte để lấy trường `bMaxPacketSize0` (offset 7) — vì EP0 max packet size chưa biết, host cần con số này để cấu hình đúng control pipe. Sau khi biết max packet size, host reset device, gán địa chỉ, rồi đọc lại đầy đủ 18 byte.
+Lần đầu, host chỉ đọc 8 byte để lấy trường `bMaxPacketSize0` (offset 7) - vì EP0 max packet size chưa biết, host cần con số này để cấu hình đúng control pipe. Sau khi biết max packet size, host reset device, gán địa chỉ, rồi đọc lại đầy đủ 18 byte.
 :::
 
 ### 3.2. SET_ADDRESS
@@ -145,7 +145,7 @@ Device chỉ chuyển sang địa chỉ mới sau khi Status Stage hoàn tất t
 :::
 
 :::warning Lưu ý cho firmware developer
-Trên nhiều MCU (STM32, ESP32,...), USB peripheral hardware tự động xử lý SET_ADDRESS — firmware chỉ cần ghi địa chỉ mới vào thanh ghi address tại thời điểm thích hợp (sau Status Stage). Tuy nhiên, một số stack yêu cầu firmware ghi address register trước Status Stage và hardware sẽ tự defer — cần đọc kỹ reference manual của MCU cụ thể.
+Trên nhiều MCU (STM32, ESP32,...), USB peripheral hardware tự động xử lý SET_ADDRESS - firmware chỉ cần ghi địa chỉ mới vào thanh ghi address tại thời điểm thích hợp (sau Status Stage). Tuy nhiên, một số stack yêu cầu firmware ghi address register trước Status Stage và hardware sẽ tự defer - cần đọc kỹ reference manual của MCU cụ thể.
 :::
 
 ### 3.3. SET_CONFIGURATION 
@@ -167,7 +167,7 @@ Khi device nhận SET_CONFIGURATION thành công:
 - Host thiết lập pipe cho từng endpoint.
  
 :::warning Lưu ý
-Gửi SET_CONFIGURATION với `wValue = 0` sẽ đưa device về trạng thái Address (unconfigured) — tất cả endpoint ngoài EP0 bị vô hiệu hóa.
+Gửi SET_CONFIGURATION với `wValue = 0` sẽ đưa device về trạng thái Address (unconfigured) - tất cả endpoint ngoài EP0 bị vô hiệu hóa.
 :::
 
 ### 3.4. GET_STATUS, SET_FEATURE, CLEAR_FEATURE

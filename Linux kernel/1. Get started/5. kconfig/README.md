@@ -98,7 +98,7 @@ Vài điểm quan trọng cần lưu ý:
 
 Bản thân `.config` chỉ là dữ liệu. Nó không được dùng trực tiếp khi compile, vì hai "khách hàng" cần thông tin cấu hình lại nói hai "ngôn ngữ" khác nhau: hệ thống Makefile và mã nguồn C. Vì vậy Kbuild sinh ra hai file trung gian từ `.config`.
 
-**File `include/config/auto.conf`** — dành cho hệ thống build (Makefile)
+**File `include/config/auto.conf`** - dành cho hệ thống build (Makefile)
 
 Đây gần như là bản sao của `.config` nhưng đã lược bỏ các dòng comment, chỉ giữ những symbol có giá trị, ở định dạng mà `make` có thể `include` trực tiếp.
 
@@ -118,7 +118,7 @@ obj-  += led-myboard.o      # khi tắt -> bỏ qua, khônh được build
 
 Một dòng khai báo duy nhất xử lý cả ba trường hợp, đó là lý do mọi Makefile trong kernel đều viết theo mẫu này.
 
-**File `include/generated/autoconf.h`** — dành cho C code:
+**File `include/generated/autoconf.h`** - dành cho C code:
 
 File header này dịch cấu hình sang các macro để dùng trong code C:
 
@@ -187,9 +187,9 @@ config LED_MYBOARD
 
 Giải thích:
 
-- **Dòng 1** — `config LED_MYBOARD`: khai báo symbol tên `LED_MYBOARD`. Ở các nơi khác (`.config`, C code, Makefile) thì symbol sẽ tự động có prefix `CONFIG_` -> `CONFIG_LED_MYBOARD`. Trong file Kconfig thì không viết prefix.
-- **Dòng 2** — `tristate "LED driver for My Board"`: kiểu dữ liệu, kèm theo **prompt** — chuỗi hiển thị trong menuconfig.
-- **Dòng 3** — `help`: phần mô tả, hiện ra khi người dùng nhấn `?` trong menuconfig.
+- **Dòng 1** - `config LED_MYBOARD`: khai báo symbol tên `LED_MYBOARD`. Ở các nơi khác (`.config`, C code, Makefile) thì symbol sẽ tự động có prefix `CONFIG_` -> `CONFIG_LED_MYBOARD`. Trong file Kconfig thì không viết prefix.
+- **Dòng 2** - `tristate "LED driver for My Board"`: kiểu dữ liệu, kèm theo **prompt** - chuỗi hiển thị trong menuconfig.
+- **Dòng 3** - `help`: phần mô tả, hiện ra khi người dùng nhấn `?` trong menuconfig.
 
 Một chi tiết quan trọng về prompt: **symbol không có prompt sẽ bị ẩn hoàn toàn khỏi menuconfig**. Ví dụ:
 
@@ -531,7 +531,7 @@ zcat /proc/config.gz | grep FOO               # config của kernel đang chạy
 
 **Tài liệu chính thức trong kernel source:**
 
-- `Documentation/kbuild/kconfig-language.rst` — đặc tả ngôn ngữ Kconfig
-- `Documentation/kbuild/kconfig.rst` — các environment variable và hướng dẫn sử dụng
-- `Documentation/kbuild/kconfig-macro-language.rst` — cú pháp macro `$( )`
-- `Documentation/kbuild/makefiles.rst` — kbuild và cơ chế liên kết Kconfig với Makefile
+- `Documentation/kbuild/kconfig-language.rst` - đặc tả ngôn ngữ Kconfig
+- `Documentation/kbuild/kconfig.rst` - các environment variable và hướng dẫn sử dụng
+- `Documentation/kbuild/kconfig-macro-language.rst` - cú pháp macro `$( )`
+- `Documentation/kbuild/makefiles.rst` - kbuild và cơ chế liên kết Kconfig với Makefile

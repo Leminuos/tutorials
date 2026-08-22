@@ -144,11 +144,11 @@ Tuy nhiên, khi ở kernel mode thì sẽ chỉ có một không gian địa ch�
 
 #### 2.1.2. Abstraction - Giấu đi chi tiết vật lý
 
-Trước khi có virtual memory, chương trình phải biết mình nằm ở chỗ nào trong bộ nhớ vật lý như đã nói ở phần [Địa chỉ cố định, không linh hoạt](#122-địa-chỉ-cố-định-không-linh-hoạt). Giờ thì mọi chương trình đều được biên dịch với cùng một layout địa chỉ ảo — code segment, data segment, heap, stack đều ở những vùng địa chỉ ảo quen thuộc. OS lo việc ánh xạ chúng đến bất kỳ vùng RAM vật lý nào còn trống. Chương trình không cần biết và không cần quan tâm mình thực sự nằm ở đâu.
+Trước khi có virtual memory, chương trình phải biết mình nằm ở chỗ nào trong bộ nhớ vật lý như đã nói ở phần [Địa chỉ cố định, không linh hoạt](#122-địa-chỉ-cố-định-không-linh-hoạt). Giờ thì mọi chương trình đều được biên dịch với cùng một layout địa chỉ ảo - code segment, data segment, heap, stack đều ở những vùng địa chỉ ảo quen thuộc. OS lo việc ánh xạ chúng đến bất kỳ vùng RAM vật lý nào còn trống. Chương trình không cần biết và không cần quan tâm mình thực sự nằm ở đâu.
 
 Ngoài ra, khi chương trình chạy hay tiến trình sẽ chỉ biết về địa chỉ ảo, hoàn toàn không biết địa chỉ vật lý tương ứng:
 - Địa chỉ ảo của biến A là cố định (ví dụ luôn là `0x10` đối với process).
-- Địa chỉ vật lý tương ứng có thể thay đổi — kernel có thể di chuyển page sang frame khác bất cứ lúc nào.
+- Địa chỉ vật lý tương ứng có thể thay đổi - kernel có thể di chuyển page sang frame khác bất cứ lúc nào.
 - Chương trình ở user mode không có cách nào biết được địa chỉ vật lý, trừ khi thực hiện system call xuống driver.
 
 Ví dụ: Biến A có địa chỉ ảo là 0x10. Tuỳ thuộc vào OS thì địa chỉ vật lý của nó có thể thay đổi là 0x20, 0x30,...
@@ -174,7 +174,7 @@ Nhờ cơ chế phân trang (paging) của virtual memory, việc sử dụng ra
 
 **2. Nhiều tiến trình có thể chia sẻ cùng một physical page**
 
-Dù các process được cô lập, OS vẫn có thể ánh xạ cùng một page vật lý vào không gian địa chỉ ảo của nhiều process khi cần. Ví dụ điển hình là shared libraries — thư viện libc chỉ cần load một lần vào RAM vật lý, nhưng hàng trăm process đều có thể ánh xạ nó vào không gian ảo của mình. Mỗi process thấy libc ở một địa chỉ ảo nào đó trong không gian của mình, nhưng tất cả đều trỏ đến cùng các page vật lý. Tiết kiệm rất nhiều RAM.
+Dù các process được cô lập, OS vẫn có thể ánh xạ cùng một page vật lý vào không gian địa chỉ ảo của nhiều process khi cần. Ví dụ điển hình là shared libraries - thư viện libc chỉ cần load một lần vào RAM vật lý, nhưng hàng trăm process đều có thể ánh xạ nó vào không gian ảo của mình. Mỗi process thấy libc ở một địa chỉ ảo nào đó trong không gian của mình, nhưng tất cả đều trỏ đến cùng các page vật lý. Tiết kiệm rất nhiều RAM.
 
 #### 2.1.4. Protection - Bảo vệ truy cập
 
@@ -269,7 +269,7 @@ Các flag quan trọng:
  
 | Bit | Tên | Ý nghĩa |
 |-----|-----|---------|
-| 0 | P (Present) | Page này có đang nằm trong RAM không. Nếu bit này bằng 0, khi truy cập sẽ phát sinh page fault để OS xử lý — có thể page đang nằm trong swap hoặc chưa được cấp phát thật |
+| 0 | P (Present) | Page này có đang nằm trong RAM không. Nếu bit này bằng 0, khi truy cập sẽ phát sinh page fault để OS xử lý - có thể page đang nằm trong swap hoặc chưa được cấp phát thật |
 | 1 | R/W (Read/Write) | Page này có được phép ghi không. Nếu chương trình cố ghi vào page read-only, CPU phát sinh fault. |
 | 2 | U/S (User/Supervisor) | User space có được truy cập page này không. Các page của kernel được đánh dấu supervisor-only sẽ ngăn chương trình user truy cập vào bộ nhớ kernel. |
 | 5 | A (Accessed) | CPU tự động set bit này khi page được truy cập. Kernel dùng thông tin này để quyết định page nào ít dùng, nên swap ra khi cần giải phóng RAM. |
@@ -303,7 +303,7 @@ Ví dụ địa chỉ ảo 48-bit:
 └─────────┴─────────┴─────────┴─────────┴──────────┘
 ```
 
-9 bit nghĩa là mỗi bảng có `2^9 = 512` entry. Mỗi entry 8 byte, nên mỗi bảng chiếm đúng `512 × 8 = 4KB` — vừa khít một page. 12 bit offset cuối cùng dùng để xác định vị trí trong page, giống như page table một cấp.
+9 bit nghĩa là mỗi bảng có `2^9 = 512` entry. Mỗi entry 8 byte, nên mỗi bảng chiếm đúng `512 × 8 = 4KB` - vừa khít một page. 12 bit offset cuối cùng dùng để xác định vị trí trong page, giống như page table một cấp.
 
 Quá trình tra cứu diễn ra tuần tự qua 4 bước. Lấy 9 bit đầu, tra vào bảng cấp 1, được con trỏ đến bảng cấp 2. Lấy 9 bit tiếp, tra vào bảng cấp 2, được con trỏ đến bảng cấp 3. Lấy 9 bit tiếp, tra vào bảng cấp 3, được con trỏ đến bảng cấp 4. Lấy 9 bit tiếp, tra vào bảng cấp 4, được địa chỉ page frame. Cuối cùng ghép page frame với 12 bit offset để ra địa chỉ vật lý.
  
@@ -325,27 +325,27 @@ graph LR
 
 #### 3.5.3. Tại sao cách này tiết kiệm bộ nhớ
 
-Giả sử một process chỉ dùng 8MB bộ nhớ ảo — một vùng nhỏ cho code và một vùng nhỏ cho stack. Với page table một cấp, ta vẫn cần 512GB cho bảng tra cứu vì phải có entry cho mọi virtual page có thể tồn tại.
+Giả sử một process chỉ dùng 8MB bộ nhớ ảo - một vùng nhỏ cho code và một vùng nhỏ cho stack. Với page table một cấp, ta vẫn cần 512GB cho bảng tra cứu vì phải có entry cho mọi virtual page có thể tồn tại.
 
 Với page table 4 cấp, ta cần một bảng cấp 1 (4KB) với 512 entry, nhưng hầu hết entry đều đánh dấu "không có gì". Chỉ có vài entry trỏ đến bảng cấp 2, vài entry ở cấp 2 trỏ đến cấp 3, và tương tự. Tổng cộng có thể chỉ cần vài chục KB cho toàn bộ page table, thay vì 512GB.
 
-Nói cách khác, page table một cấp phải mô tả toàn bộ không gian địa chỉ ảo dù dùng hay không. Page table nhiều cấp chỉ mô tả những vùng thực sự được sử dụng — những nhánh không dùng đến đơn giản là không tồn tại.
+Nói cách khác, page table một cấp phải mô tả toàn bộ không gian địa chỉ ảo dù dùng hay không. Page table nhiều cấp chỉ mô tả những vùng thực sự được sử dụng - những nhánh không dùng đến đơn giản là không tồn tại.
 
 #### 3.5.4. Trade-off
 
-Không có gì miễn phí. Page table một cấp chỉ cần một lần truy cập RAM để tra cứu. Page table 4 cấp cần 4 lần truy cập RAM liên tiếp — mỗi cấp một lần. Đây là sự đánh đổi: tiết kiệm bộ nhớ lưu trữ page table, nhưng mỗi lần dịch địa chỉ chậm hơn. Và đây chính là lý do cần có TLB — một khái niệm ta sẽ tìm hiểu ở phần sau.
+Không có gì miễn phí. Page table một cấp chỉ cần một lần truy cập RAM để tra cứu. Page table 4 cấp cần 4 lần truy cập RAM liên tiếp - mỗi cấp một lần. Đây là sự đánh đổi: tiết kiệm bộ nhớ lưu trữ page table, nhưng mỗi lần dịch địa chỉ chậm hơn. Và đây chính là lý do cần có TLB - một khái niệm ta sẽ tìm hiểu ở phần sau.
 
 ## 4. Memory Management Unit - MMU
 
 Từ những phần trước, chúng ta biết rằng mỗi process có page table riêng lưu trong RAM, chứa thông tin ánh xạ địa chỉ ảo sang địa chỉ vật lý. Nhưng ai là người thực hiện việc tra cứu page table mỗi khi CPU truy cập bộ nhớ?
 
-Nếu để OS làm việc này, mỗi lần CPU đọc một instruction hay đọc một biến, OS phải chạy code để tra page table — bản thân code đó cũng cần truy cập bộ nhớ, lại phải tra page table tiếp, tạo thành vòng lặp vô tận. Và ngay cả nếu giải quyết được vòng lặp đó, việc dùng phần mềm để dịch địa chỉ ở mọi lần truy cập bộ nhớ sẽ chậm đến mức không thể sử dụng được.
+Nếu để OS làm việc này, mỗi lần CPU đọc một instruction hay đọc một biến, OS phải chạy code để tra page table - bản thân code đó cũng cần truy cập bộ nhớ, lại phải tra page table tiếp, tạo thành vòng lặp vô tận. Và ngay cả nếu giải quyết được vòng lặp đó, việc dùng phần mềm để dịch địa chỉ ở mọi lần truy cập bộ nhớ sẽ chậm đến mức không thể sử dụng được.
 
-Vì vậy cần một khối phần cứng nằm ngay trong CPU, tự động thực hiện việc dịch địa chỉ mà không cần phần mềm can thiệp. Khối đó là MMU — Memory Management Unit.
+Vì vậy cần một khối phần cứng nằm ngay trong CPU, tự động thực hiện việc dịch địa chỉ mà không cần phần mềm can thiệp. Khối đó là MMU - Memory Management Unit.
 
 ### 4.1. MMU là gì?
 
-MMU là một thành phần phần cứng nằm bên trong CPU core, đặt giữa CPU và bộ nhớ. Mọi địa chỉ mà CPU phát ra đều đi qua MMU trước khi ra đến bus bộ nhớ. CPU không bao giờ trực tiếp gửi địa chỉ ảo ra bộ nhớ vật lý — MMU chặn lại, dịch sang địa chỉ vật lý, rồi mới cho truy cập tiếp.
+MMU là một thành phần phần cứng nằm bên trong CPU core, đặt giữa CPU và bộ nhớ. Mọi địa chỉ mà CPU phát ra đều đi qua MMU trước khi ra đến bus bộ nhớ. CPU không bao giờ trực tiếp gửi địa chỉ ảo ra bộ nhớ vật lý - MMU chặn lại, dịch sang địa chỉ vật lý, rồi mới cho truy cập tiếp.
 
 Luồng hoạt động như sau:
 
@@ -379,7 +379,7 @@ Khi tra page table, MMU đồng thời đọc các bit trạng thái trong page 
 
 **3. Phát sinh page fault**
 
-Khi MMU tra page table và thấy present bit bằng 0 — nghĩa là page đó chưa có trong RAM (có thể chưa được cấp phát thật, hoặc đã bị swap ra đĩa) — MMU phát sinh page fault. CPU tạm dừng chương trình đang chạy, chuyển sang chạy code xử lý fault trong kernel. Kernel sẽ xử lý tùy tình huống: cấp phát page vật lý mới, nạp dữ liệu từ đĩa, hoặc nếu truy cập không hợp lệ thì gửi tín hiệu segmentation fault đến process.
+Khi MMU tra page table và thấy present bit bằng 0 - nghĩa là page đó chưa có trong RAM (có thể chưa được cấp phát thật, hoặc đã bị swap ra đĩa) - MMU phát sinh page fault. CPU tạm dừng chương trình đang chạy, chuyển sang chạy code xử lý fault trong kernel. Kernel sẽ xử lý tùy tình huống: cấp phát page vật lý mới, nạp dữ liệu từ đĩa, hoặc nếu truy cập không hợp lệ thì gửi tín hiệu segmentation fault đến process.
 
 ### 4.3. MMU lưu page table như thế nào?
 
@@ -395,37 +395,37 @@ Chỉ kernel mới có quyền thay đổi CR3. Process ở user mode không th�
 
 ## 5. Translation Lookaside Buffer - TLB
 
-Ở phần page table nhiều cấp, chúng ta biết rằng mỗi lần dịch một địa chỉ ảo, MMU phải truy cập RAM 4 lần liên tiếp — mỗi cấp page table một lần. Mỗi lần truy cập RAM mất khoảng 100 nanosecond. Vậy riêng việc dịch địa chỉ đã mất khoảng 400ns, trong khi bản thân việc đọc dữ liệu thật cũng chỉ mất thêm 100ns nữa. Nghĩa là hệ thống chậm đi 5 lần so với khi không có virtual memory.
+Ở phần page table nhiều cấp, chúng ta biết rằng mỗi lần dịch một địa chỉ ảo, MMU phải truy cập RAM 4 lần liên tiếp - mỗi cấp page table một lần. Mỗi lần truy cập RAM mất khoảng 100 nanosecond. Vậy riêng việc dịch địa chỉ đã mất khoảng 400ns, trong khi bản thân việc đọc dữ liệu thật cũng chỉ mất thêm 100ns nữa. Nghĩa là hệ thống chậm đi 5 lần so với khi không có virtual memory.
 
-Và đây không phải chuyện hiếm — CPU truy cập bộ nhớ liên tục, mỗi lần thực hiện instruction, mỗi lần đọc biến, mỗi lần ghi giá trị đều cần dịch địa chỉ. Nếu mỗi lần đều tra page table 4 cấp trong RAM, hiệu năng sẽ tệ đến mức không thể chấp nhận.
+Và đây không phải chuyện hiếm - CPU truy cập bộ nhớ liên tục, mỗi lần thực hiện instruction, mỗi lần đọc biến, mỗi lần ghi giá trị đều cần dịch địa chỉ. Nếu mỗi lần đều tra page table 4 cấp trong RAM, hiệu năng sẽ tệ đến mức không thể chấp nhận.
 
-Tuy nhiên, ta có thể để ý thấy một đặc điểm trong cách chương trình truy cập bộ nhớ: chúng có tính cục bộ rất cao. Khi CPU đang thực thi một hàm, nó liên tục truy cập các instruction nằm gần nhau — tức cùng một page. Khi hàm đó đọc ghi biến cục bộ trên stack, các biến đó cũng nằm gần nhau — cùng một hoặc vài page. Nghĩa là trong một khoảng thời gian ngắn, CPU thường chỉ truy cập lặp đi lặp lại một số ít page.
+Tuy nhiên, ta có thể để ý thấy một đặc điểm trong cách chương trình truy cập bộ nhớ: chúng có tính cục bộ rất cao. Khi CPU đang thực thi một hàm, nó liên tục truy cập các instruction nằm gần nhau - tức cùng một page. Khi hàm đó đọc ghi biến cục bộ trên stack, các biến đó cũng nằm gần nhau - cùng một hoặc vài page. Nghĩa là trong một khoảng thời gian ngắn, CPU thường chỉ truy cập lặp đi lặp lại một số ít page.
 
-Mà kết quả dịch địa chỉ cho một page không thay đổi — nếu virtual page 5 ánh xạ đến page frame 2, thì mọi lần truy cập vào virtual page 5 đều cho cùng kết quả. Vậy tại sao phải tra page table lại 4 lần cho mỗi lần truy cập, trong khi kết quả giống hệt lần trước?
+Mà kết quả dịch địa chỉ cho một page không thay đổi - nếu virtual page 5 ánh xạ đến page frame 2, thì mọi lần truy cập vào virtual page 5 đều cho cùng kết quả. Vậy tại sao phải tra page table lại 4 lần cho mỗi lần truy cập, trong khi kết quả giống hệt lần trước?
 
 ### 5.1. TLB là gì?
 
 TLB là một cache nhỏ nằm bên trong MMU, nhằm lưu lại kết quả của những lần dịch địa chỉ gần đây. Mỗi entry trong TLB lưu một cặp: số virtual page và page frame tương ứng, kèm các bit quyền truy cập.
 
-Khi CPU phát ra một địa chỉ ảo, MMU không tra page table trong RAM ngay. Thay vào đó, MMU kiểm tra TLB trước. Nếu virtual page đó có trong TLB (gọi là TLB hit), MMU lấy kết quả ngay lập tức — chỉ mất vài nanosecond, không cần truy cập RAM lần nào. Chỉ khi virtual page không có trong TLB (gọi là TLB miss), MMU mới phải tra page table 4 cấp trong RAM, và sau khi tra xong thì lưu kết quả vào TLB cho những lần sau.
+Khi CPU phát ra một địa chỉ ảo, MMU không tra page table trong RAM ngay. Thay vào đó, MMU kiểm tra TLB trước. Nếu virtual page đó có trong TLB (gọi là TLB hit), MMU lấy kết quả ngay lập tức - chỉ mất vài nanosecond, không cần truy cập RAM lần nào. Chỉ khi virtual page không có trong TLB (gọi là TLB miss), MMU mới phải tra page table 4 cấp trong RAM, và sau khi tra xong thì lưu kết quả vào TLB cho những lần sau.
 
 ![TLB](img/tlb.png)
 
 ### 5.2. Kích thước và hiệu quả
 
-TLB rất nhỏ — thường chỉ 64 đến 1024 entry, tùy loại CPU. Nghe có vẻ ít, nhưng mỗi entry đại diện cho một page 4KB. Với 512 entry, TLB bao phủ 512 × 4KB = 2MB bộ nhớ. Nhờ tính cục bộ của chương trình, tỷ lệ TLB hit trong thực tế thường đạt gần 99%. Nghĩa là trong 100 lần truy cập bộ nhớ, chỉ có khoảng 1 lần phải tra page table trong RAM, 99 lần còn lại lấy kết quả từ TLB gần như không mất thêm thời gian.
+TLB rất nhỏ - thường chỉ 64 đến 1024 entry, tùy loại CPU. Nghe có vẻ ít, nhưng mỗi entry đại diện cho một page 4KB. Với 512 entry, TLB bao phủ 512 × 4KB = 2MB bộ nhớ. Nhờ tính cục bộ của chương trình, tỷ lệ TLB hit trong thực tế thường đạt gần 99%. Nghĩa là trong 100 lần truy cập bộ nhớ, chỉ có khoảng 1 lần phải tra page table trong RAM, 99 lần còn lại lấy kết quả từ TLB gần như không mất thêm thời gian.
 
-Đây là lý do virtual memory hoạt động hiệu quả trong thực tế — về lý thuyết mỗi lần truy cập phải tra page table 4 cấp rất tốn kém, nhưng TLB giúp tránh được chi phí đó trong đại đa số trường hợp.
+Đây là lý do virtual memory hoạt động hiệu quả trong thực tế - về lý thuyết mỗi lần truy cập phải tra page table 4 cấp rất tốn kém, nhưng TLB giúp tránh được chi phí đó trong đại đa số trường hợp.
 
 ### 5.3. Khi nào TLB bị xóa
 
-TLB lưu ánh xạ của process đang chạy. Khi OS chuyển sang process khác, page table thay đổi (CR3 trỏ đến page table mới), nên các entry trong TLB không còn đúng nữa. Lúc này OS phải xóa TLB (gọi là TLB flush). Sau khi xóa, process mới bắt đầu chạy với TLB trống, lần truy cập đầu tiên đều là TLB miss — MMU phải tra page table trong RAM. TLB sẽ dần được lấp đầy trở lại khi process chạy.
+TLB lưu ánh xạ của process đang chạy. Khi OS chuyển sang process khác, page table thay đổi (CR3 trỏ đến page table mới), nên các entry trong TLB không còn đúng nữa. Lúc này OS phải xóa TLB (gọi là TLB flush). Sau khi xóa, process mới bắt đầu chạy với TLB trống, lần truy cập đầu tiên đều là TLB miss - MMU phải tra page table trong RAM. TLB sẽ dần được lấp đầy trở lại khi process chạy.
 
-Đây là một chi phí ẩn của context switch mà nhiều người không nghĩ đến. Chuyển process không chỉ mất thời gian lưu và khôi phục thanh ghi CPU, mà còn mất hiệu năng do TLB bị xóa sạch — hàng trăm lần truy cập bộ nhớ sau đó đều chậm hơn bình thường cho đến khi TLB "nóng" trở lại.
+Đây là một chi phí ẩn của context switch mà nhiều người không nghĩ đến. Chuyển process không chỉ mất thời gian lưu và khôi phục thanh ghi CPU, mà còn mất hiệu năng do TLB bị xóa sạch - hàng trăm lần truy cập bộ nhớ sau đó đều chậm hơn bình thường cho đến khi TLB "nóng" trở lại.
 
 ### 5.4. Ví dụ: Quan sát ảnh hưởng của TLB với perf
  
-Ta có thể dùng `perf` để đo số lần TLB miss trên Linux. Chương trình dưới đây so sánh truy cập tuần tự (sequential — ít TLB miss vì cùng page) với truy cập ngẫu nhiên (random — nhiều TLB miss vì nhảy qua nhiều page):
+Ta có thể dùng `perf` để đo số lần TLB miss trên Linux. Chương trình dưới đây so sánh truy cập tuần tự (sequential - ít TLB miss vì cùng page) với truy cập ngẫu nhiên (random - nhiều TLB miss vì nhảy qua nhiều page):
  
 ```c
 #include <stdio.h>
@@ -470,14 +470,14 @@ int main(int argc, char *argv[]) {
 ```bash
 $ gcc -O1 -o tlb_demo tlb_demo.c
 
-# Sequential — ít TLB miss
+# Sequential - ít TLB miss
 $ perf stat -e dTLB-load-misses,dTLB-loads ./tlb_demo sequential
 === SEQUENTIAL ACCESS ===
  Performance counter stats:
         12,345    dTLB-load-misses    #  0.01% of all dTLB loads
    100,234,567    dTLB-loads
 
-# Random — nhiều TLB miss  
+# Random - nhiều TLB miss  
 $ perf stat -e dTLB-load-misses,dTLB-loads ./tlb_demo random
 === RANDOM ACCESS ===
  Performance counter stats:
@@ -486,8 +486,8 @@ $ perf stat -e dTLB-load-misses,dTLB-loads ./tlb_demo random
 ```
  
 **Quan sát:**
-- **Sequential:** chỉ ~0.01% TLB miss — CPU truy cập cùng page liên tục, TLB luôn hit.
-- **Random:** ~45% TLB miss — nhảy khắp 256MB (65536 page), TLB chỉ chứa ~512 entry nên liên tục bị evict.
+- **Sequential:** chỉ ~0.01% TLB miss - CPU truy cập cùng page liên tục, TLB luôn hit.
+- **Random:** ~45% TLB miss - nhảy khắp 256MB (65536 page), TLB chỉ chứa ~512 entry nên liên tục bị evict.
 - Thời gian chạy random chậm hơn đáng kể vì mỗi TLB miss phải page table walk (4 lần truy cập RAM).
 
 ## 6. Không gian bộ nhớ của Process
@@ -565,7 +565,7 @@ Low Address (0x00000000)
 
 ### 6.3 Virtual Memory Areas (VMAs)
 
-Từ các phần trước, ta biết mỗi process có một không gian địa chỉ ảo riêng. Nhưng process không sử dụng toàn bộ không gian đó — trên hệ thống 64-bit với 48-bit address space, không gian ảo có 256TB, trong khi một process thông thường chỉ dùng vài MB đến vài GB. Phần lớn không gian ảo là trống, không thuộc về process.
+Từ các phần trước, ta biết mỗi process có một không gian địa chỉ ảo riêng. Nhưng process không sử dụng toàn bộ không gian đó - trên hệ thống 64-bit với 48-bit address space, không gian ảo có 256TB, trong khi một process thông thường chỉ dùng vài MB đến vài GB. Phần lớn không gian ảo là trống, không thuộc về process.
 
 Vậy kernel cần một cách để ghi nhận: vùng nào trong không gian địa chỉ ảo là hợp lệ, vùng nào process được phép sử dụng, mỗi vùng có đặc tính gì. VMA (Virtual Memory Area) chính là cấu trúc dữ liệu mà kernel dùng để lưu thông tin này.
 
@@ -606,13 +606,13 @@ Low Virtual Address (0x00000000)
 High Virtual Address (0xFFFFFFFF)
 ```
 
-Khoảng trống giữa các VMA là vùng không hợp lệ — process không được truy cập. Nếu truy cập vào khoảng trống đó, page fault xảy ra, kernel tìm không thấy VMA nào chứa địa chỉ đó, và gửi `SIGSEGV`.
+Khoảng trống giữa các VMA là vùng không hợp lệ - process không được truy cập. Nếu truy cập vào khoảng trống đó, page fault xảy ra, kernel tìm không thấy VMA nào chứa địa chỉ đó, và gửi `SIGSEGV`.
 
 #### 6.3.2. Hai loại VMA
 
 **File-backed VMA** là vùng có nội dung ánh xạ từ một file trên đĩa. Code segment ánh xạ từ file chương trình, shared library ánh xạ từ file `.so`. Khi page fault xảy ra trên vùng này mà page chưa có trong RAM, kernel biết phải đọc dữ liệu từ file nào, vị trí nào trong file.
 
-**Anonymous VMA** là vùng không gắn với file nào. Heap và stack thuộc loại này. Khi page fault xảy ra, kernel cấp page frame mới và xóa sạch bằng zero — vì không có dữ liệu từ disk để nạp.
+**Anonymous VMA** là vùng không gắn với file nào. Heap và stack thuộc loại này. Khi page fault xảy ra, kernel cấp page frame mới và xóa sạch bằng zero - vì không có dữ liệu từ disk để nạp.
 
 Phân biệt này ảnh hưởng trực tiếp đến cách kernel xử lý page fault.
 
@@ -620,11 +620,11 @@ Phân biệt này ảnh hưởng trực tiếp đến cách kernel xử lý page
 
 Đây là điểm hay bị nhầm lẫn. Hai cấu trúc này phục vụ hai mục đích khác nhau.
 
-Page table phục vụ MMU — nó lưu ánh xạ cụ thể từ virutal page nào đến page frame vật lý nào, để MMU dịch địa chỉ ở mỗi lần truy cập bộ nhớ. Page table chỉ biết "page này có present không, trỏ đến đâu, quyền gì".
+Page table phục vụ MMU - nó lưu ánh xạ cụ thể từ virutal page nào đến page frame vật lý nào, để MMU dịch địa chỉ ở mỗi lần truy cập bộ nhớ. Page table chỉ biết "page này có present không, trỏ đến đâu, quyền gì".
 
-VMA phục vụ kernel — nó lưu ý định của process về bộ nhớ ở mức cao hơn. VMA biết "vùng này dùng để làm gì, ánh xạ từ file nào, process xin vùng này qua system call nào". Page table không lưu những thông tin này.
+VMA phục vụ kernel - nó lưu ý định của process về bộ nhớ ở mức cao hơn. VMA biết "vùng này dùng để làm gì, ánh xạ từ file nào, process xin vùng này qua system call nào". Page table không lưu những thông tin này.
 
-Khi page fault xảy ra, MMU chỉ biết "tôi không dịch được địa chỉ này". Kernel phải tra VMA để hiểu tại sao page đó chưa có và cần xử lý ra sao. Nếu không có VMA, kernel không biết fault do lazy allocation, do swap, do file mapping, hay do truy cập bất hợp lệ — tất cả đều trông giống nhau từ góc nhìn page table.
+Khi page fault xảy ra, MMU chỉ biết "tôi không dịch được địa chỉ này". Kernel phải tra VMA để hiểu tại sao page đó chưa có và cần xử lý ra sao. Nếu không có VMA, kernel không biết fault do lazy allocation, do swap, do file mapping, hay do truy cập bất hợp lệ - tất cả đều trông giống nhau từ góc nhìn page table.
 
 #### 6.3.4. Quan sát VMA trên Linux
 
@@ -670,29 +670,29 @@ VmSwap:     4096 kB
 ```
 
 Mỗi dòng là một con số tổng hợp từ tất cả VMA của process. Đi qua từng dòng:
-- **VmSize** là tổng kích thước không gian địa chỉ ảo mà process đang sở hữu — tổng kích thước tất cả VMA cộng lại. Con số này bao gồm cả những vùng chưa được cấp page vật lý do lazy allocation. Vì vậy VmSize có thể rất lớn mà process thực tế không dùng nhiều RAM.
+- **VmSize** là tổng kích thước không gian địa chỉ ảo mà process đang sở hữu - tổng kích thước tất cả VMA cộng lại. Con số này bao gồm cả những vùng chưa được cấp page vật lý do lazy allocation. Vì vậy VmSize có thể rất lớn mà process thực tế không dùng nhiều RAM.
 - **VmPeak** là giá trị VmSize cao nhất từng đạt được trong suốt vòng đời của process. Hữu ích khi ta muốn biết process từng xin bao nhiêu bộ nhớ ảo ở thời điểm cao điểm.
-- **VmRSS** (Resident Set Size) là lượng RAM vật lý mà process đang thực sự chiếm giữ tại thời điểm hiện tại. Đây là con số quan trọng nhất khi ta muốn biết process đang dùng bao nhiêu RAM thật. So sánh VmRSS với VmSize cho ta thấy hiệu ứng của lazy allocation — VmSize có thể gấp nhiều lần VmRSS.
+- **VmRSS** (Resident Set Size) là lượng RAM vật lý mà process đang thực sự chiếm giữ tại thời điểm hiện tại. Đây là con số quan trọng nhất khi ta muốn biết process đang dùng bao nhiêu RAM thật. So sánh VmRSS với VmSize cho ta thấy hiệu ứng của lazy allocation - VmSize có thể gấp nhiều lần VmRSS.
 - **VmHWM** (High Water Mark) là giá trị VmRSS cao nhất từng đạt được. Giúp ta biết process từng chiếm nhiều RAM vật lý nhất là bao nhiêu, dù hiện tại có thể đã giảm do kernel thu hồi page hoặc process giải phóng bộ nhớ.
-- **VmData** là tổng kích thước các VMA dành cho data — bao gồm heap và các vùng anonymous private. Khi ta malloc và sử dụng bộ nhớ, con số này tăng.
+- **VmData** là tổng kích thước các VMA dành cho data - bao gồm heap và các vùng anonymous private. Khi ta malloc và sử dụng bộ nhớ, con số này tăng.
 - **VmStk** là kích thước VMA dành cho stack của thread chính.
-- **VmExe** là kích thước VMA chứa code của chương trình — tức text segment ánh xạ từ file binary.
-- **VmLib** là tổng kích thước VMA ánh xạ từ shared libraries — libc, libpthread, và các thư viện khác mà chương trình dùng.
+- **VmExe** là kích thước VMA chứa code của chương trình - tức text segment ánh xạ từ file binary.
+- **VmLib** là tổng kích thước VMA ánh xạ từ shared libraries - libc, libpthread, và các thư viện khác mà chương trình dùng.
 - **VmPTE** là lượng RAM mà page table của process chiếm. Đây chính là overhead quản lý mà chúng ta đã nói ở phần hạn chế của virtual memory. Process dùng nhiều vùng bộ nhớ rải rác sẽ có VmPTE lớn hơn vì cần nhiều nhánh page table hơn.
-- **VmSwap** là lượng bộ nhớ của process đang nằm trong swap trên đĩa — đã bị kernel đưa ra khỏi RAM. Nếu con số này lớn, process sẽ gặp major page fault thường xuyên khi truy cập lại những vùng đó, ảnh hưởng nghiêm trọng đến hiệu năng.
+- **VmSwap** là lượng bộ nhớ của process đang nằm trong swap trên đĩa - đã bị kernel đưa ra khỏi RAM. Nếu con số này lớn, process sẽ gặp major page fault thường xuyên khi truy cập lại những vùng đó, ảnh hưởng nghiêm trọng đến hiệu năng.
 - **VmLck** là lượng bộ nhớ đã được lock trong RAM bằng `mlock()`, không cho kernel swap ra đĩa. Ứng dụng real-time hoặc ứng dụng bảo mật (giữ khóa mã hóa trong RAM) thường dùng cơ chế này.
 
-Với system programming, đây là công cụ rất hữu ích để hiểu chương trình đang sử dụng bộ nhớ ảo như thế nào — bao nhiêu vùng, mỗi vùng bao lớn, ánh xạ từ đâu, quyền gì.
+Với system programming, đây là công cụ rất hữu ích để hiểu chương trình đang sử dụng bộ nhớ ảo như thế nào - bao nhiêu vùng, mỗi vùng bao lớn, ánh xạ từ đâu, quyền gì.
 
 ## 7. Page fault
 
 ### 7.1. Page fault là gì?
 
-Page fault là một sự kiện do MMU phát sinh khi nó không thể hoàn thành việc dịch một địa chỉ ảo sang địa chỉ vật lý. Khi điều này xảy ra, MMU không tự giải quyết được — nó tạm dừng lệnh đang thực thi trên CPU và chuyển quyền điều khiển cho kernel để xử lý.
+Page fault là một sự kiện do MMU phát sinh khi nó không thể hoàn thành việc dịch một địa chỉ ảo sang địa chỉ vật lý. Khi điều này xảy ra, MMU không tự giải quyết được - nó tạm dừng lệnh đang thực thi trên CPU và chuyển quyền điều khiển cho kernel để xử lý.
 
 Ba tình huống dẫn đến page fault:
 - **Page chưa có trong RAM:** MMU tra page table, thấy present bit bằng 0. Đây là trường hợp phổ biến nhất, xảy ra với lazy allocation (page chưa từng được cấp page frame) và với swap (page đã bị đưa ra đĩa để giải phóng RAM).
-- **Vi phạm quyền truy cập:** Page có trong RAM nhưng thao tác không được phép — ví dụ ghi vào page read-only. Đây là trường hợp xảy ra với copy-on-write (page đang được chia sẻ giữa cha và con, bị đánh dấu read-only) hoặc khi chương trình cố ghi vào vùng code.
+- **Vi phạm quyền truy cập:** Page có trong RAM nhưng thao tác không được phép - ví dụ ghi vào page read-only. Đây là trường hợp xảy ra với copy-on-write (page đang được chia sẻ giữa cha và con, bị đánh dấu read-only) hoặc khi chương trình cố ghi vào vùng code.
 - **Địa chỉ không hợp lệ:** Chương trình truy cập vào địa chỉ không thuộc bất kỳ vùng nào mà nó đã đăng ký.
 
 ### 7.2. Các bước xử lý page fault
@@ -700,24 +700,24 @@ Ba tình huống dẫn đến page fault:
 Khi page fault xảy ra, kernel thực hiện một chuỗi bước theo thứ tự:
 
 1. Nhận thông tin về fault. CPU tự động lưu lại địa chỉ ảo gây fault và loại thao tác (đọc hay ghi). Trên x86-64, địa chỉ gây fault được lưu trong thanh ghi CR2, loại thao tác nằm trong error code mà CPU đẩy lên stack. Kernel đọc các thông tin này để biết chuyện gì vừa xảy ra.
-2. Tìm VMA chứa địa chỉ gây fault. Kernel tìm trong danh sách VMA của process xem địa chỉ đó thuộc vùng nào. Nếu không thuộc bất kỳ VMA nào — ví dụ chương trình dereference con trỏ `0xDEAD` — kernel kết luận đây là truy cập bất hợp lệ, gửi `SIGSEGV` đến process, kết thúc xử lý. Process nhận segmentation fault và thường bị dừng.
+2. Tìm VMA chứa địa chỉ gây fault. Kernel tìm trong danh sách VMA của process xem địa chỉ đó thuộc vùng nào. Nếu không thuộc bất kỳ VMA nào - ví dụ chương trình dereference con trỏ `0xDEAD` - kernel kết luận đây là truy cập bất hợp lệ, gửi `SIGSEGV` đến process, kết thúc xử lý. Process nhận segmentation fault và thường bị dừng.
 3. Kiểm tra quyền. Nếu địa chỉ nằm trong VMA hợp lệ, kernel kiểm tra thao tác có phù hợp với quyền của VMA không. Ví dụ process cố ghi vào vùng mà VMA đánh dấu chỉ đọc (như vùng code). Nếu quyền không khớp và cũng không phải trường hợp copy-on-write, kernel gửi `SIGSEGV`.
-4. Xác định loại fault và xử lý. Đến đây kernel biết fault là hợp lệ — địa chỉ đúng, quyền hợp lý — và cần cấp hoặc chuẩn bị page vật lý. Tùy tình huống cụ thể, kernel xử lý khác nhau:
+4. Xác định loại fault và xử lý. Đến đây kernel biết fault là hợp lệ - địa chỉ đúng, quyền hợp lý - và cần cấp hoặc chuẩn bị page vật lý. Tùy tình huống cụ thể, kernel xử lý khác nhau:
    - Nếu page chưa bao giờ được truy cập (lazy allocation), kernel cấp một page frame mới, xóa sạch nội dung bằng zero, tạo ánh xạ trong page table.
    - Nếu page đang ở trong swap, kernel tìm vị trí page trên đĩa (thông tin này được lưu trong page table entry thay cho địa chỉ vật lý khi page bị swap ra), đọc dữ liệu từ đĩa vào một page frame mới, tạo ánh xạ trong page table.
    - Nếu page là copy-on-write (page đang chia sẻ giữa các process, bị ghi), kernel cấp page frame mới, copy nội dung từ page frame cũ sang, cập nhật page table của process đang ghi để trỏ đến page frame mới với quyền read-write.
    - Nếu page được ánh xạ từ file (memory-mapped file qua mmap), kernel đọc nội dung từ file trên đĩa vào page frame mới, tạo ánh xạ.
 5. Cập nhật page table và TLB. Sau khi page frame đã sẵn sàng, kernel ghi entry mới vào page table với present bit bằng 1 và quyền truy cập phù hợp. TLB cũng cần được cập nhật để lần truy cập sau không phải tra page table lại.
-6. Quay lại chương trình. Kernel trả quyền điều khiển lại cho process. CPU thực thi lại chính lệnh đã gây fault. Lần này MMU tra page table thành công, lệnh hoàn thành bình thường. Process không hề biết page fault đã xảy ra — từ góc nhìn của nó, lệnh chỉ chạy hơi chậm hơn bình thường.
+6. Quay lại chương trình. Kernel trả quyền điều khiển lại cho process. CPU thực thi lại chính lệnh đã gây fault. Lần này MMU tra page table thành công, lệnh hoàn thành bình thường. Process không hề biết page fault đã xảy ra - từ góc nhìn của nó, lệnh chỉ chạy hơi chậm hơn bình thường.
 
 ### 7.3. Minor fault vs major fault
 
 Trong các trường hợp trên, có sự khác biệt rất lớn về thời gian xử lý:
 
-- Minor fault là khi kernel chỉ cần thao tác trong RAM — cấp page frame mới, copy page, hoặc thiết lập ánh xạ. Thời gian xử lý cỡ vài microsecond. Lazy allocation và copy-on-write thường gây minor fault.
-- Major fault là khi kernel phải đọc dữ liệu từ đĩa — nạp page từ swap hoặc từ file. Thời gian xử lý cỡ vài millisecond, chậm hơn minor fault hàng trăm đến hàng nghìn lần, vì tốc độ đĩa chậm hơn RAM rất nhiều.
+- Minor fault là khi kernel chỉ cần thao tác trong RAM - cấp page frame mới, copy page, hoặc thiết lập ánh xạ. Thời gian xử lý cỡ vài microsecond. Lazy allocation và copy-on-write thường gây minor fault.
+- Major fault là khi kernel phải đọc dữ liệu từ đĩa - nạp page từ swap hoặc từ file. Thời gian xử lý cỡ vài millisecond, chậm hơn minor fault hàng trăm đến hàng nghìn lần, vì tốc độ đĩa chậm hơn RAM rất nhiều.
 
-Với system programming, phân biệt hai loại này rất quan trọng. Minor fault là chi phí chấp nhận được và khó tránh. Major fault là dấu hiệu hệ thống đang thiếu RAM hoặc pattern truy cập bộ nhớ không tốt — đây thường là điểm cần tối ưu.
+Với system programming, phân biệt hai loại này rất quan trọng. Minor fault là chi phí chấp nhận được và khó tránh. Major fault là dấu hiệu hệ thống đang thiếu RAM hoặc pattern truy cập bộ nhớ không tốt - đây thường là điểm cần tối ưu.
 
 ### 7.4. Cách quan sát page fault
 
@@ -736,7 +736,7 @@ Minor (reclaiming a frame) page faults: 1024
 Major (requiring I/O) page faults: 3
 ```
 
-Con số này cho ta biết chương trình gây bao nhiêu minor và major fault trong suốt quá trình chạy — từ đó đánh giá được hành vi sử dụng bộ nhớ của chương trình.
+Con số này cho ta biết chương trình gây bao nhiêu minor và major fault trong suốt quá trình chạy - từ đó đánh giá được hành vi sử dụng bộ nhớ của chương trình.
 
 #### 7.4.2. Quan sát bằng perf
 
@@ -766,7 +766,7 @@ Trong đó:
 - dTLB-store-misses khi ghi dữ liệu
 - iTLB-load-misses khi fetch instruction.
 
-Những con số TLB miss này giúp ta đánh giá hiệu quả truy cập bộ nhớ của chương trình — liên quan trực tiếp đến phần TLB mà chúng ta đã tìm hiểu.
+Những con số TLB miss này giúp ta đánh giá hiệu quả truy cập bộ nhớ của chương trình - liên quan trực tiếp đến phần TLB mà chúng ta đã tìm hiểu.
 
 **Nếu muốn tách riêng minor và major fault:**
 
@@ -788,7 +788,7 @@ perf record -e page-faults ./my_program
 perf report
 ```
 
-`perf record` ghi lại mỗi lần page fault xảy ra cùng với vị trí trong code — hàm nào, dòng nào gây fault. `perf report` hiển thị kết quả dạng bảng, sắp xếp theo số lượng fault giảm dần. Từ đó ta biết chính xác phần nào của chương trình gây nhiều page fault nhất để tập trung tối ưu.
+`perf record` ghi lại mỗi lần page fault xảy ra cùng với vị trí trong code - hàm nào, dòng nào gây fault. `perf report` hiển thị kết quả dạng bảng, sắp xếp theo số lượng fault giảm dần. Từ đó ta biết chính xác phần nào của chương trình gây nhiều page fault nhất để tập trung tối ưu.
 
 ## 8. Demand paging
 
@@ -796,15 +796,15 @@ Thực ra demand paging là tên gọi chung cho cơ chế mà chúng ta đã g�
 
 ![Demand paging](img/demand-paging.png)
 
-Lazy allocation mà chúng ta sẽ tìm hiểu chính là một dạng của demand paging — malloc xin bộ nhớ nhưng kernel chưa cấp page vật lý, chỉ khi process ghi vào thì mới cấp. Nhưng demand paging không chỉ dừng ở đó, nó bao trùm mọi tình huống mà page được nạp từ disk vào RAM tại thời điểm truy cập.
+Lazy allocation mà chúng ta sẽ tìm hiểu chính là một dạng của demand paging - malloc xin bộ nhớ nhưng kernel chưa cấp page vật lý, chỉ khi process ghi vào thì mới cấp. Nhưng demand paging không chỉ dừng ở đó, nó bao trùm mọi tình huống mà page được nạp từ disk vào RAM tại thời điểm truy cập.
 
 ### 8.1. Các tình huống demand paging xảy ra
 
 **1. Khi chạy một chương trình**
 
-Giả sử ta chạy một chương trình có file binary 50MB. Nếu không có demand paging, kernel sẽ đọc toàn bộ 50MB từ đĩa vào RAM rồi mới bắt đầu chạy — mất thời gian và tốn RAM. Với demand paging, kernel tạo các VMA file-backed ánh xạ từ file binary, nhưng không đọc bất kỳ byte nào từ đĩa. Page table đánh dấu tất cả các page là not present.
+Giả sử ta chạy một chương trình có file binary 50MB. Nếu không có demand paging, kernel sẽ đọc toàn bộ 50MB từ đĩa vào RAM rồi mới bắt đầu chạy - mất thời gian và tốn RAM. Với demand paging, kernel tạo các VMA file-backed ánh xạ từ file binary, nhưng không đọc bất kỳ byte nào từ đĩa. Page table đánh dấu tất cả các page là not present.
 
-Khi CPU bắt đầu thực thi instruction đầu tiên, page fault xảy ra. Kernel đọc page chứa instruction đó từ file binary vào RAM. Chương trình chạy tiếp, gặp page khác chưa có, fault lại, kernel đọc tiếp. Nếu chương trình chỉ thực thi 2MB code trong tổng số 50MB, thì chỉ 2MB được đọc từ đĩa — 48MB còn lại không bao giờ chạm đến.
+Khi CPU bắt đầu thực thi instruction đầu tiên, page fault xảy ra. Kernel đọc page chứa instruction đó từ file binary vào RAM. Chương trình chạy tiếp, gặp page khác chưa có, fault lại, kernel đọc tiếp. Nếu chương trình chỉ thực thi 2MB code trong tổng số 50MB, thì chỉ 2MB được đọc từ đĩa - 48MB còn lại không bao giờ chạm đến.
 
 **2. Khi nạp shared library**
 
@@ -832,7 +832,7 @@ $\rightarrow$ Chương trình phải đợi đọc xong đĩa mới bắt đầu
 
 **Demand paging:**
 
-1. Tạo VMA cho binary, libc, heap — gần như tức thời
+1. Tạo VMA cho binary, libc, heap - gần như tức thời
 2. Chương trình bắt đầu chạy ngay
 3. Chỉ nạp page nào được truy cập
 
@@ -844,14 +844,14 @@ $\rightarrow$ Chương trình khởi động nhanh hơn rất nhiều
 
 Mỗi page được nạp lần đầu đều thông qua page fault, và mỗi page fault có chi phí xử lý. Trong giai đoạn đầu khi chương trình mới chạy, page fault xảy ra rất dồn dập vì page nào cũng chưa có trong RAM. Giai đoạn này chương trình chạy chậm hơn bình thường do liên tục bị gián đoạn bởi fault. Sau khi các page thường dùng đã được nạp hết, fault giảm dần và chương trình chạy ở tốc độ bình thường.
 
-Với ứng dụng cần hiệu năng ổn định ngay từ đầu — ví dụ ứng dụng real-time hoặc game cần tránh giật ở giây đầu tiên — demand paging có thể là vấn đề. Trong những trường hợp đó, lập trình viên có thể dùng các biện pháp để ép nạp trước:
+Với ứng dụng cần hiệu năng ổn định ngay từ đầu - ví dụ ứng dụng real-time hoặc game cần tránh giật ở giây đầu tiên - demand paging có thể là vấn đề. Trong những trường hợp đó, lập trình viên có thể dùng các biện pháp để ép nạp trước:
 
 ```c
-// Cách 1: mlock — ép toàn bộ vùng nhớ vào RAM ngay
+// Cách 1: mlock - ép toàn bộ vùng nhớ vào RAM ngay
 char *buf = mmap(..., 100MB, ...);
 mlock(buf, 100MB);
 
-// Cách 2: madvise — gợi ý kernel nạp trước
+// Cách 2: madvise - gợi ý kernel nạp trước
 char *buf = mmap(..., 100MB, ...);
 madvise(buf, 100MB, MADV_WILLNEED); 
 
@@ -862,23 +862,23 @@ for (int i = 0; i < 100MB; i += 4096) {
 }
 ```
 
-Mỗi cách có đặc điểm khác nhau. `mlock` mạnh nhất — page được nạp ngay và không bao giờ bị swap ra disk. `madvise` với `MADV_WILLNEED` nhẹ nhàng hơn — kernel nạp trước nhưng vẫn có thể swap ra nếu cần. Cách thứ ba đơn giản nhất nhưng thô — ta tự gây page fault cho từng page.
+Mỗi cách có đặc điểm khác nhau. `mlock` mạnh nhất - page được nạp ngay và không bao giờ bị swap ra disk. `madvise` với `MADV_WILLNEED` nhẹ nhàng hơn - kernel nạp trước nhưng vẫn có thể swap ra nếu cần. Cách thứ ba đơn giản nhất nhưng thô - ta tự gây page fault cho từng page.
 
 ## 9. Cơ chế Copy-on-write
 
 ### 9.1. Vấn đề khi không có cơ chế Copy-on-write
 
-Như ta đã biết. Khi một process gọi `fork()`, OS tạo ra một process con là bản sao của process cha. Process con có không gian địa chỉ ảo giống hệt cha — cùng code, cùng dữ liệu, cùng stack, mọi biến đều có cùng giá trị tại thời điểm fork.
+Như ta đã biết. Khi một process gọi `fork()`, OS tạo ra một process con là bản sao của process cha. Process con có không gian địa chỉ ảo giống hệt cha - cùng code, cùng dữ liệu, cùng stack, mọi biến đều có cùng giá trị tại thời điểm fork.
 
 Cách đơn giản nhất để thực hiện điều này là copy toàn bộ bộ nhớ vật lý của process cha sang một vùng mới cho process con. Nếu process cha đang dùng 500MB RAM, OS sẽ cấp thêm 500MB, copy từng byte một. Cách này tuy đúng nhưng rất lãng phí, vì hai lý do.
 
-Thứ nhất, việc copy 500MB mất rất nhiều thời gian. Thứ hai, trong rất nhiều trường hợp, process con sau khi `fork` sẽ gọi `exec()` ngay để chạy chương trình khác — lúc đó toàn bộ 500MB vừa copy bị vứt bỏ hoàn toàn, thay bằng chương trình mới. Công copy trở nên vô nghĩa.
+Thứ nhất, việc copy 500MB mất rất nhiều thời gian. Thứ hai, trong rất nhiều trường hợp, process con sau khi `fork` sẽ gọi `exec()` ngay để chạy chương trình khác - lúc đó toàn bộ 500MB vừa copy bị vứt bỏ hoàn toàn, thay bằng chương trình mới. Công copy trở nên vô nghĩa.
 
 ### 9.2. Copy-on-write hoạt động như thế nào?
 
 Thay vì copy bộ nhớ ngay, OS làm một việc thông minh hơn đó là tại thời điểm `fork`, OS không copy bất kỳ page vật lý nào. Thay vào đó, OS tạo cho process con một page table mới, nhưng các entry trong page table con đều trỏ đến cùng các page frame vật lý mà process cha đang dùng. Hai process chia sẻ toàn bộ bộ nhớ vật lý.
 
-Tuy nhiên, cả hai page table đều được đánh dấu là read-only — kể cả những page mà trước đó process cha có quyền ghi.
+Tuy nhiên, cả hai page table đều được đánh dấu là read-only - kể cả những page mà trước đó process cha có quyền ghi.
 
 ```
 Process cha                    Process con
@@ -894,13 +894,13 @@ Page table A                   Page table B
                 RAM vật lý (không copy)
 ```
 
-Lúc này `fork` trở nên rất nhanh — OS chỉ cần tạo page table mới và copy các entry, không copy dữ liệu thật. Dù process cha dùng 500MB, `fork` gần như tức thời.
+Lúc này `fork` trở nên rất nhanh - OS chỉ cần tạo page table mới và copy các entry, không copy dữ liệu thật. Dù process cha dùng 500MB, `fork` gần như tức thời.
 
 ### 9.3. Khi nào copy thực sự xảy ra
 
-Cả hai process tiếp tục chạy và đọc bộ nhớ bình thường — đọc thì không có vấn đề gì vì dữ liệu giống nhau, cả hai đều đọc từ cùng page vật lý.
+Cả hai process tiếp tục chạy và đọc bộ nhớ bình thường - đọc thì không có vấn đề gì vì dữ liệu giống nhau, cả hai đều đọc từ cùng page vật lý.
 
-Nhưng khi một trong hai process cố ghi vào một page, MMU phát hiện page đó đang là read-only, nên phát sinh page fault. Kernel nhận fault này, kiểm tra và nhận ra đây không phải lỗi thật — đây là page đang được chia sẻ theo cơ chế copy-on-write. Lúc này kernel mới thực hiện việc copy:
+Nhưng khi một trong hai process cố ghi vào một page, MMU phát hiện page đó đang là read-only, nên phát sinh page fault. Kernel nhận fault này, kiểm tra và nhận ra đây không phải lỗi thật - đây là page đang được chia sẻ theo cơ chế copy-on-write. Lúc này kernel mới thực hiện việc copy:
 
 - Cấp phát một page frame mới
 - Copy nội dung từ page frame cũ sang page frame mới
@@ -997,11 +997,11 @@ Copy-on-Write Demo
 ```
  
 **Quan sát:**
-- Ngay sau `fork`, child RSS rất nhỏ — không copy 50MB, chỉ tạo page table mới
-- Ghi 1 byte $\rightarrow$ RSS tăng 4KB — kernel chỉ copy 1 page chứa byte đó
-- Ghi 10MB $\rightarrow$ RSS tăng ~10MB — copy dần theo nhu cầu
-- Ghi 50MB $\rightarrow$ RSS = 50MB — bây giờ child có bản sao hoàn toàn riêng
-- Parent RSS không thay đổi — hai process hoàn toàn độc lập sau CoW
+- Ngay sau `fork`, child RSS rất nhỏ - không copy 50MB, chỉ tạo page table mới
+- Ghi 1 byte $\rightarrow$ RSS tăng 4KB - kernel chỉ copy 1 page chứa byte đó
+- Ghi 10MB $\rightarrow$ RSS tăng ~10MB - copy dần theo nhu cầu
+- Ghi 50MB $\rightarrow$ RSS = 50MB - bây giờ child có bản sao hoàn toàn riêng
+- Parent RSS không thay đổi - hai process hoàn toàn độc lập sau CoW
 
 ## 10. Cơ chế Lazy Allocation
 
@@ -1009,13 +1009,13 @@ Copy-on-Write Demo
 
 Khi chương trình gọi `malloc(100 * 1024 * 1024)` để xin cấp pháp 100MB bộ nhớ, có hai cách OS có thể xử lý.
 
-Cách thứ nhất là cấp phát ngay 100MB RAM vật lý, tạo ánh xạ trong page table, trả về cho chương trình. Vấn đề là rất nhiều chương trình xin bộ nhớ lớn nhưng không dùng hết ngay, hoặc chỉ dùng một phần nhỏ. Ví dụ chương trình xin 100MB để làm buffer, nhưng thực tế chỉ ghi vào 2MB đầu tiên. 98MB RAM vật lý bị chiếm mà không ai dùng — trong khi các process khác có thể đang cần bộ nhớ.
+Cách thứ nhất là cấp phát ngay 100MB RAM vật lý, tạo ánh xạ trong page table, trả về cho chương trình. Vấn đề là rất nhiều chương trình xin bộ nhớ lớn nhưng không dùng hết ngay, hoặc chỉ dùng một phần nhỏ. Ví dụ chương trình xin 100MB để làm buffer, nhưng thực tế chỉ ghi vào 2MB đầu tiên. 98MB RAM vật lý bị chiếm mà không ai dùng - trong khi các process khác có thể đang cần bộ nhớ.
 
 Lazy allocation là cách thứ hai: OS không cấp RAM vật lý ngay, chỉ ghi nhận rằng process này được quyền sử dụng một vùng địa chỉ ảo 100MB. RAM vật lý chỉ được cấp khi chương trình thực sự truy cập vào từng page.
 
 ### 10.2. Cách hoạt động cụ thể
 
-Khi `malloc` yêu cầu 100MB, bên dưới nó gọi `mmap` hoặc `brk` để xin OS mở rộng không gian địa chỉ ảo. OS xử lý bằng cách tạo một bản ghi nội bộ (trên Linux gọi là VMA — Virtual Memory Area) đánh dấu vùng địa chỉ ảo từ ví dụ 0x7f0000000000 đến 0x7f0006400000 là hợp lệ, có quyền đọc ghi. Nhưng OS không cấp phát bộ nhớ vật lý và tạo ánh xạ nào trong page table cho vùng này — các entry tương ứng đều đánh dấu "not present".
+Khi `malloc` yêu cầu 100MB, bên dưới nó gọi `mmap` hoặc `brk` để xin OS mở rộng không gian địa chỉ ảo. OS xử lý bằng cách tạo một bản ghi nội bộ (trên Linux gọi là VMA - Virtual Memory Area) đánh dấu vùng địa chỉ ảo từ ví dụ 0x7f0000000000 đến 0x7f0006400000 là hợp lệ, có quyền đọc ghi. Nhưng OS không cấp phát bộ nhớ vật lý và tạo ánh xạ nào trong page table cho vùng này - các entry tương ứng đều đánh dấu "not present".
 
 Lúc này `malloc` trả về con trỏ gần như tức thời, vì OS hầu như không làm gì nặng.
 
@@ -1035,7 +1035,7 @@ buf[50000] = 'B';    // page khác → page fault → cấp thêm 4KB
 buf[8000000] = 'C';  // page khác nữa → page fault → cấp thêm 4KB
 ```
 
-Mỗi lần truy cập một page mới lần đầu, quá trình trên lặp lại. Nếu chương trình chỉ truy cập 3 page trong vùng 100MB, thì chỉ 12KB RAM vật lý được cấp thật — thay vì 100MB.
+Mỗi lần truy cập một page mới lần đầu, quá trình trên lặp lại. Nếu chương trình chỉ truy cập 3 page trong vùng 100MB, thì chỉ 12KB RAM vật lý được cấp thật - thay vì 100MB.
 
 ### 10.3. Memory Overcommit
  
@@ -1152,15 +1152,15 @@ Virtual memory: 4368 kB             ← Trở về ban đầu
 
 ### 11.1. Swap là gì?
 
-Từ các phần trước, chúng ta đã biết rằng virtual memory cho phép tổng bộ nhớ mà các process sử dụng lớn hơn RAM vật lý. Swap chính là cơ chế hiện thực hóa điều đó — kernel dùng một phần không gian trên đĩa (ổ cứng hoặc SSD) làm nơi lưu tạm những page mà RAM không đủ chỗ chứa.
+Từ các phần trước, chúng ta đã biết rằng virtual memory cho phép tổng bộ nhớ mà các process sử dụng lớn hơn RAM vật lý. Swap chính là cơ chế hiện thực hóa điều đó - kernel dùng một phần không gian trên đĩa (ổ cứng hoặc SSD) làm nơi lưu tạm những page mà RAM không đủ chỗ chứa.
 
-Khi kernel cần giải phóng RAM, nó chọn một số page ít được sử dụng, ghi nội dung ra vùng swap trên đĩa, rồi đánh dấu page table entry tương ứng là not present. RAM vật lý được giải phóng cho mục đích khác. Khi process truy cập lại page đã bị swap ra, page fault xảy ra, kernel đọc page từ đĩa về RAM — đây chính là major page fault mà chúng ta đã thảo luận.
+Khi kernel cần giải phóng RAM, nó chọn một số page ít được sử dụng, ghi nội dung ra vùng swap trên đĩa, rồi đánh dấu page table entry tương ứng là not present. RAM vật lý được giải phóng cho mục đích khác. Khi process truy cập lại page đã bị swap ra, page fault xảy ra, kernel đọc page từ đĩa về RAM - đây chính là major page fault mà chúng ta đã thảo luận.
 
 **Vùng swap nằm ở đâu?**
 
 Trên Linux có hai hình thức:
-- Swap partition — một phân vùng riêng trên đĩa, dành hoàn toàn cho swap. Khi cài Linux, trình cài đặt thường tạo sẵn một phân vùng swap.
-- Swap file — một file thông thường trên filesystem, được chỉ định làm swap. Linh hoạt hơn vì ta có thể tạo, thay đổi kích thước, hoặc xóa mà không cần phân vùng lại đĩa.
+- Swap partition - một phân vùng riêng trên đĩa, dành hoàn toàn cho swap. Khi cài Linux, trình cài đặt thường tạo sẵn một phân vùng swap.
+- Swap file - một file thông thường trên filesystem, được chỉ định làm swap. Linh hoạt hơn vì ta có thể tạo, thay đổi kích thước, hoặc xóa mà không cần phân vùng lại đĩa.
 
 TA có thể xem swap hiện tại bằng:
 
@@ -1182,7 +1182,7 @@ Kernel không đợi RAM hết sạch mới bắt đầu swap. Nó liên tục t
 
 **1. Khi áp lực bộ nhớ tăng.**
 
-Kernel duy trì một ngưỡng RAM trống tối thiểu. Khi lượng RAM trống giảm xuống gần ngưỡng đó — ví dụ do process mới khởi chạy, do process đang chạy cấp phát thêm bộ nhớ, hoặc do nhiều page được nạp qua demand paging — kernel bắt đầu tìm page để swap ra, giải phóng RAM trước khi hết thật sự. Cơ chế này gọi là **page reclaim**.
+Kernel duy trì một ngưỡng RAM trống tối thiểu. Khi lượng RAM trống giảm xuống gần ngưỡng đó - ví dụ do process mới khởi chạy, do process đang chạy cấp phát thêm bộ nhớ, hoặc do nhiều page được nạp qua demand paging - kernel bắt đầu tìm page để swap ra, giải phóng RAM trước khi hết thật sự. Cơ chế này gọi là **page reclaim**.
 
 **2. Khi cần cấp phát page mà không còn RAM trống**
 
@@ -1212,11 +1212,11 @@ Ví dụ page chứa code chương trình hoặc shared library. Nội dung gi�
 
 Page đã bị lock bằng `mlock` mà chúng ta đã thảo luận ở phần demand paging, hoặc page của kernel.
 
-Trong các page có thể swap, kernel cần chọn page nào ít được sử dụng nhất. Linux dùng cơ chế gần giống LRU (Least Recently Used) — kernel theo dõi accessed bit trong page table entry mà MMU tự động set khi page được truy cập. Page nào lâu không được truy cập sẽ bị chọn để swap ra trước.
+Trong các page có thể swap, kernel cần chọn page nào ít được sử dụng nhất. Linux dùng cơ chế gần giống LRU (Least Recently Used) - kernel theo dõi accessed bit trong page table entry mà MMU tự động set khi page được truy cập. Page nào lâu không được truy cập sẽ bị chọn để swap ra trước.
 
 ### 11.4. Quá trình swap out và swap in
 
-**Swap out** — đưa page từ RAM ra disk:
+**Swap out** - đưa page từ RAM ra disk:
 
 ```
 1. Kernel chọn page ít dùng
@@ -1227,7 +1227,7 @@ Trong các page có thể swap, kernel cần chọn page nào ít được sử 
 6. Giải phóng page frame vật lý
 ```
 
-**Swap in** — đưa page từ disk về RAM:
+**Swap in** - đưa page từ disk về RAM:
 
 ```
 1. Process truy cập page đã bị swap → page fault (major fault)
@@ -1241,7 +1241,7 @@ Trong các page có thể swap, kernel cần chọn page nào ít được sử 
 
 ### 11.5. Ảnh hưởng đến hiệu năng
 
-Swap là cơ chế an toàn giúp hệ thống không bị crash khi thiếu RAM, nhưng cái giá về hiệu năng rất lớn. Truy cập RAM mất khoảng 100 nanosecond. Đọc từ SSD mất khoảng 100 microsecond — chậm hơn 1000 lần. Đọc từ HDD mất khoảng 10 millisecond — chậm hơn 100,000 lần. Khi hệ thống swap liên tục, ta sẽ thấy máy chậm đi rõ rệt — hiện tượng này gọi là **thrashing**.
+Swap là cơ chế an toàn giúp hệ thống không bị crash khi thiếu RAM, nhưng cái giá về hiệu năng rất lớn. Truy cập RAM mất khoảng 100 nanosecond. Đọc từ SSD mất khoảng 100 microsecond - chậm hơn 1000 lần. Đọc từ HDD mất khoảng 10 millisecond - chậm hơn 100,000 lần. Khi hệ thống swap liên tục, ta sẽ thấy máy chậm đi rõ rệt - hiện tượng này gọi là **thrashing**.
 
 Để kiểm tra hệ thống có đang swap không:
 
@@ -1264,7 +1264,7 @@ Cột `si` (swap in) và `so` (swap out) cho biết lượng dữ liệu đang �
 
 Kernel dùng `mmap` để ánh xạ file binary khi chạy chương trình, ánh xạ shared library, và `malloc` bên dưới cũng gọi mmap cho các block lớn. Bây giờ hãy tìm hiểu nó ở góc độ developer.
 
-`mmap` là system call cho phép ta tạo một VMA mới trong không gian địa chỉ ảo của process. Nói đơn giản, ta yêu cầu kernel "cho tôi một vùng địa chỉ ảo, ánh xạ đến cái gì đó" — cái gì đó có thể là một file trên disk hoặc không gì cả (anonymous).
+`mmap` là system call cho phép ta tạo một VMA mới trong không gian địa chỉ ảo của process. Nói đơn giản, ta yêu cầu kernel "cho tôi một vùng địa chỉ ảo, ánh xạ đến cái gì đó" - cái gì đó có thể là một file trên disk hoặc không gì cả (anonymous).
 
 ### 12.1. Prototype
 
@@ -1290,7 +1290,7 @@ void *mmap(void *addr, size_t length, int prot, int flags,
 
 ### 12.2. Hai loại ánh xạ chính
 
-**File mapping** — ánh xạ nội dung một file vào bộ nhớ ảo:
+**File mapping** - ánh xạ nội dung một file vào bộ nhớ ảo:
 
 ```c
 int fd = open("/path/to/file", O_RDONLY);
@@ -1302,9 +1302,9 @@ char first_byte = data[0];
 char last_byte = data[file_size - 1];
 ```
 
-Sau khi `mmap`, ta đọc file bằng cách truy cập con trỏ trực tiếp — không cần gọi `read`, không cần quản lý buffer. Kernel tạo VMA file-backed, và nhờ demand paging, chỉ những page ta thực sự truy cập mới được đọc từ đĩa vào RAM.
+Sau khi `mmap`, ta đọc file bằng cách truy cập con trỏ trực tiếp - không cần gọi `read`, không cần quản lý buffer. Kernel tạo VMA file-backed, và nhờ demand paging, chỉ những page ta thực sự truy cập mới được đọc từ đĩa vào RAM.
 
-**Anonymous mapping** — cấp phát vùng nhớ không gắn với file nào:
+**Anonymous mapping** - cấp phát vùng nhớ không gắn với file nào:
 
 ```c
 char *buf = mmap(NULL, 100 * 1024 * 1024, PROT_READ | PROT_WRITE,
@@ -1366,7 +1366,7 @@ Kernel xóa VMA, giải phóng page table entry, và page vật lý sẽ đượ
 
 ### 12.6. Ví dụ: Quan sát mmap() file mapping
 
-`mmap()` cho phép ánh xạ file trực tiếp vào virtual address space. Thay vì dùng `read()`/`write()`, chương trình truy cập file như truy cập mảng — kernel tự động nạp nội dung file khi cần qua page fault:
+`mmap()` cho phép ánh xạ file trực tiếp vào virtual address space. Thay vì dùng `read()`/`write()`, chương trình truy cập file như truy cập mảng - kernel tự động nạp nội dung file khi cần qua page fault:
 
 ```c
 #include <stdio.h>
@@ -1415,7 +1415,7 @@ int main() {
                         MAP_SHARED, fd, 0);
     close(fd);
     
-    print_state("2. Sau mmap (chưa truy cập — lazy!)");
+    print_state("2. Sau mmap (chưa truy cập - lazy!)");
     
     // Đọc 1 byte → trigger page fault, kernel đọc page từ file
     volatile char c = mapped[0];
@@ -1449,7 +1449,7 @@ Minor faults: 150 | Major faults: 0
 VmSize:    4368 kB
 VmRSS:     1024 kB
 
-=== 2. Sau mmap (chưa truy cập — lazy!) ===
+=== 2. Sau mmap (chưa truy cập - lazy!) ===
 Minor faults: 150 | Major faults: 0           ← Không fault!
 VmSize:    8464 kB      ← VmSize tăng 4MB (VMA mới)
 VmRSS:     1024 kB      ← RSS không đổi (chưa cấp page)
@@ -1473,7 +1473,7 @@ VmRSS:     1024 kB      ← RSS trở về (pages giải phóng)
 ```
 
 **Quan sát:**
-- `mmap()` rất nhanh — chỉ tạo VMA, không đọc file. VmSize tăng nhưng RSS không đổi.
+- `mmap()` rất nhanh - chỉ tạo VMA, không đọc file. VmSize tăng nhưng RSS không đổi.
 - Mỗi lần đọc page mới từ file $\rightarrow$ major page fault (kernel đọc 4KB từ đĩa).
-- Sau khi page đã trong RAM, ghi vào không gây thêm fault — chỉ đánh dấu dirty.
+- Sau khi page đã trong RAM, ghi vào không gây thêm fault - chỉ đánh dấu dirty.
 - `munmap()` giải phóng VMA, dirty pages được kernel sync ngược lại file.

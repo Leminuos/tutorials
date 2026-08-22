@@ -49,7 +49,9 @@ GPIO và pinmux là hai phần khác nhau nhưng liên quan chặt chẽ:
 - Pinctrl quyết định một chân vật lý hoạt động ở function nào (UART TX? I2C SDA? hay GPIO?) và các thuộc tính điện (pull-up/down, drive strength).
 - GPIO chỉ điều khiển được chân khi pinctrl đã mux chân đó về function GPIO. Chân đang mux cho UART thì `gpioset` chạy vẫn thành công nhưng ngoài thực tế không có gì thay đổi - lỗi rất hay gặp khi debug.
 
-Trên AM335x (BeagleBone Black), hai phần này là hai driver riêng: `gpio-omap.c` lo GPIO còn `pinctrl-single.c` lo pinmux. Nhiều SoC khác (Allwinner, STM32, i.MX...) lại gộp vào một driver duy nhất: vừa `gpiochip_add_data()` vừa `pinctrl_register()`. Cầu nối giữa hai bên là callback `.request` của `gpio_chip` $\rightarrow$ gọi `pinctrl_gpio_request()`.
+Cầu nối giữa hai phần này là callback `.request` của `gpio_chip` $\rightarrow$ gọi `pinctrl_gpio_request()`.
+
+Với SoC AM335x, hai phần này là hai driver riêng: `gpio-omap.c` xử lý GPIO còn `pinctrl-single.c` xử lý pinmux. Nhiều SoC khác như Allwinner, STM32,...thì lại gộp vào một driver duy nhất: vừa `gpiochip_add_data()` vừa `pinctrl_register()`.
 
 :::warning Chú ý
 GPIO chỉ điều khiển được chân khi pinctrl đã mux chân đó về function GPIO. Nếu chân đang được mux cho UART, mọi lệnh `gpioset` sẽ không có tác dụng ngoài thực tế dù kernel không báo lỗi rõ ràng.
@@ -57,7 +59,11 @@ GPIO chỉ điều khiển được chân khi pinctrl đã mux chân đó về f
 
 ### 2.3. Tổ chức mã nguồn trong kernel
 
-Toàn bộ subsystem nằm trong thư mục `drivers/gpio/`, cộng thêm vài header ở `include/`. Quy ước đặt tên rất dễ nhận ra: các file `gpiolib*` là phần core dùng chung, còn hàng trăm file `gpio-*.c` còn lại là driver controller của từng SoC.
+Toàn bộ subsystem nằm trong thư mục `drivers/gpio/` và một số header ở `include/`.
+
+Quy ước đặt tên rất dễ nhận ra đó là:
+- Các file `gpiolib*` là phần core dùng chung
+- Hàng trăm file `gpio-*.c` còn lại là driver controller của từng SoC.
 
 ```
 linux/
@@ -155,19 +161,19 @@ Các trường mô tả chip:
 | `label` | Tên hiện trong `gpiodetect` và `/sys/kernel/debug/gpio`, ví dụ `gpio-32-63` của bank GPIO1 trên AM335x |
 | `parent` | `struct device` của controller, dùng để core biết chip thuộc node DT nào |
 | `ngpio` | Số chân của chip, quyết định kích thước mảng descriptor mà core cấp phát |
-| `base` | Số toàn cục đầu tiên của chip. Để `-1` cho kernel tự cấp, chỉ set cứng khi phải giữ tương thích với sysfs cũ |
-| `can_sleep` | Đặt `true` nếu thao tác chân phải đi qua bus chậm (I2C/SPI). Core dựa vào đây để chặn consumer gọi trong atomic context |
+| `base` | Số toàn cục đầu tiên của chip. Để `-1` thì kernel sẽ tự cấp, chỉ set cứng khi phải giữ tương thích với sysfs cũ |
+| `can_sleep` | Đặt `true` nếu thao tác chân phải đi qua bus (I2C/SPI). Core dựa vào đây để chặn consumer gọi trong atomic context |
 | `of_xlate` | Đổi các cell trong DT thành offset. Chỉ cần viết khi `#gpio-cells` khác chuẩn 2 cell |
-| `irq` | Nhúng `struct gpio_irq_chip` khi chip có thể sinh ngắt, core sẽ tự dựng irq domain |
+| `irq` | Nhúng `struct gpio_irq_chip` khi chip có thể generate ngắt |
 
 Các callback:
 
 | Callback | Core gọi khi nào |
 | --- | --- |
-| `.get` / `.set` | Consumer đọc hoặc ghi giá trị chân |
-| `.direction_input` / `.direction_output` | Lúc consumer request chân kèm flag hướng hoặc đổi hướng runtime |
-| `.get_direction` | `gpioinfo` và debugfs cần biết chân đang là in hay out |
-| `.request` / `.free` | Chân bắt đầu/kết thúc được sử dụng. Đây là chỗ gọi sang pinctrl để giữ chỗ |
+| `.get` / `.set` | Consumer cần đọc hoặc ghi giá trị chân |
+| `.direction_input` / `.direction_output` | Consumer request chân GPIO kèm hướng hoặc đổi hướng tại thời điểm runtime |
+| `.get_direction` | `gpioinfo` và debugfs cần biết chân đang là input hay output |
+| `.request` / `.free` | Chân request/free được sử dụng. Đây là chỗ gọi sang pinctrl để giữ chỗ |
 | `.set_config` | Consumer yêu cầu pull-up/pull-down, open-drain, debounce |
 | `.to_irq` | Consumer gọi `gpiod_to_irq()` để lấy số IRQ |
 
@@ -362,7 +368,7 @@ Trong đó: PA=0, PB=1, PC=2, PD=3, PE=4, PF=5
 Một số SoC Allwinner khác còn có bank PL do khối R_PIO quản lý, khai báo bằng node riêng `r_pio: pinctrl@1f02c00`. Node riêng nghĩa là thêm một lần probe nên board đó có hai gpiochip dù vẫn là Allwinner. Chip thứ hai có `pin_base` khác 0 và phép trừ `- pctl->desc->pin_base` trong đoạn code trên chính là để nó đếm offset lại từ 0.
 :::
 
-### 3.5. Ánh xạ node Device Tree và gpiochip
+### 3.5. Ánh xạ node DT và gpiochip
 
 Mục 3.4 nói về việc một gpiochip có thể gộp nhiều bank. Ở đây là một cái bẫy khác, xảy ra ngay cả khi mỗi bank đúng một gpiochip: số trong tên node DT và số trong tên `/dev/gpiochipN` là hai hệ đánh số hoàn toàn độc lập. Viết `&gpio2` trong DTS không có nghĩa là chân đó sẽ hiện ra ở `gpiochip2`.
 
@@ -633,7 +639,7 @@ my-device {
 
 Quy ước tên: property phải kết thúc bằng `-gpios` (hoặc `-gpio`), và `con_id` truyền vào `gpiod_get()` là phần đứng trước. Ví dụ `reset-gpios` → `gpiod_get(dev, "reset", ...)`. Nếu chỉ có property tên `gpios` thì truyền `con_id = NULL`.
 
-Số cell (`#gpio-cells`) tuỳ SoC: AM335x và đa số SoC dùng 2 (`pin, flags`) vì mỗi bank là một node riêng (`gpio0`..`gpio3`); một số SoC như Allwinner gom mọi bank vào một node nên cần 3 (`bank, pin, flags`). Chi tiết về hai kiểu tổ chức này và cách quy đổi sang offset mà user space nhìn thấy nằm ở [3.4](#34-phân-biệt-gpiochip-và-bank).
+Số cell (`#gpio-cells`) tuỳ SoC: AM335x và đa số SoC dùng 2 (`pin, flags`) vì mỗi bank là một node riêng (`gpio0`..`gpio3`); một số SoC như Allwinner gom mọi bank vào một node nên cần 3 (`bank, pin, flags`). Chi tiết về hai kiểu tổ chức này và cách quy đổi sang offset mà user space nhìn thấy nằm ở [mục 3.4](#34-phân-biệt-gpiochip-và-bank).
 
 Flags thông dụng (`include/dt-bindings/gpio/gpio.h`): `GPIO_ACTIVE_HIGH`, `GPIO_ACTIVE_LOW`, `GPIO_OPEN_DRAIN`, `GPIO_PULL_UP`, `GPIO_PULL_DOWN`.
 
@@ -646,15 +652,15 @@ Provider node còn nhận thêm `gpio-line-names`, một mảng chuỗi đặt t
 };
 ```
 
-Nên khai báo property này cho mọi board dùng lâu dài: nó vừa giúp ứng dụng gọi chân theo tên thay vì nhớ offset, vừa là cách nhanh nhất để kiểm tra node DT nào ứng với `/dev/gpiochipN` nào — vấn đề nói ở [3.5](#35-ánh-xạ-node-device-tree-và-gpiochip).
+Nên khai báo property này cho mọi board dùng lâu dài: nó vừa giúp ứng dụng gọi chân theo tên thay vì nhớ offset, vừa là cách nhanh nhất để kiểm tra node DT nào ứng với `/dev/gpiochipN` nào - vấn đề nói ở [mục 3.5](#35-ánh-xạ-node-device-tree-và-gpiochip).
 
-## 7. Interface phía user-space
+## 7. Interface phía user space
 
-Kernel mở GPIO ra ngoài bằng hai đường: sysfs (cũ, deprecated) và character device (hiện nay). Cả hai đều đi qua gpiolib nên tuân thủ cùng luật chống xung đột: chân đang bị driver kernel giữ thì user space không xin được, và ngược lại.
+Kernel mở GPIO ra ngoài bằng hai đường: sysfs (cũ, deprecated) và character device (hiện nay). Cả hai đều đi qua gpiolib nên tuân thủ cùng luật chống xung đột: chân đang bị driver kernel giữ thì user space không xin được và ngược lại.
 
 ### 7.1. sysfs
 
-Interface này làm việc theo số GPIO toàn cục. Muốn dùng một chân, ghi số của nó vào file `export`, kernel sẽ tạo ra thư mục `/sys/class/gpio/gpioN/` chứa các file điều khiển.
+Interface này làm việc theo số GPIO toàn cục. Muốn dùng một chân thì cần ghi số của nó vào file `export`, kernel sẽ tạo ra thư mục `/sys/class/gpio/gpioN/` chứa các file điều khiển.
 
 Bố cục thư mục:
 
@@ -743,7 +749,7 @@ Interface này đã bị deprecated từ kernel 4.8 và đang bị gỡ dần (c
 
 ### 7.2. Character device
 
-Từ kernel 4.8, mỗi gpiochip có một char device `/dev/gpiochipN`. Cách dùng khác hẳn sysfs: không ghi file text mà gọi `ioctl()` và chân được cấp qua một file descriptor riêng gọi là line request.
+Từ kernel 4.8, mỗi gpiochip có một char device `/dev/gpiochipN`. Cách dùng khác hẳn sysfs: không ghi file text mà gọi `ioctl()` và chân được cấp qua một file descriptor riêng được gọi là line request.
 
 Trình tự luôn gồm bốn bước:
 
@@ -1478,7 +1484,7 @@ Nếu layer chỉ có v1 mà code cần v2 thì phải bump recipe hoặc thêm 
 
 Các binding bám theo đúng thế hệ của thư viện C, nên cũng chia hai nhánh không tương thích.
 
-Python — bản v1 thường lấy từ gói distro `python3-libgpiod`:
+Python bản v1 thường lấy từ gói distro `python3-libgpiod`:
 
 ```python
 import gpiod
@@ -1490,7 +1496,7 @@ line.set_value(1)
 line.release()
 ```
 
-Python — bản v2 có trên PyPI (`pip install gpiod` hiện cho bản 2.x), API xoay quanh `request_lines()` và dùng được với `with`:
+Python bản v2 có trên PyPI (`pip install gpiod` hiện cho bản 2.x), API xoay quanh `request_lines()` và dùng được với `with`:
 
 ```python
 import gpiod
@@ -1513,7 +1519,7 @@ with gpiod.request_lines(
         print(event.line_offset, event.event_type, event.timestamp_ns)
 ```
 
-Ngoài ra còn binding C++ (`gpiod.hpp`, cả hai bản đều có, namespace `gpiod::`) và binding Rust (crate `libgpiod`, chỉ có từ v2.0). Riêng v2 còn thêm một daemon D-Bus (`gpio-manager` trong thư mục `dbus/`) cho phép giữ line liên tục và cho nhiều tiến trình cùng điều khiển qua D-Bus — giải quyết đúng cái bẫy "thoát là mất mức" nói ở trên.
+Ngoài ra còn binding C++ (`gpiod.hpp`, cả hai bản đều có, namespace `gpiod::`) và binding Rust (crate `libgpiod`, chỉ có từ v2.0). Riêng v2 còn thêm một daemon D-Bus (`gpio-manager` trong thư mục `dbus/`) cho phép giữ line liên tục và cho nhiều tiến trình cùng điều khiển qua D-Bus - giải quyết đúng cái bẫy "thoát là mất mức" nói ở trên.
 
 ## 10. Cấu hình kernel
 
@@ -1529,9 +1535,9 @@ Device Drivers  --->
 ```
 
 Driver consumer thường dùng:
-- `CONFIG_LEDS_GPIO` — LED nối vào GPIO, xuất ra `/sys/class/leds/`.
-- `CONFIG_KEYBOARD_GPIO` — nút nhấn → input event `/dev/input/eventN`.
-- `CONFIG_GPIO_PCF857X`, `CONFIG_GPIO_MCP23S08` — GPIO expander qua I2C/SPI.
+- `CONFIG_LEDS_GPIO` - LED nối vào GPIO, xuất ra `/sys/class/leds/`.
+- `CONFIG_KEYBOARD_GPIO` - nút nhấn $\rightarrow$ input event `/dev/input/eventN`.
+- `CONFIG_GPIO_PCF857X`, `CONFIG_GPIO_MCP23S08` - GPIO expander qua I2C/SPI.
 
 ## 11. Debug
 
@@ -1558,11 +1564,11 @@ Các lỗi thường gặp:
 | `-EBUSY` / `Device or resource busy` | Chân đã bị driver khác giữ (`gpioinfo`: cột `[used]` ở v1, `consumer="..."` ở v2) |
 | Ghi giá trị nhưng chân không đổi | pinctrl chưa mux chân về function GPIO |
 | Mức logic bị ngược | Nhầm `GPIO_ACTIVE_LOW`, hoặc dùng `gpiod_set_raw_value()` |
-| `gpioset` xong chân về mức cũ | Tiến trình thoát → line request bị release (v1 mặc định thoát ngay, xem [9.2](#92-công-cụ-dòng-lệnh)) |
+| `gpioset` xong chân về mức cũ | Tiến trình thoát → line request bị release (v1 mặc định thoát ngay, xem [mục 9.2](#92-công-cụ-dòng-lệnh)) |
 | Tool báo `ENOTTY`/`Inappropriate ioctl` | Dùng libgpiod v1 trên kernel không bật `CONFIG_GPIO_CDEV_V1` |
 | Chương trình không compile sau khi đổi board | Lẫn API v1 và v2 của libgpiod, kiểm tra `pkg-config --modversion libgpiod` |
-| Script chạy sai chân sau khi nâng kernel | Hardcode `gpiochipN`, số này đổi theo thứ tự probe. Tra theo `label` hoặc `gpio-line-names`, xem [3.5](#35-ánh-xạ-node-device-tree-và-gpiochip) |
-| Hog/consumer khai trong `&gpioN` lại hiện ở `gpiochipM` | Bình thường: node DT và `/dev/gpiochipN` là hai hệ đánh số độc lập, xem [3.5](#35-ánh-xạ-node-device-tree-và-gpiochip) |
+| Script chạy sai chân sau khi nâng kernel | Hardcode `gpiochipN`, số này đổi theo thứ tự probe. Tra theo `label` hoặc `gpio-line-names`, xem [mục 3.5](#35-ánh-xạ-node-device-tree-và-gpiochip) |
+| Hog/consumer khai trong `&gpioN` lại hiện ở `gpiochipM` | Bình thường: node DT và `/dev/gpiochipN` là hai hệ đánh số độc lập, xem [mục 3.5](#35-ánh-xạ-node-device-tree-và-gpiochip) |
 
 ## Tham khảo
 

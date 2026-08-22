@@ -2,7 +2,7 @@
 
 Zephyr là một hệ điều hành RTOS mã nguồn mở, được quản lý bởi Linux Foundation. Đây là một trong những RTOS phổ biến nhất hiện nay cho các thiết bị embedded và IoT có tài nguyên hạn chế.
 
-Zephyr được thiết kế cho các thiết bị có tài nguyên hạn chế — từ các vi điều khiển nhỏ với vài KB RAM cho đến các hệ thống phức tạp hơn. Nó hỗ trợ hơn 700 board phần cứng từ nhiều hãng như Nordic Semiconductor, STMicroelectronics, NXP, Espressif, Intel, v.v.
+Zephyr được thiết kế cho các thiết bị có tài nguyên hạn chế - từ các vi điều khiển nhỏ với vài KB RAM cho đến các hệ thống phức tạp hơn. Nó hỗ trợ hơn 700 board phần cứng từ nhiều hãng như Nordic Semiconductor, STMicroelectronics, NXP, Espressif, Intel, v.v.
 
 ## Các thành phần cốt lõi
 

@@ -6,7 +6,7 @@
 
 FIT không thiết kế format riêng mà tái sử dụng device tree vì uboot đã có sẵn parser cho format này (`libfdt`). Device tree bản chất là một cây phân cấp gồm các node, mỗi node chứa các property dưới dạng key-value. FIT lợi dụng cấu trúc này để mô tả một cây image với mỗi node là một component (kernel, DTB, ramdisk) và mỗi property mô tả metadata của component đó.
 
-File `.its` (Image Tree Source) là dạng text đọc được, tương đương với file `.dts` của device tree. Khi compile bằng `mkimage`, nó sẽ đóng gói các component và tạo thành file `.itb` (Image Tree Blob) — dạng binary, tương đương `.dtb`. File `.itb` này chính là cái mà mọi người gọi là FIT image.
+File `.its` (Image Tree Source) là dạng text đọc được, tương đương với file `.dts` của device tree. Khi compile bằng `mkimage`, nó sẽ đóng gói các component và tạo thành file `.itb` (Image Tree Blob) - dạng binary, tương đương `.dtb`. File `.itb` này chính là cái mà mọi người gọi là FIT image.
 
 Ví dụ nội dung của một file `.its`:
 
@@ -111,11 +111,11 @@ Trong đó:
 - `description`: Chuỗi mô tả tùy ý. U-Boot không dùng property này trong quá trình verify.
 - `#address-cells = <1>`: Chỉ định rằng các địa chỉ trong cây này dùng 1 cell = 32-bit. Trên ARM 32-bit như AM335x, luôn là `<1>`. Trên ARM 64-bit sẽ là `<2>`.
 
-#### 1.2.2. Tầng `/images` — chứa binary component
+#### 1.2.2. Tầng `/images` - chứa binary component
 
 Node `/images` là container, bản thân nó không có property đặc biệt. Các child node bên trong mới là thực thể quan trọng. Mỗi child node đại diện cho một binary component.
 
-**Image node — kernel image**
+**Image node - kernel image**
 
 ```dts
 kernel {
@@ -172,11 +172,11 @@ hash-1 {
 };
 ```
 
-Ta có thể có nhiều hash node: `hash-1` dùng SHA-256, `hash-2` dùng SHA-512. U-Boot sẽ verify tất cả — chỉ cần 1 hash fail là reject.
+Ta có thể có nhiều hash node: `hash-1` dùng SHA-256, `hash-2` dùng SHA-512. U-Boot sẽ verify tất cả - chỉ cần 1 hash fail là reject.
 
 Tên node không quan trọng về mặt logic, chỉ cần bắt đầu bằng hash. U-Boot tìm child node bằng cách scan tất cả node có prefix là hash bên trong image node.
 
-**Image node — device tree**
+**Image node - device tree**
 
 ```dts
 fdt-1 {
@@ -185,7 +185,7 @@ fdt-1 {
     type = "flat_dt";
     arch = "arm";
     compression = "none";
-    /* không có load và entry — U-Boot tự chọn địa chỉ */
+    /* không có load và entry - U-Boot tự chọn địa chỉ */
 
     hash-1 {
         algo = "sha256";
@@ -199,7 +199,7 @@ DTB node không cần load và entry vì U-Boot tự quyết định đặt DTB 
 DTB này là device tree của board (mô tả hardware cho kernel), khác hoàn toàn với U-Boot control DTB (chứa public key cho verified boot). Hai file DTB này phục vụ mục đích khác nhau và nằm ở vị trí khác nhau.
 :::
 
-**Image node — ramdisk**
+**Image node - ramdisk**
 
 ```dts
 ramdisk-1 {
@@ -218,7 +218,7 @@ ramdisk-1 {
 
 Ramdisk chứa initramfs , đây là một filesystem tạm thời mà kernel mount trước khi mount rootfs thật. Đối với secure boot, initramfs đặc biệt quan trọng vì nó giúp chạy script `dm-verity` trước khi mount rootfs chính. Vì initramfs nằm trong FIT image đã được sign nên attacker không thể sửa đổi script `dm-verity`.
 
-Property compression `gzip` ở đây có ý nghĩa hơi khác với kernel. Với ramdisk, U-Boot thường không tự giải nén — nó truyền blob nén cho kernel và kernel tự giải nén. Nhưng hash vẫn tính trên dạng nén, dữ liệu thô trong FIT.
+Property compression `gzip` ở đây có ý nghĩa hơi khác với kernel. Với ramdisk, U-Boot thường không tự giải nén - nó truyền blob nén cho kernel và kernel tự giải nén. Nhưng hash vẫn tính trên dạng nén, dữ liệu thô trong FIT.
 
 #### 1.2.3. Configuration node
 
@@ -248,7 +248,7 @@ configurations {
 };
 ```
 
-Property kernel có nghĩa là khi boot theo configuration này, lấy image node tại `/images/kernel`. Tương tự với fdt trỏ tới `/images/fdt-reva`. Đây là tham chiếu bằng tên, không phải con trỏ binary — U-Boot dùng `libfdt` để tìm node tương ứng trong cây.
+Property kernel có nghĩa là khi boot theo configuration này, lấy image node tại `/images/kernel`. Tương tự với fdt trỏ tới `/images/fdt-reva`. Đây là tham chiếu bằng tên, không phải con trỏ binary - U-Boot dùng `libfdt` để tìm node tương ứng trong cây.
 
 Cùng kernel, cùng ramdisk, nhưng DTB khác nhau cho ra kiến trúc hardware khác nhau. Mỗi configuration phải có signature riêng và sign lần lượt bằng cùng key.
 
@@ -281,11 +281,11 @@ signature-1 {
 };
 ```
 
-`value` chính là RSA signature — 256 bytes cho RSA-2048, 512 bytes cho RSA-4096. `timestamp` cho phép ta biết image được ký lúc nào, hữu ích cho rollback protection.
+`value` chính là RSA signature - 256 bytes cho RSA-2048, 512 bytes cho RSA-4096. `timestamp` cho phép ta biết image được ký lúc nào, hữu ích cho rollback protection.
 
 ## 2. Quy trình sign tại boot time
 
-Quá trình sign diễn ra trên build server, sử dụng `mkimage` — tool của U-Boot. Đây là flow chi tiết:
+Quá trình sign diễn ra trên build server, sử dụng `mkimage` - tool của U-Boot. Đây là flow chi tiết:
 
 ```bash
 # Bước 1: Tạo RSA key pair (chỉ làm 1 lần)
@@ -298,7 +298,7 @@ mkimage -f fitImage.its fitImage
 # Bước 3: Ký FIT image + nhúng public key vào U-Boot DTB
 mkimage -F fitImage \
     -k keys/ \                  # thư mục chứa .key và .crt
-    -K u-boot.dtb \             # U-Boot DTB — public key sẽ được ghi vào đây
+    -K u-boot.dtb \             # U-Boot DTB - public key sẽ được ghi vào đây
     -r \                        # required: đánh dấu signature là bắt buộc
     -c "Example sign FIT image" # comment
 ```
@@ -564,7 +564,7 @@ Ngoài ra, cần bật các cấu hình sau trong uboot defconfig:
 /* FIT support */
 CONFIG_FIT=y                # Bật FIT image format support
 CONFIG_FIT_SIGNATURE=y      # bật signature verification
-CONFIG_FIT_VERBOSE=y        # log chi tiết khi verify — tắt ở production
+CONFIG_FIT_VERBOSE=y        # log chi tiết khi verify - tắt ở production
 
 /* Crypto */
 CONFIG_RSA=y                # RSA verify support

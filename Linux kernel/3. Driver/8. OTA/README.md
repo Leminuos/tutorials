@@ -60,13 +60,13 @@ Toàn bộ cơ chế được diễn giải như sau:
  
 ### 2.1. SWUpdate là gì?
  
-SWUpdate là một framework OTA mã nguồn mở được thiết kế đặc biệt cho embedded Linux. Nó đóng vai trò là "người thực thi" — nhận gói update, kiểm tra tính hợp lệ, và áp dụng update theo đúng chỉ dẫn.
+SWUpdate là một framework OTA mã nguồn mở được thiết kế đặc biệt cho embedded Linux. Nó đóng vai trò là "người thực thi" - nhận gói update, kiểm tra tính hợp lệ, và áp dụng update theo đúng chỉ dẫn.
 
 Điều quan trọng cần hiểu ngay từ đầu: SWUpdate không tự quyết định phải làm gì. Mọi quyết định đều đến từ file `sw-description` bên trong gói update. SWUpdate chỉ đọc và thực thi chỉ dẫn đó.
 
 ### 2.2. Cơ chế hoạt động
 
-SWUpdate engine hoạt động theo mô hình pipeline — dữ liệu đi qua được xử lý tuần tự:
+SWUpdate engine hoạt động theo mô hình pipeline - dữ liệu đi qua được xử lý tuần tự:
 
 ```
 File .swu đến BBB
@@ -216,7 +216,7 @@ SWUpdate không giải nén toàn bộ `.swu` ra disk rồi mới xử lý. Thay
 
 ### 2.6. Nơi lưu log của SWUpdate
 
-`/var/lib/swupdate` là nơi SWUpdate lưu trạng thái runtime — những thông tin cần tồn tại giữa các lần chạy và qua các lần reboot.
+`/var/lib/swupdate` là nơi SWUpdate lưu trạng thái runtime - những thông tin cần tồn tại giữa các lần chạy và qua các lần reboot.
 
 ```
 /var/lib/swupdate/
@@ -225,7 +225,7 @@ SWUpdate không giải nén toàn bộ `.swu` ra disk rồi mới xử lý. Thay
 └── progress             <- Unix socket theo dõi tiến trình
 ```
 
-Cần đảm bảo `/var/lib/swupdate` nằm trên partition không bị xóa khi OTA. Nếu rootfs bị flash lại (Layout 2), toàn bộ `/var/lib` sẽ mất — không ảnh hưởng đến hoạt động vì SWUpdate tự tạo lại khi khởi động, nhưng nếu ta muốn lưu log của SWUpdate qua các lần OTA để debug, nên redirect log ra `/data`:
+Cần đảm bảo `/var/lib/swupdate` nằm trên partition không bị xóa khi OTA. Nếu rootfs bị flash lại (Layout 2), toàn bộ `/var/lib` sẽ mất - không ảnh hưởng đến hoạt động vì SWUpdate tự tạo lại khi khởi động, nhưng nếu ta muốn lưu log của SWUpdate qua các lần OTA để debug, nên redirect log ra `/data`:
 
 ```
 # swupdate.cfg
@@ -237,7 +237,7 @@ logging :
 };
 ```
 
-**`.lock` — đảm bảo chỉ một instance chạy**
+**`.lock` - đảm bảo chỉ một instance chạy**
 
 Kịch bản không có `.lock`:
 - Terminal 1: swupdate đang flash kernel vào slot B
@@ -256,7 +256,7 @@ flock /var/lib/swupdate/.lock  ← bị block ngay lập tức
 # báo lỗi: "Another instance of swupdate is running"
 ```
 
-**`sockinstall` — Unix socket điều khiển**
+**`sockinstall` - Unix socket điều khiển**
 
 Đây là kênh giao tiếp chính giữa các thành phần của SWUpdate:
 
@@ -288,7 +288,7 @@ curl -X POST http://<BBB_IP>:8080/upload -F "file=@update.swu"
 SWUpdate daemon xử lý update
 ```
 
-**`progress` — Unix socket theo dõi tiến trình**
+**`progress` - Unix socket theo dõi tiến trình**
 
 Cho phép client bên ngoài theo dõi tiến trình update theo thời gian thực:
 
@@ -307,8 +307,8 @@ swupdate-progress -s /var/lib/swupdate/progress
 SWUpdate sử dụng UNIX Domain Socket làm cơ chế giao tiếp IPC. Đây không phải network socket (TCP/UDP) mà là socket nội bộ trên cùng một máy, giao tiếp qua file system, tốc độ rất nhanh và không cần network stack.
 
 SWUpdate khi chạy tạo hai socket, mỗi cái phục vụ mục đích khác nhau:
-- `/tmp/sockinstctrl` — control socket: Dùng để gửi lệnh điều khiển tới SWUpdate: bảo nó install file `.swu`, hủy update hoặc gửi file data.
-- `/tmp/swupdateprog` — progress socket. Dùng để nhận thông tin progress: phần trăm, trạng thái, error message. Đây là socket read-only, chỉ để theo dõi.
+- `/tmp/sockinstctrl` - control socket: Dùng để gửi lệnh điều khiển tới SWUpdate: bảo nó install file `.swu`, hủy update hoặc gửi file data.
+- `/tmp/swupdateprog` - progress socket. Dùng để nhận thông tin progress: phần trăm, trạng thái, error message. Đây là socket read-only, chỉ để theo dõi.
 
 Trong phần này ta sẽ tập trung vào progress socket. Bất kỳ chương trình nào cũng có thể kết nối vào socket này để nhận realtime message.
 
@@ -420,11 +420,11 @@ Giả sử ta có board tên imx6-myboard, đang chạy firmware v1.0.0, muốn 
 ```
 my-update-v2.0.0.swu
 │
-├── sw-description        (1 KB)    — mô tả bản update
-├── sw-description.sig    (256 B)   — chữ ký RSA
-├── rootfs.ext4.gz        (150 MB)  — rootfs mới, đã nén
-├── zImage                (5 MB)    — kernel mới
-└── update_config.sh      (2 KB)    — script cập nhật config
+├── sw-description        (1 KB)    - mô tả bản update
+├── sw-description.sig    (256 B)   - chữ ký RSA
+├── rootfs.ext4.gz        (150 MB)  - rootfs mới, đã nén
+├── zImage                (5 MB)    - kernel mới
+└── update_config.sh      (2 KB)    - script cập nhật config
 ```
 
 Thì chuỗi message sẽ như sau:
@@ -606,7 +606,7 @@ bitbake-layers show-layers
 ```
 
 :::warning Lưu ý
-`meta-swupdate` phụ thuộc `meta-oe` và `meta-python` — nếu ta đã có sẵn hai layer này thì không cần làm gì thêm.
+`meta-swupdate` phụ thuộc `meta-oe` và `meta-python` - nếu ta đã có sẵn hai layer này thì không cần làm gì thêm.
 :::
 
 ### 3.2. Cấu hình SWUpdate
@@ -760,7 +760,7 @@ fi
 SWUPDATE_ARGS="-H bbb-gateway:1.0 ${selection} -f /etc/swupdate.cfg"
 ```
 
-Tham số quan trọng nhất ở đây là `-H bbb-gateway:1.0` — khai báo hardware name và version. SWUpdate dùng giá trị này để đối chiếu với `hardware-compatibility` trong `sw-description`:
+Tham số quan trọng nhất ở đây là `-H bbb-gateway:1.0` - khai báo hardware name và version. SWUpdate dùng giá trị này để đối chiếu với `hardware-compatibility` trong `sw-description`:
 
 ```
 09-swupdate-args:          sw-description:
@@ -956,7 +956,7 @@ Cannot read environment, using default
 Cannot read default environment from file
 ```
 
-Đối với trường hợp raw offset rỗng này thì ta có workaround là sử dụng `saveenv` trong uboot -> ghi env hiện tại trong RAM và kèm với CRC. Cách này khả thi do uboot có default env được compile sẵn trong binary. Khi boot, nó đọc raw env từ offset trên MMC. Nếu CRC hợp lệ thì dùng env từ disk, nếu CRC fail thì fallback về default env compiled-in — không bao giờ fail hoàn toàn.
+Đối với trường hợp raw offset rỗng này thì ta có workaround là sử dụng `saveenv` trong uboot -> ghi env hiện tại trong RAM và kèm với CRC. Cách này khả thi do uboot có default env được compile sẵn trong binary. Khi boot, nó đọc raw env từ offset trên MMC. Nếu CRC hợp lệ thì dùng env từ disk, nếu CRC fail thì fallback về default env compiled-in - không bao giờ fail hoàn toàn.
 
 ### 3.4. Viết recipe tạo file boot script
 
@@ -975,7 +975,7 @@ Trong phần này, ta cần viết file `boot.cmd`, đâu là file chứa các l
                                      từng lệnh
 ```
 
-Nếu không có `boot.scr`, U-Boot sẽ chạy `bootcmd` mặc định được hard-code lúc compile — thường không phù hợp với boot logic mà ta mong muốn.
+Nếu không có `boot.scr`, U-Boot sẽ chạy `bootcmd` mặc định được hard-code lúc compile - thường không phù hợp với boot logic mà ta mong muốn.
 
 Dưới đây là nội dung của file `boot.cmd`:
 
@@ -1124,7 +1124,7 @@ CONFIG_BOOTCOMMAND="run findfdt; run init_console; run finduuid; run envboot; ru
 
 ### 3.5. Viết recipe tạo file .swu
 
-Đây là bước cốt lõi — đóng gói kernel + DTB thành file `.swu` để gửi đến thiết bị.
+Đây là bước cốt lõi - đóng gói kernel + DTB thành file `.swu` để gửi đến thiết bị.
  
 **Đầu tiên, ta cần viết file `sw-description`:**
 
@@ -1257,7 +1257,7 @@ DESCRIPTION = "SWUpdate package cho BBB gateway"
 LICENSE     = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-# Kế thừa class swupdate — cung cấp do_swuimage task
+# Kế thừa class swupdate - cung cấp do_swuimage task
 inherit swupdate
 
 # Phụ thuộc kernel phải build xong trước
@@ -1280,7 +1280,7 @@ SWUPDATE_IMAGES_FSTYPES[am335x-boneblack.dtb] = ""
 
 ### 3.6. Confirm boot thành công
 
-Sau khi boot vào slot mới thành công, systemd chạy service này để xác nhận boot — reset `ustate=0` để tránh U-Boot rollback nhầm.
+Sau khi boot vào slot mới thành công, systemd chạy service này để xác nhận boot - reset `ustate=0` để tránh U-Boot rollback nhầm.
 
 :::warning Tại sao quan trọng
 Nếu không confirm, `ustate` mãi bằng `1`. Sau 3 lần reboot bình thường, U-Boot sẽ rollback về slot cũ dù hệ thống đang hoạt động tốt.
@@ -1369,11 +1369,11 @@ SD Card (>1GB)
 │     Offset 0x040000: U-Boot image
 │     Offset 0x260000: U-Boot environment    <- fw_env.config trỏ vào đây
 │
-└── [Partition table — bắt đầu từ 0x400000 trở đi]
-      p1: boot   (FAT32)   — kernel, DTB, boot script
-      p2: rootfsA (ext4)   — rootfs slot A
-      p3: rootfsB (ext4)   — rootfs slot B
-      p4: data    (ext4)   — persistent data
+└── [Partition table - bắt đầu từ 0x400000 trở đi]
+      p1: boot   (FAT32)   - kernel, DTB, boot script
+      p2: rootfsA (ext4)   - rootfs slot A
+      p3: rootfsB (ext4)   - rootfs slot B
+      p4: data    (ext4)   - persistent data
 ```
 
 Để định nghĩa các partition trong yocto, ta sử dụng file `.wks` - Wic Kickstart file. Yocto dùng tool `wic` để đọc file này và tạo ra disk image hoàn chỉnh có thể flash thằng vào SD card.
@@ -1395,28 +1395,28 @@ part --source rawcopy --ondisk mmcblk0 --no-table --align 384  --sourceparams="f
 part --source rawcopy --ondisk mmcblk0 --no-table --align 2432 --sourceparams="file=u-boot-env.raw"
 
 # -----------------------------------------------------------
-# p1 — boot partition (FAT32)
+# p1 - boot partition (FAT32)
 # Chứa: boot.scr
 # U-Boot load boot.scr từ đây để thực thi A/B logic
 # -----------------------------------------------------------
 part /boot --source bootimg-partition --ondisk mmcblk0 --fstype=vfat --label boot   --active --align 4096 --size 64    --sourceparams="loader=u-boot"
 
 # -----------------------------------------------------------
-# p2 — rootfs slot A (ext4)
+# p2 - rootfs slot A (ext4)
 # Chứa: kernel + DTB + toàn bộ rootfs
 # Là slot active mặc định khi xuất xưởng
 # -----------------------------------------------------------
 part /     --source rootfs            --ondisk mmcblk0 --fstype=ext4 --label root_a --align 4096 --fixed-size 1024 --use-uuid
 
 # -----------------------------------------------------------
-# p3 — rootfs slot B (ext4)
+# p3 - rootfs slot B (ext4)
 # Chứa: bản sao dự phòng, SWUpdate ghi vào đây khi OTA
 # Ban đầu giống hệt slot A (bản sao lúc build)
 # -----------------------------------------------------------
 part       --source empty             --ondisk mmcblk0 --fstype=ext4 --label root_b --align 4096 --fixed-size 1024
 
 # -----------------------------------------------------------
-# p4 — data partition (ext4)
+# p4 - data partition (ext4)
 # Chứa: config, database, logs
 # KHÔNG bao giờ bị xóa hay ghi đè khi OTA
 # -----------------------------------------------------------
@@ -1462,8 +1462,8 @@ IMAGE_INSTALL:append = " \
     ota-confirm-boot     \
 "
  
-# /etc/hwrevision — sw-description dùng để check hardware compatibility
-# /etc/sw-version — SWUpdate dùng để so sánh version khi có rule no-downgrade
+# /etc/hwrevision - sw-description dùng để check hardware compatibility
+# /etc/sw-version - SWUpdate dùng để so sánh version khi có rule no-downgrade
 do_rootfs:append() {
     echo "bbb-gateway 1.0" > ${IMAGE_ROOTFS}${sysconfdir}/hwrevision
     echo "1.0.0"           > ${IMAGE_ROOTFS}${sysconfdir}/sw-version
@@ -1494,7 +1494,7 @@ IMAGE_FSTYPES = "wic wic.bmap ext4 tar.gz"
 #                 └── disk image hoàn chỉnh (có partition table)
 ```
 
-Mỗi giá trị trong list tương ứng với một image creator plugin trong Yocto — plugin đó biết cách đóng gói rootfs thành đúng định dạng đó.
+Mỗi giá trị trong list tương ứng với một image creator plugin trong Yocto - plugin đó biết cách đóng gói rootfs thành đúng định dạng đó.
 
 Với định dạng `.wic` ta có thể flash image như sau:
 
@@ -2042,7 +2042,7 @@ DS Type: "app-only-update"
 
 Khi tạo DS theo type `gateway-full-update`, hawkBit sẽ yêu cầu ta phải thêm ít nhất 1 OS module và 1 Application module. Nếu thiếu, DS không hợp lệ và không thể assign cho target.
 
-**Mối quan hệ giữa Target — Distribution Set — Software Module**
+**Mối quan hệ giữa Target - Distribution Set - Software Module**
 
 ```
               assign

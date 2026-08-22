@@ -390,15 +390,15 @@ Khi tạo task thì ta cũng cần phải xem xét đến độ ưu tiên và k�
 
 **Blocking I/O**
 
-"Blocking" nghĩa là đoạn code phải dừng lại và chờ một thứ gì đó bên ngoài mà nó không kiểm soát được thời điểm hoàn thành. Trong thời gian chờ, nếu nó nằm trong một task riêng, RTOS sẽ chuyển CPU sang task khác — không lãng phí thời gian. Nhưng nếu nó nằm chung với code khác trong cùng một task, thì mọi thứ phía sau đều phải chờ theo.
+"Blocking" nghĩa là đoạn code phải dừng lại và chờ một thứ gì đó bên ngoài mà nó không kiểm soát được thời điểm hoàn thành. Trong thời gian chờ, nếu nó nằm trong một task riêng, RTOS sẽ chuyển CPU sang task khác - không lãng phí thời gian. Nhưng nếu nó nằm chung với code khác trong cùng một task, thì mọi thứ phía sau đều phải chờ theo.
 
 Ví dụ: Máy pha cà phê thông minh
 
 Hình dung một máy cà phê có: màn hình LCD hiển thị menu, cảm biến nhiệt độ nước, bơm nước, cối xay hạt, cân điện tử đo lượng cà phê, nút bấm chọn loại đồ uống, và module Wi-Fi gửi thống kê sử dụng lên server.
 
-Máy cà phê đọc cảm biến nhiệt độ qua I2C mất vài ms mỗi lần, nhưng ta muốn đọc mỗi 500ms. Giữa các lần đọc, task này gọi `vTaskDelay(500ms)` và ngủ — đó là blocking có chủ đích. Nếu ta gộp việc đọc nhiệt độ vào cùng với điều khiển bơm nước, thì trong 500ms task ngủ chờ sensor, bơm nước cũng không được điều khiển.
+Máy cà phê đọc cảm biến nhiệt độ qua I2C mất vài ms mỗi lần, nhưng ta muốn đọc mỗi 500ms. Giữa các lần đọc, task này gọi `vTaskDelay(500ms)` và ngủ - đó là blocking có chủ đích. Nếu ta gộp việc đọc nhiệt độ vào cùng với điều khiển bơm nước, thì trong 500ms task ngủ chờ sensor, bơm nước cũng không được điều khiển.
 
-Ngược lại, tính toán lượng nước cần dùng dựa trên loại đồ uống chỉ là một phép tính thuần túy — vài phép nhân, tra bảng, xong ngay trong vài ms, không chờ ai cả. Đoạn code này không cần task riêng, nó chỉ là một function call bình thường bên trong task nào đó.
+Ngược lại, tính toán lượng nước cần dùng dựa trên loại đồ uống chỉ là một phép tính thuần túy - vài phép nhân, tra bảng, xong ngay trong vài ms, không chờ ai cả. Đoạn code này không cần task riêng, nó chỉ là một function call bình thường bên trong task nào đó.
 
 Tóm lại: nếu một công việc phải chờ I/O, chờ event, chờ data từ bên ngoài $\rightarrow$ Nó là ứng viên tốt cho task riêng. Nếu nó chỉ tính toán rồi xong $\rightarrow$ gọi nó như function bình thường là đủ.
 
@@ -406,7 +406,7 @@ Tóm lại: nếu một công việc phải chờ I/O, chờ event, chờ data t
 
 Câu hỏi này giúp ta quyết định khi hai công việc đều blocking nhưng tần suất hoặc độ khẩn cấp khác nhau.
 
-Trong máy cà phê: điều khiển nhiệt độ nước cần phản hồi nhanh — nếu nhiệt vượt 96°C mà ta không tắt heater trong vòng 100-200ms, nước sẽ quá nóng, cà phê bị cháy vị. Trong khi đó, gửi thống kê lên Wi-Fi hoàn toàn có thể chậm 5-10 giây mà không ai quan tâm.
+Trong máy cà phê: điều khiển nhiệt độ nước cần phản hồi nhanh - nếu nhiệt vượt 96°C mà ta không tắt heater trong vòng 100-200ms, nước sẽ quá nóng, cà phê bị cháy vị. Trong khi đó, gửi thống kê lên Wi-Fi hoàn toàn có thể chậm 5-10 giây mà không ai quan tâm.
 
 Nếu ta gộp hai việc này vào cùng một task, chuyện gì xảy ra? Khi task đang bận gửi HTTP request lên server (có thể mất 2-3 giây nếu mạng chậm), thì suốt thời gian đó việc kiểm soát nhiệt độ bị đình trệ. Đây chính là lý do tách: hai deadline khác nhau $\rightarrow$ hai priority khác nhau $\rightarrow$ hai task khác nhau.
 
@@ -423,7 +423,7 @@ Trong một hệ thống embedded điển hình, task thường rơi vào các n
 
 Nguyên tắc đơn giản nhất là: task nào cần phản hồi nhanh nhất thì có độ ưu tiên cao hơn. 
 
-"Phản hồi nhanh" ở đây nghĩa là deadline ngắn — khoảng thời gian tối đa từ lúc event xảy ra đến lúc hệ thống phải xử lý xong.
+"Phản hồi nhanh" ở đây nghĩa là deadline ngắn - khoảng thời gian tối đa từ lúc event xảy ra đến lúc hệ thống phải xử lý xong.
 
 Áp dụng vào máy cà phê:
 - Điều khiển heater (deadline ~100ms): Nếu nhiệt độ vượt ngưỡng mà không tắt heater kịp, có thể hư thiết bị hoặc gây nguy hiểm. Đây là deadline ngắn nhất $\rightarrow$ priority cao nhất.
@@ -431,10 +431,10 @@ Nguyên tắc đơn giản nhất là: task nào cần phản hồi nhanh nhất
 - Cập nhật UI (deadline ~100-200ms): Người dùng nhìn thấy màn hình chậm một chút cũng không sao. Deadline thoải mái $\rightarrow$ priority thấp hơn.
 - Gửi Wi-Fi stats (deadline ~vài giây đến vài phút): Hoàn toàn không khẩn cấp. Chậm bao lâu cũng được $\rightarrow$ priority thấp nhất.
 
-Kết quả sắp xếp tự nhiên: heater > bơm/xay > UI > Wi-Fi. Ta không cần thuộc công thức toán học nào — chỉ cần hỏi "nếu task này bị trễ thì hậu quả tệ đến đâu?" rồi xếp hạng theo mức độ nghiêm trọng.
+Kết quả sắp xếp tự nhiên: heater > bơm/xay > UI > Wi-Fi. Ta không cần thuộc công thức toán học nào - chỉ cần hỏi "nếu task này bị trễ thì hậu quả tệ đến đâu?" rồi xếp hạng theo mức độ nghiêm trọng.
 
 :::warning
-Priority cao không có nghĩa là "chạy nhiều hơn". Task heater có priority cao nhất nhưng hầu hết thời gian nó đang ngủ chờ timer 100ms. Nó chỉ thức dậy, đọc sensor, quyết định bật/tắt heater, rồi ngủ tiếp — tổng cộng chỉ chiếm CPU vài trăm microsecond mỗi lần. Priority cao chỉ đảm bảo rằng khi nó cần chạy, nó được chạy ngay, không phải đợi task nào khác xong trước.
+Priority cao không có nghĩa là "chạy nhiều hơn". Task heater có priority cao nhất nhưng hầu hết thời gian nó đang ngủ chờ timer 100ms. Nó chỉ thức dậy, đọc sensor, quyết định bật/tắt heater, rồi ngủ tiếp - tổng cộng chỉ chiếm CPU vài trăm microsecond mỗi lần. Priority cao chỉ đảm bảo rằng khi nó cần chạy, nó được chạy ngay, không phải đợi task nào khác xong trước.
 :::
 
 ### Stack size

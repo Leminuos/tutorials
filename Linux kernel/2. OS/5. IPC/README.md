@@ -2,13 +2,13 @@
 
 ## 1. Tại sao cần IPC?
 
-Trên vi điều khiển (STM32, ESP32...), toàn bộ firmware chạy trong một không gian địa chỉ duy nhất. Mọi task — dù dùng RTOS hay bare-metal — đều có thể đọc/ghi trực tiếp vào bất kỳ biến nào:
+Trên vi điều khiển (STM32, ESP32...), toàn bộ firmware chạy trong một không gian địa chỉ duy nhất. Mọi task - dù dùng RTOS hay bare-metal - đều có thể đọc/ghi trực tiếp vào bất kỳ biến nào:
 
 ```c
 // Task A ghi
 sensor_buffer[idx] = read_adc();
 
-// Task B đọc — trực tiếp, không cần cơ chế gì thêm
+// Task B đọc - trực tiếp, không cần cơ chế gì thêm
 process(sensor_buffer[idx]);
 ```
 
@@ -18,7 +18,7 @@ Giao tiếp giữa các task chỉ là chia sẻ biến toàn cục hoặc dùng
 
 Ví dụ: microservice là một kỹ thuật thay thế cho việc tất cả tính năng gộp vào một process, điều này có thể gây ra lỗi toàn bộ hệ thống khi một tính năng bị lỗi thì ta chia các tính năng ra làm nhiều process, lúc này khi một service bị lỗi thì chỉ process thực hiện service đó bị lỗi và không làm ảnh hưởng đến các service khác.
 
-**Vậy làm sao để hai process giao tiếp với nhau?** Câu trả lời nằm ở **IPC — Inter-Process Communication**
+**Vậy làm sao để hai process giao tiếp với nhau?** Câu trả lời nằm ở **IPC - Inter-Process Communication**
 
 ## 2. Phân loại các IPC
 
@@ -34,11 +34,11 @@ Trước khi đi vào từng cơ chế, cần phân biệt mục đích giao ti�
 | **Signaling** | Gửi thông báo bất đồng bộ giữa các process hoặc từ kernel đến process | Signal, eventfd, signalfd |
 | **Linux-specific** | Các cơ chế IPC đặc trưng của Linux, phục vụ mục đích chuyên biệt | D-Bus, Netlink Socket, ptrace |
 
-Nhiều bài toán thực tế cần kết hợp cả hai — ví dụ: Shared Memory (data transfer) + Semaphore (synchronization).
+Nhiều bài toán thực tế cần kết hợp cả hai - ví dụ: Shared Memory (data transfer) + Semaphore (synchronization).
 
 ### 2.2. Danh sách đầy đủ các cơ chế IPC trên linux
 
-Linux cung cấp rất nhiều cơ chế IPC, được phát triển qua nhiều thập kỷ. Dưới đây là toàn bộ danh sách — kể cả những cơ chế ít gặp trong embedded:
+Linux cung cấp rất nhiều cơ chế IPC, được phát triển qua nhiều thập kỷ. Dưới đây là toàn bộ danh sách - kể cả những cơ chế ít gặp trong embedded:
 
 | Nhóm | Cơ chế | Nguồn gốc | Ghi chú |
 |---|---|---|---|
@@ -62,14 +62,14 @@ Linux cung cấp rất nhiều cơ chế IPC, được phát triển qua nhiều
 |   | ptrace | Unix/Linux | Kiểm soát process khác, dùng trong debugger |
 
 :::warning Lưu ý cho embedded developer
-Không cần biết hết tất cả — cần biết *cái nào tồn tại* để không tự phát minh lại bánh xe, và biết *khi nào tìm đến cái nào*.
+Không cần biết hết tất cả - cần biết *cái nào tồn tại* để không tự phát minh lại bánh xe, và biết *khi nào tìm đến cái nào*.
 :::
 
 ## 3. Pipe & FIFO
 
 ### 3.1. Anonymous Pipe
 
-Pipe là cơ chế IPC đơn giản nhất trên Linux, ra đời từ những ngày đầu của UNIX. Mô hình rất trực quan: dữ liệu chảy **một chiều** từ đầu ghi vào đầu đọc. Ta có thể hình dung nó như một ống nước — dữ liệu chảy vào từ một đầu và chảy ra ở đầu kia.
+Pipe là cơ chế IPC đơn giản nhất trên Linux, ra đời từ những ngày đầu của UNIX. Mô hình rất trực quan: dữ liệu chảy **một chiều** từ đầu ghi vào đầu đọc. Ta có thể hình dung nó như một ống nước - dữ liệu chảy vào từ một đầu và chảy ra ở đầu kia.
 
 ```
 Process A (writer)          Process B (reader)
@@ -81,7 +81,7 @@ Process A (writer)          Process B (reader)
             (64KB mặc định)
 ```
 
-Điểm quan trọng là pipe không tồn tại trên filesystem — nó chỉ là một được buffer cấp pháp trong kernel memory, mặc định là 64KB trên linux (có thể thay đổi). Khi buffer đầy, process ghi sẽ bị block. Khi buffer rỗng, process đọc sẽ bị block. Đây chính là cơ chế đồng bộ tự nhiên của pipe.
+Điểm quan trọng là pipe không tồn tại trên filesystem - nó chỉ là một được buffer cấp pháp trong kernel memory, mặc định là 64KB trên linux (có thể thay đổi). Khi buffer đầy, process ghi sẽ bị block. Khi buffer rỗng, process đọc sẽ bị block. Đây chính là cơ chế đồng bộ tự nhiên của pipe.
 
 **Cách tạo pipe**
 
@@ -94,7 +94,7 @@ pipe(fd);
 // fd[1] = đầu ghi (write end)
 ```
 
-Tại thời điểm này, cả hai đầu đều nằm trong cùng một process — chưa có gì hữu ích. Pipe chỉ thực sự có ý nghĩa khi kết hợp với `fork()`.
+Tại thời điểm này, cả hai đầu đều nằm trong cùng một process - chưa có gì hữu ích. Pipe chỉ thực sự có ý nghĩa khi kết hợp với `fork()`.
 
 **Cơ chế hoạt động với fork**
 
@@ -124,7 +124,7 @@ if (pid == 0) {
 Luồng dữ liệu ở đây là: Parent (ghi `fd[1]`) $\rightarrow$ kernel buffer $\rightarrow$ Child (đọc `fd[0]`).
 
 :::warning Tại sao phải đóng đầu không dùng?
-Nếu parent giữ cả hai đầu mở, kernel không biết khi nào pipe kết thúc — child sẽ bị block ở `read()` mãi mãi.
+Nếu parent giữ cả hai đầu mở, kernel không biết khi nào pipe kết thúc - child sẽ bị block ở `read()` mãi mãi.
 :::
 
 **Pipe trên command line**
@@ -140,16 +140,16 @@ Shell thực hiện chính xác những gì mô tả ở trên: tạo pipe giữ
 **Hạn chế của anonymous pipe:**
 
 - Pipe chỉ hoạt động giữa các process có quan hệ cha-con hoặc anh-em cùng fork từ một cha, vì cách duy nhất để chia sẻ file descriptor là thông qua fork.
-- Pipe là một chiều — muốn hai chiều phải tạo hai pipe.
+- Pipe là một chiều - muốn hai chiều phải tạo hai pipe.
 - Pipe không có tên nên các process độc lập không thể tìm thấy nhau.
-- Dữ liệu trong pipe là byte stream — ta phải tự định nghĩa protocol để phân biệt các message.
-- Buffer giới hạn (~64KB trên Linux) — ghi vượt quá sẽ block
+- Dữ liệu trong pipe là byte stream - ta phải tự định nghĩa protocol để phân biệt các message.
+- Buffer giới hạn (~64KB trên Linux) - ghi vượt quá sẽ block
 
 ### 3.2. Named Pipe (FIFO)
 
 Named Pipe hay FIFO ra đời để giải quyết đúng một hạn chế của pipe thường: các process không có quan hệ cha-con không thể dùng pipe, vì không có cách nào chia sẻ file descriptor.
 
-Giải pháp rất đơn giản — gắn cho pipe một cái tên trên filesystem. Bất kỳ process nào biết tên đó đều có thể mở và sử dụng, giống như mở một file bình thường.
+Giải pháp rất đơn giản - gắn cho pipe một cái tên trên filesystem. Bất kỳ process nào biết tên đó đều có thể mở và sử dụng, giống như mở một file bình thường.
 
 ```
 producer (process A)              consumer (process B)
@@ -179,7 +179,7 @@ Sau khi tạo, ta sẽ thấy nó trên filesystem. Chạy `ls -la` sẽ thấy 
 prw-r--r-- 1 user user 0 Mar 29 10:00 /tmp/my_pipe
 ```
 
-Tuy nó xuất hiện trên filesystem nhưng dữ liệu không bao giờ chạm đĩa cứng — nó vẫn nằm trong kernel buffer giống pipe thường. Cái tên trên filesystem chỉ là "địa chỉ" để các process có thể tìm thấy.
+Tuy nó xuất hiện trên filesystem nhưng dữ liệu không bao giờ chạm đĩa cứng - nó vẫn nằm trong kernel buffer giống pipe thường. Cái tên trên filesystem chỉ là "địa chỉ" để các process có thể tìm thấy.
 
 **Cách sử dụng**
 
@@ -222,8 +222,8 @@ Lúc này `open()` trả về ngay lập tức, nhưng `read()` sẽ trả về 
 
 **Hạn chế của Named Pipe:**
 
-- Vẫn là stream byte — phải tự định nghĩa protocol để phân biệt các message.
-- Buffer giới hạn (~64KB trên Linux) — ghi vượt quá sẽ block
+- Vẫn là stream byte - phải tự định nghĩa protocol để phân biệt các message.
+- Buffer giới hạn (~64KB trên Linux) - ghi vượt quá sẽ block
 - Chỉ hoạt động trên cùng một máy
 - Hiệu năng không cao bằng shared memory vì dữ liệu vẫn phải copy qua kernel.
 
@@ -241,13 +241,13 @@ mkfifo /tmp/log_pipe
 cat /tmp/log_pipe
 ```
 
-Một ví dụ khác trong ứng dụng embedded: Một process thu thập dữ liệu cảm biến liên tục ghi vào FIFO, một process logging đọc ra và ghi vào flash — tách biệt hoàn toàn hai nhiệm vụ, không cần chia sẻ bộ nhớ.
+Một ví dụ khác trong ứng dụng embedded: Một process thu thập dữ liệu cảm biến liên tục ghi vào FIFO, một process logging đọc ra và ghi vào flash - tách biệt hoàn toàn hai nhiệm vụ, không cần chia sẻ bộ nhớ.
 
 ## 4. Message queue
 
 ### 4.1. Vấn đề của Pipe
 
-Pipe và FIFO truyền dữ liệu tốt tuy nhiên dữ liệu là byte stream không có ranh giới. Giống như ta đổ nước vào ống — bên nhận hứng được bao nhiêu thì hứng, không biết đâu là bắt đầu, đâu là kết thúc của mỗi "phần" dữ liệu.
+Pipe và FIFO truyền dữ liệu tốt tuy nhiên dữ liệu là byte stream không có ranh giới. Giống như ta đổ nước vào ống - bên nhận hứng được bao nhiêu thì hứng, không biết đâu là bắt đầu, đâu là kết thúc của mỗi "phần" dữ liệu.
 
 Ví dụ process A ghi hai lần:
 
@@ -262,7 +262,7 @@ Thì trong kernel buffer dữ liệu hiện có sẽ như sau:
 Kernel buffer: [M][S][G][1][M][S][G][2]
 ```
 
-Process B đọc có thể nhận được "MSG1" trong một lần `read()`, hoặc "MS" rồi "G1MSG2" — không có gì đảm bảo cả. Ta phải tự thiết kế protocol để biết mỗi message dài bao nhiêu, kết thúc ở đâu $\rightarrow$ Message Queue giải quyết vấn đề này ở tầng kernel.
+Process B đọc có thể nhận được "MSG1" trong một lần `read()`, hoặc "MS" rồi "G1MSG2" - không có gì đảm bảo cả. Ta phải tự thiết kế protocol để biết mỗi message dài bao nhiêu, kết thúc ở đâu $\rightarrow$ Message Queue giải quyết vấn đề này ở tầng kernel.
 
 ### 4.2. Message Queue là gì?
 
@@ -275,7 +275,7 @@ Hình dung message queue là một hộp thư chung đặt ở trong kernel. H�
 mq_send(mq, "Hello", 5, priority);
 mq_send(mq, "World", 5, priority);
 
-// Nhận — luôn nhận đúng từng message
+// Nhận - luôn nhận đúng từng message
 mq_receive(mq, buf, max_size, &priority);  // → "Hello"
 mq_receive(mq, buf, max_size, &priority);  // → "World"
 ```
@@ -286,21 +286,21 @@ Trên Linux có hai phiên bản: System V (ra đời từ những năm 1980) v�
 
 **1. Tồn tại độc lập với process (Kernel Persistence)**
 
-Đây là đặc điểm khác biệt lớn nhất so với pipe. Khi ta tạo một message queue, nó sống trong kernel và không phụ thuộc vào bất kỳ process nào. Process tạo queue có thể thoát, process gửi message cũng có thể thoát — queue vẫn còn đó với đầy đủ message bên trong. Nó chỉ biến mất khi ta chủ động gọi `mq_unlink()` hoặc khi hệ thống reboot.
+Đây là đặc điểm khác biệt lớn nhất so với pipe. Khi ta tạo một message queue, nó sống trong kernel và không phụ thuộc vào bất kỳ process nào. Process tạo queue có thể thoát, process gửi message cũng có thể thoát - queue vẫn còn đó với đầy đủ message bên trong. Nó chỉ biến mất khi ta chủ động gọi `mq_unlink()` hoặc khi hệ thống reboot.
 
-Điều này có mặt lợi là linh hoạt, nhưng cũng có mặt hại — nếu ta quên dọn dẹp, queue sẽ tồn tại mãi trong kernel, chiếm tài nguyên. Đây là lý do ta nên luôn có process chịu trách nhiệm gọi `mq_unlink()` khi không còn sử dụng.
+Điều này có mặt lợi là linh hoạt, nhưng cũng có mặt hại - nếu ta quên dọn dẹp, queue sẽ tồn tại mãi trong kernel, chiếm tài nguyên. Đây là lý do ta nên luôn có process chịu trách nhiệm gọi `mq_unlink()` khi không còn sử dụng.
 
 **2. Message có ranh giới rõ ràng (Message Boundary)**
 
 Mỗi lần gọi `mq_send()` tạo ra đúng một message. Mỗi lần gọi `mq_receive()` lấy ra đúng một message. Không bao giờ bị cắt nửa chừng, không bao giờ bị gộp hai message thành một. Kernel đảm bảo điều này.
 
-Với pipe, ta gửi "Hello" rồi "World", bên nhận có thể đọc được "HelloWor" rồi "ld". Với message queue, bên nhận luôn nhận được "Hello" rồi "World" — tách bạch, hoàn chỉnh.
+Với pipe, ta gửi "Hello" rồi "World", bên nhận có thể đọc được "HelloWor" rồi "ld". Với message queue, bên nhận luôn nhận được "Hello" rồi "World" - tách bạch, hoàn chỉnh.
 
 **3. Hỗ trợ Priority (Mức ưu tiên)**
 
 Mỗi message khi gửi được gắn một số nguyên priority. Khi nhận, kernel luôn trả message có priority cao nhất trước. Trong cùng mức priority thì theo thứ tự FIFO. Đây là cơ chế có sẵn, ta không cần tự implement.
 
-Pipe không có khái niệm này — dữ liệu luôn ra theo đúng thứ tự vào, không có cách nào "chen hàng".
+Pipe không có khái niệm này - dữ liệu luôn ra theo đúng thứ tự vào, không có cách nào "chen hàng".
 
 **4. Blocking và Non-blocking**
 
@@ -312,7 +312,7 @@ Có thể chuyển sang non-blocking bằng flag `O_NONBLOCK` khi mở queue:
 mqd_t mq = mq_open("/my_queue", O_RDONLY | O_NONBLOCK);
 ```
 
-Đối với các hàm `mq_send()` và `mq_receive()` thì thay vì block, hàm trả về lỗi `EAGAIN` ngay lập tức. Ngoài ra POSIX còn cung cấp `mq_timedsend()` và `mq_timedreceive()` — block nhưng có timeout, nếu quá thời gian thì trả về lỗi `ETIMEDOUT`. Đây là thứ pipe hoàn toàn không có.
+Đối với các hàm `mq_send()` và `mq_receive()` thì thay vì block, hàm trả về lỗi `EAGAIN` ngay lập tức. Ngoài ra POSIX còn cung cấp `mq_timedsend()` và `mq_timedreceive()` - block nhưng có timeout, nếu quá thời gian thì trả về lỗi `ETIMEDOUT`. Đây là thứ pipe hoàn toàn không có.
 
 **5. Giới hạn dung lượng (Capacity Limits)**
 
@@ -330,15 +330,15 @@ cat /proc/sys/fs/mqueue/queues_max    # số queue tối đa trên hệ thống
 
 **6. Nhiều process cùng dùng (Many-to-Many)**
 
-Không như pipe chỉ phù hợp cho mô hình một process ghi — một process đọc, message queue cho phép nhiều process cùng gửi vào một queue và nhiều process cùng nhận từ cùng queue đó.
+Không như pipe chỉ phù hợp cho mô hình một process ghi - một process đọc, message queue cho phép nhiều process cùng gửi vào một queue và nhiều process cùng nhận từ cùng queue đó.
 
-Tuy nhiên mỗi message chỉ được đúng một process nhận. Khi process A lấy một message ra, process B sẽ không thấy message đó nữa. Đây là mô hình competing consumers — các worker cạnh tranh lấy task từ hàng đợi, rất phù hợp cho bài toán phân tải.
+Tuy nhiên mỗi message chỉ được đúng một process nhận. Khi process A lấy một message ra, process B sẽ không thấy message đó nữa. Đây là mô hình competing consumers - các worker cạnh tranh lấy task từ hàng đợi, rất phù hợp cho bài toán phân tải.
 
 **7. Thông báo bất đồng bộ (Notification)**
 
 Thay vì phải block chờ hoặc liên tục poll, ta có thể đăng ký để kernel chủ động thông báo khi có message mới đến queue rỗng. Có hai kiểu thông báo: gửi signal (`SIGEV_SIGNAL`) hoặc tạo thread mới chạy callback (`SIGEV_THREAD`).
 
-Đặc biệt notification chỉ kích hoạt khi queue chuyển từ trạng thái rỗng sang có message. Nếu queue đang có sẵn message rồi lại thêm message mới, notification không kích hoạt. Và nó chỉ hoạt động một lần — sau khi nhận thông báo, ta phải đăng ký lại.
+Đặc biệt notification chỉ kích hoạt khi queue chuyển từ trạng thái rỗng sang có message. Nếu queue đang có sẵn message rồi lại thêm message mới, notification không kích hoạt. Và nó chỉ hoạt động một lần - sau khi nhận thông báo, ta phải đăng ký lại.
 
 **8. Tính atomic**
 
@@ -348,11 +348,11 @@ So với pipe, chỉ có ghi dưới `PIPE_BUF` (4096 bytes) mới được đ�
 
 **9. Hạn chế**
 
-Dữ liệu vẫn phải copy hai lần — từ process gửi vào kernel buffer, rồi từ kernel buffer ra process nhận. Với dữ liệu lớn, đây là chi phí đáng kể so với shared memory. Kích thước message bị giới hạn — không phù hợp để truyền file hay dữ liệu lớn. Và message queue chỉ hoạt động trên cùng một máy, không thể giao tiếp qua mạng.
+Dữ liệu vẫn phải copy hai lần - từ process gửi vào kernel buffer, rồi từ kernel buffer ra process nhận. Với dữ liệu lớn, đây là chi phí đáng kể so với shared memory. Kích thước message bị giới hạn - không phù hợp để truyền file hay dữ liệu lớn. Và message queue chỉ hoạt động trên cùng một máy, không thể giao tiếp qua mạng.
 
 ### 4.4. Vòng đời của Message Queue
 
-**Bước 1 — Tạo hoặc mở queue:**
+**Bước 1 - Tạo hoặc mở queue:**
 
 ```c
 #include <mqueue.h>
@@ -368,16 +368,16 @@ mqd_t mq = mq_open("/my_queue", O_CREAT | O_RDWR, 0666, &attr);
 
 Tên queue bắt buộc bắt đầu bằng `/` và không chứa thêm `/` nào nữa. Ví dụ `/my_queue `là hợp lệ, `/path/to/queue` là không hợp lệ. Đây là quy ước của POSIX, khác với named pipe dùng đường dẫn filesystem bình thường.
 
-**Bước 2 — Gửi message:**
+**Bước 2 - Gửi message:**
 
 ```c
-// Tham số cuối là priority — số càng lớn, ưu tiên càng cao
+// Tham số cuối là priority - số càng lớn, ưu tiên càng cao
 mq_send(mq, "Lệnh khởi động", strlen("Lệnh khởi động"), 1);
 mq_send(mq, "Lệnh cấp cứu", strlen("Lệnh cấp cứu"), 9);
 mq_send(mq, "Lệnh bình thường", strlen("Lệnh bình thường"), 1);
 ```
 
-**Bước 3 — Nhận message:**
+**Bước 3 - Nhận message:**
 
 ```c
 char buf[256];
@@ -397,10 +397,10 @@ mq_receive(mq, buf, 256, &priority);
 Tham số `size` truyền vào `mq_receive()` phải lớn hơn hoặc bằng `mq_msgsize` mà ta đã thiết lập khi tạo queue. Nếu nhỏ hơn, hàm trả về lỗi ngay lập tức, không phải trả về một phần message. Đây là điểm hay bị sai khi mới dùng.
 :::
 
-**Bước 4 — Đóng và dọn dẹp:**
+**Bước 4 - Đóng và dọn dẹp:**
 
 ```c
-mq_close(mq);           // đóng — giống close file
+mq_close(mq);           // đóng - giống close file
 mq_unlink("/my_queue"); // xóa queue khỏi hệ thống
 ```
 
@@ -491,7 +491,7 @@ Nếu dữ liệu lớn, message queue không phải lựa chọn tốt vì mỗ
 
 Để hiểu tại sao shared memory nhanh nhất, trước hết phải hiểu các cơ chế khác chậm ở đâu.
 
-Với pipe, message queue, socket — mỗi lần truyền dữ liệu, dữ liệu phải đi qua hai lần copy:
+Với pipe, message queue, socket - mỗi lần truyền dữ liệu, dữ liệu phải đi qua hai lần copy:
 
 ```
 Pipe / Message Queue:
@@ -501,7 +501,7 @@ Pipe / Message Queue:
 
 Mỗi lần copy là một lần gọi system call, mỗi system call phải chuyển từ user mode sang kernel mode rồi quay lại. Với dữ liệu nhỏ thì không sao, nhưng nếu ta cần truyền hàng MB hoặc truyền liên tục tần suất cao thì chi phí này rất đáng kể.
 
-Shared memory loại bỏ hoàn toàn cả hai lần copy đó. Thay vì gửi dữ liệu qua kernel, hai process cùng map vào chung một vùng nhớ vật lý. Khi process A ghi vào vùng nhớ đó, process B đọc được ngay lập tức — không copy, không system call, không đi qua kernel. Giống như hai người cùng nhìn vào một tấm bảng trắng — người này viết, người kia thấy ngay.
+Shared memory loại bỏ hoàn toàn cả hai lần copy đó. Thay vì gửi dữ liệu qua kernel, hai process cùng map vào chung một vùng nhớ vật lý. Khi process A ghi vào vùng nhớ đó, process B đọc được ngay lập tức - không copy, không system call, không đi qua kernel. Giống như hai người cùng nhìn vào một tấm bảng trắng - người này viết, người kia thấy ngay.
 
 ```
 Shared Memory:
@@ -518,11 +518,11 @@ Bình thường mỗi process có bảng page table riêng, map địa chỉ ả
 
 Khi dùng shared memory, kernel chỉnh page table của cả hai process sao cho một vùng địa chỉ ảo của process A và một vùng địa chỉ ảo của process B cùng trỏ về cùng một vùng nhớ vật lý. Địa chỉ ảo ở mỗi process có thể khác nhau, nhưng phía sau chúng là cùng một vùng RAM.
 
-Việc setup này chỉ xảy ra một lần khi tạo và ánh xạ shared memory. Sau đó mọi thao tác đọc/ghi chỉ là truy cập RAM bình thường — nhanh như truy cập biến local, không có overhead nào thêm.
+Việc setup này chỉ xảy ra một lần khi tạo và ánh xạ shared memory. Sau đó mọi thao tác đọc/ghi chỉ là truy cập RAM bình thường - nhanh như truy cập biến local, không có overhead nào thêm.
 
 ### 5.3. API chuẩn POSIX
 
-**Bước 1 — Tạo vùng shared memory:**
+**Bước 1 - Tạo vùng shared memory:**
 
 ```c
 #include <sys/mman.h>
@@ -531,34 +531,34 @@ Việc setup này chỉ xảy ra một lần khi tạo và ánh xạ shared memo
 // Tạo shared memory object có tên
 int shm_fd = shm_open("/my_shm", O_CREAT | O_RDWR, 0666);
 
-// Đặt kích thước cho vùng nhớ — bắt buộc phải gọi, mặc định là 0 bytes
+// Đặt kích thước cho vùng nhớ - bắt buộc phải gọi, mặc định là 0 bytes
 ftruncate(shm_fd, 4096);
 ```
 
-Giống message queue, tên bắt đầu bằng `/`. `shm_open()` trả về file descriptor để định danh cho vùng shared memory, nhưng lúc này chưa dùng được — ta mới tạo "vùng đất", chưa "đặt chân" vào.
+Giống message queue, tên bắt đầu bằng `/`. `shm_open()` trả về file descriptor để định danh cho vùng shared memory, nhưng lúc này chưa dùng được - ta mới tạo "vùng đất", chưa "đặt chân" vào.
 
-**Bước 2 — Ánh xạ vào address space (mmap):**
+**Bước 2 - Ánh xạ vào address space (mmap):**
 
 ```c
 void *ptr = mmap(NULL, 4096, PROT_READ | PROT_WRITE,
                  MAP_SHARED, shm_fd, 0);
 ```
 
-Đây mới là bước quan trọng. `mmap()` yêu cầu kernel chỉnh page table để vùng nhớ vật lý được ánh xạ vào address space của process hiện tại. Sau bước này, `ptr` trỏ thẳng vào vùng nhớ chung — đọc/ghi qua `ptr` chính là đọc/ghi vào shared memory.
+Đây mới là bước quan trọng. `mmap()` yêu cầu kernel chỉnh page table để vùng nhớ vật lý được ánh xạ vào address space của process hiện tại. Sau bước này, `ptr` trỏ thẳng vào vùng nhớ chung - đọc/ghi qua `ptr` chính là đọc/ghi vào shared memory.
 
-**Bước 3 — Sử dụng như bộ nhớ bình thường:**
+**Bước 3 - Sử dụng như bộ nhớ bình thường:**
 
 ```c
-// Process A — ghi
+// Process A - ghi
 sprintf(ptr, "Hello from A");
 
-// Process B — đọc (sau khi cũng mmap cùng vùng)
+// Process B - đọc (sau khi cũng mmap cùng vùng)
 printf("Nhận: %s\n", (char *)ptr);
 ```
 
 Không cần `send()`, không cần `receive()`, không cần system call nào. Chỉ là đọc/ghi biến bình thường.
 
-**Bước 4 — Dọn dẹp:**
+**Bước 4 - Dọn dẹp:**
 
 ```c
 munmap(ptr, 4096);         // gỡ ánh xạ khỏi address space
@@ -622,14 +622,14 @@ shm_unlink(SHM_NAME);  // xóa entry trong /dev/shm
 
 ### 5.5. Vấn đề đồng bộ hoá
 
-Đây là trace-off phải trả cho tốc độ. Với pipe hay message queue, kernel lo việc đồng bộ — `read()` tự block khi chưa có dữ liệu, `mq_receive()` tự chờ khi queue rỗng. Ta không cần nghĩ về race condition.
+Đây là trace-off phải trả cho tốc độ. Với pipe hay message queue, kernel lo việc đồng bộ - `read()` tự block khi chưa có dữ liệu, `mq_receive()` tự chờ khi queue rỗng. Ta không cần nghĩ về race condition.
 
 Shared memory thì kernel không quản lý gì cả. Nó chỉ cấp cho ta một vùng nhớ chung rồi bỏ đó. Ta phải tự xử lý mọi vấn đề:
-- Process A đang ghi dở, process B đọc vào giữa chừng — nhận được dữ liệu nửa cũ nửa mới.
-- Hai process cùng ghi một lúc — dữ liệu hỏng.
-- Process B đọc liên tục nhưng process A chưa ghi gì — đọc dữ liệu rác.
+- Process A đang ghi dở, process B đọc vào giữa chừng - nhận được dữ liệu nửa cũ nửa mới.
+- Hai process cùng ghi một lúc - dữ liệu hỏng.
+- Process B đọc liên tục nhưng process A chưa ghi gì - đọc dữ liệu rác.
 
-Hãy hình dung một tấm bảng trắng trong văn phòng. Hai người cùng muốn ghi lên bảng — nếu không có quy tắc "ai đang ghi thì người kia chờ", kết quả trên bảng sẽ là nội dung hỗn loạn của cả hai.
+Hãy hình dung một tấm bảng trắng trong văn phòng. Hai người cùng muốn ghi lên bảng - nếu không có quy tắc "ai đang ghi thì người kia chờ", kết quả trên bảng sẽ là nội dung hỗn loạn của cả hai.
 
 ```
 Producer đang ghi dở struct (chưa xong)
@@ -642,9 +642,9 @@ Consumer đọc đúng lúc này
     → data corruption im lặng, không có error nào
 ```
 
-Đây là loại bug nguy hiểm nhất: **không crash, không báo lỗi** — chỉ cho kết quả sai.
+Đây là loại bug nguy hiểm nhất: **không crash, không báo lỗi** - chỉ cho kết quả sai.
 
-$\rightarrow$ Giải pháp là phải kết hợp shared memory với cơ chế đồng bộ — thường là **semaphore** hoặc **mutex**.
+$\rightarrow$ Giải pháp là phải kết hợp shared memory với cơ chế đồng bộ - thường là **semaphore** hoặc **mutex**.
 
 ## 6. Semaphore
 
@@ -655,12 +655,12 @@ Semaphore không phải cơ chế truyền dữ liệu. Nó không gửi message
 Hình dung semaphore là một hộp chứa chìa khóa. Trong hộp có N chìa khóa. Muốn vào phòng (truy cập tài nguyên), ta phải lấy một chìa ra khỏi hộp. Khi hộp hết chìa, người tiếp theo phải đứng chờ. Khi ta ra khỏi phòng, bỏ chìa lại vào hộp, người đang chờ mới được vào.
 
 **Hai thao tác cơ bản:**
-- `sem_wait()` (hay còn gọi acquire) — lấy một chìa khóa ra. Nếu bộ đếm > 0 thì giảm đi 1 và tiếp tục. Nếu bộ đếm = 0 thì block, chờ cho đến khi có chìa.
-- `sem_post()` (hay còn gọi release) — bỏ một chìa khóa vào. Tăng bộ đếm lên 1. Nếu có process đang chờ, đánh thức nó dậy.
+- `sem_wait()` (hay còn gọi acquire) - lấy một chìa khóa ra. Nếu bộ đếm > 0 thì giảm đi 1 và tiếp tục. Nếu bộ đếm = 0 thì block, chờ cho đến khi có chìa.
+- `sem_post()` (hay còn gọi release) - bỏ một chìa khóa vào. Tăng bộ đếm lên 1. Nếu có process đang chờ, đánh thức nó dậy.
 
 ### 6.2. Binary Semaphore vs Counting Semaphore
 
-Binary semaphore có giá trị chỉ là 0 hoặc 1. Giống như một phòng chỉ có một chìa khóa — tại một thời điểm chỉ một process được vào. Dùng để bảo vệ tài nguyên chỉ cho phép một người truy cập, tương tự mutex.
+Binary semaphore có giá trị chỉ là 0 hoặc 1. Giống như một phòng chỉ có một chìa khóa - tại một thời điểm chỉ một process được vào. Dùng để bảo vệ tài nguyên chỉ cho phép một người truy cập, tương tự mutex.
 
 ```c
 sem_init(&sem, 1, 1);  // giá trị khởi tạo = 1
@@ -674,7 +674,7 @@ sem_post(&sem);         // 0 → 1, nhả ra
 sem_wait(&sem);         // đếm = 0, block chờ A nhả
 ```
 
-Counting semaphore có giá trị từ 0 đến N. Giống phòng có N chìa khóa — cho phép tối đa N process cùng truy cập. Ví dụ ta có connection pool 5 kết nối database:
+Counting semaphore có giá trị từ 0 đến N. Giống phòng có N chìa khóa - cho phép tối đa N process cùng truy cập. Ví dụ ta có connection pool 5 kết nối database:
 
 ```c
 sem_init(&sem, 1, 5);  // 5 chìa khóa
@@ -689,7 +689,7 @@ Process thứ 6 gọi `sem_wait()` sẽ bị block cho đến khi một trong 5 
 
 ### 6.3. Hai loại Semaphore trên Linux
 
-**POSIX Named Semaphore** — tồn tại trên filesystem, các process độc lập có thể dùng chung:
+**POSIX Named Semaphore** - tồn tại trên filesystem, các process độc lập có thể dùng chung:
 
 ```c
 #include <semaphore.h>
@@ -707,9 +707,9 @@ sem_close(sem);
 sem_unlink("/my_sem");
 ```
 
-Giống message queue và shared memory, tên bắt đầu bằng `/`. Semaphore tồn tại độc lập với process — phải `sem_unlink()` mới xóa.
+Giống message queue và shared memory, tên bắt đầu bằng `/`. Semaphore tồn tại độc lập với process - phải `sem_unlink()` mới xóa.
 
-**POSIX Unnamed Semaphore** — nằm trong bộ nhớ, phải đặt trong vùng shared memory để nhiều process dùng:
+**POSIX Unnamed Semaphore** - nằm trong bộ nhớ, phải đặt trong vùng shared memory để nhiều process dùng:
 
 ```c
 sem_t sem;
@@ -731,9 +731,9 @@ Khi dùng giữa các process, unnamed semaphore phải nằm trong shared memor
 
 ### 7.1. Signal là gì?
 
-Signal khác hoàn toàn với các cơ chế IPC đã nói trước đó. Pipe, message queue, shared memory đều dùng để truyền dữ liệu. Signal dùng để thông báo sự kiện — nó chỉ nói "có chuyện xảy ra rồi", không kèm theo dữ liệu gì đáng kể.
+Signal khác hoàn toàn với các cơ chế IPC đã nói trước đó. Pipe, message queue, shared memory đều dùng để truyền dữ liệu. Signal dùng để thông báo sự kiện - nó chỉ nói "có chuyện xảy ra rồi", không kèm theo dữ liệu gì đáng kể.
 
-Hình dung signal giống như vỗ vai ai đó. Ta vỗ vai một người, người đó giật mình, dừng việc đang làm, quay lại xử lý. Ta không đưa cho họ cái gì cả — chỉ là một cú vỗ để báo hiệu.
+Hình dung signal giống như vỗ vai ai đó. Ta vỗ vai một người, người đó giật mình, dừng việc đang làm, quay lại xử lý. Ta không đưa cho họ cái gì cả - chỉ là một cú vỗ để báo hiệu.
 
 Cụ thể hơn, signal là một số nguyên được gửi từ kernel hoặc từ process này đến process khác. Khi process nhận được signal, nó bị ngắt ngay lập tức bất kể đang làm gì, rồi nhảy vào xử lý signal đó.
 
@@ -794,7 +794,7 @@ int main() {
 ```
 
 :::warning Ngoại lệ
-`SIGKILL` và `SIGSTOP` không thể bắt và không thể bỏ qua — kernel dành riêng hai signal này để đảm bảo luôn có cách dừng một process bất kỳ.
+`SIGKILL` và `SIGSTOP` không thể bắt và không thể bỏ qua - kernel dành riêng hai signal này để đảm bảo luôn có cách dừng một process bất kỳ.
 :::
 
 **Một số signal phổ biến:**
@@ -812,14 +812,14 @@ int main() {
 Tìm hiểu thêm tại: https://faculty.cs.niu.edu/~hutchins/csci480/signals.htm
 
 **Hạn chế của Signal:**
-- Signal mang rất ít thông tin — chỉ là một con số. Không thể kèm dữ liệu (trừ khi dùng `sigqueue()` với `SA_SIGINFO`, nhưng cũng chỉ gửi được một giá trị integer hoặc pointer).
-- Signal không queue — gửi cùng signal 5 lần liên tiếp, process có thể chỉ nhận 1 lần.
+- Signal mang rất ít thông tin - chỉ là một con số. Không thể kèm dữ liệu (trừ khi dùng `sigqueue()` với `SA_SIGINFO`, nhưng cũng chỉ gửi được một giá trị integer hoặc pointer).
+- Signal không queue - gửi cùng signal 5 lần liên tiếp, process có thể chỉ nhận 1 lần.
 - Signal handler rất khó viết đúng vì giới hạn async-signal-safety. Đây là nguồn bug khó debug nhất trong lập trình hệ thống.
 - Signal phù hợp để thông báo sự kiện đơn giản như shutdown, reload, child exit. Nếu cần truyền dữ liệu, hãy dùng pipe, message queue, hoặc shared memory.
 
-### 7.2. signal() vs sigaction() — nên dùng cái nào
+### 7.2. signal() vs sigaction() - nên dùng cái nào
 
-Hàm `signal()` đơn giản nhưng có nhiều vấn đề. Hành vi của nó khác nhau trên các hệ điều hành khác nhau. Trên một số hệ thống, sau khi handler chạy xong, signal tự động bị reset về default `SIG_DFL` — nếu nhận thêm signal lần nữa, process bị kill. Không kiểm soát được những gì xảy ra khi đang xử lý signal thì nhận thêm signal khác.
+Hàm `signal()` đơn giản nhưng có nhiều vấn đề. Hành vi của nó khác nhau trên các hệ điều hành khác nhau. Trên một số hệ thống, sau khi handler chạy xong, signal tự động bị reset về default `SIG_DFL` - nếu nhận thêm signal lần nữa, process bị kill. Không kiểm soát được những gì xảy ra khi đang xử lý signal thì nhận thêm signal khác.
 
 `sigaction()` giải quyết tất cả những vấn đề đó:
 
@@ -850,15 +850,15 @@ int main() {
 }
 ```
 
-`sa.sa_mask` cho phép ta chỉ định những signal nào bị block tạm thời khi handler đang chạy — tránh handler bị ngắt giữa chừng bởi signal khác.
+`sa.sa_mask` cho phép ta chỉ định những signal nào bị block tạm thời khi handler đang chạy - tránh handler bị ngắt giữa chừng bởi signal khác.
 
-`SA_RESTART` đặc biệt quan trọng — khi process đang block trong system call như `read()`, `sleep()`, nếu signal đến, system call bị ngắt. Không có `SA_RESTART` thì `read()` trả về lỗi `EINTR`, ta phải tự retry. Có `SA_RESTART` thì kernel tự động gọi lại system call.
+`SA_RESTART` đặc biệt quan trọng - khi process đang block trong system call như `read()`, `sleep()`, nếu signal đến, system call bị ngắt. Không có `SA_RESTART` thì `read()` trả về lỗi `EINTR`, ta phải tự retry. Có `SA_RESTART` thì kernel tự động gọi lại system call.
 
 ### 7.3. Async-Signal-Safety
 
-Signal handler có thể bị gọi bất kỳ lúc nào — kể cả đúng lúc process đang thực thi một hàm khác. Điều này tạo ra một ràng buộc nghiêm khắc: chỉ được gọi các hàm async-signal-safe bên trong handler.
+Signal handler có thể bị gọi bất kỳ lúc nào - kể cả đúng lúc process đang thực thi một hàm khác. Điều này tạo ra một ràng buộc nghiêm khắc: chỉ được gọi các hàm async-signal-safe bên trong handler.
 
-Ví dụ `printf()` bên trong dùng mutex để bảo vệ buffer. Nếu process đang chạy `printf()`, mutex đang bị lock, signal đến, handler gọi `printf()` lần nữa — deadlock. Process treo vĩnh viễn.
+Ví dụ `printf()` bên trong dùng mutex để bảo vệ buffer. Nếu process đang chạy `printf()`, mutex đang bị lock, signal đến, handler gọi `printf()` lần nữa - deadlock. Process treo vĩnh viễn.
 
 Chỉ có một danh sách giới hạn các hàm được phép gọi trong signal handler, gọi là async-signal-safe functions. Danh sách này bao gồm `write()`, `_exit()`, `signal()`, các thao tác trên biến `sig_atomic_t`, và một số ít hàm khác.
 
@@ -882,7 +882,7 @@ int main() {
         sleep(1);
     }
 
-    // xử lý signal ở đây — an toàn vì nằm ngoài handler
+    // xử lý signal ở đây - an toàn vì nằm ngoài handler
     printf("Đã nhận signal, đang dọn dẹp...\n");
     return 0;
 }
@@ -907,15 +907,15 @@ sigprocmask(SIG_BLOCK, &block_set, &old_set);
 // signal đến trong lúc này sẽ bị giữ lại (pending)
 // không bị mất, chỉ bị trì hoãn
 
-// Bỏ chặn — signal pending sẽ được gửi ngay
+// Bỏ chặn - signal pending sẽ được gửi ngay
 sigprocmask(SIG_SETMASK, &old_set, NULL);
 ```
 
-Signal bị chặn không bị mất — nó nằm trong trạng thái pending. Nhưng nếu cùng một signal được gửi nhiều lần khi đang bị chặn, chỉ một lần được ghi nhận. Signal không có hàng đợi — đây là hạn chế quan trọng.
+Signal bị chặn không bị mất - nó nằm trong trạng thái pending. Nhưng nếu cùng một signal được gửi nhiều lần khi đang bị chặn, chỉ một lần được ghi nhận. Signal không có hàng đợi - đây là hạn chế quan trọng.
 
 ### 7.5. Use case thực tế
 
-**Graceful shutdown** là use case phổ biến nhất — systemd gửi `SIGTERM` trước khi kill service, process sẽ có cơ hội đóng file, flush buffer, release resource:
+**Graceful shutdown** là use case phổ biến nhất - systemd gửi `SIGTERM` trước khi kill service, process sẽ có cơ hội đóng file, flush buffer, release resource:
 
 ```
 systemd                    embedded daemon
@@ -934,7 +934,7 @@ systemd                    embedded daemon
 
 ### 8.1. Tại sao IPC thông thường không dùng được từ kernel?
 
-Nhìn lại toàn bộ các cơ chế IPC đã học: Pipe, message queue, shared memory, socket — tất cả đều hoạt động theo cùng một mô hình: application gọi system call để nhờ kernel làm việc. Khi application gọi `write(pipe_fd, data, len)`, thực chất đang nói với kernel rằng "hãy copy dữ liệu của tôi vào buffer của pipe". Kernel là người phục vụ, application là người yêu cầu.
+Nhìn lại toàn bộ các cơ chế IPC đã học: Pipe, message queue, shared memory, socket - tất cả đều hoạt động theo cùng một mô hình: application gọi system call để nhờ kernel làm việc. Khi application gọi `write(pipe_fd, data, len)`, thực chất đang nói với kernel rằng "hãy copy dữ liệu của tôi vào buffer của pipe". Kernel là người phục vụ, application là người yêu cầu.
 
 ```
 Application A                    Application B
@@ -950,11 +950,11 @@ Vấn đề khi kernel muốn dùng chính các cơ chế này:
 
 **1. Kernel không thể gọi system call cho chính mình**
 
-System call là cơ chế để chuyển từ user mode sang kernel mode. Kernel đã ở trong kernel mode rồi — gọi system call cho chính mình là vô nghĩa. Giống như ta đã đứng trong bếp mà lại gọi điện cho nhà hàng đặt món để nhà hàng mang vào bếp cho ta nấu.
+System call là cơ chế để chuyển từ user mode sang kernel mode. Kernel đã ở trong kernel mode rồi - gọi system call cho chính mình là vô nghĩa. Giống như ta đã đứng trong bếp mà lại gọi điện cho nhà hàng đặt món để nhà hàng mang vào bếp cho ta nấu.
 
 **2. Kernel không có file descriptor**
 
-File descriptor là khái niệm thuộc về process. Mỗi process có một bảng file descriptor riêng, kernel quản lý bảng đó. Nhưng kernel không phải process — nó không có bảng file descriptor của riêng mình.
+File descriptor là khái niệm thuộc về process. Mỗi process có một bảng file descriptor riêng, kernel quản lý bảng đó. Nhưng kernel không phải process - nó không có bảng file descriptor của riêng mình.
 
 Khi application gọi pipe, kernel tạo pipe rồi cấp hai file descriptor cho process đó. Kernel code bên trong không có "fd" để mà gọi `read(fd)` hay `write(fd)`.
 
@@ -983,7 +983,7 @@ Kernel module không được đệ quy sâu, không được khai báo array l�
 
 ### 8.2. Các cơ chế giao tiếp giữa kernel và app
 
-#### 8.2.1. ioctl + poll() — cặp đôi kinh điển
+#### 8.2.1. ioctl + poll() - cặp đôi kinh điển
 
 `ioctl` là cơ chế để userspace app ra lệnh cho driver và nhận kết quả có kích thước nhỏ. `poll()` là cơ chế để app chờ event từ driver mà không blocking CPU.
 
@@ -1042,7 +1042,7 @@ if (pfd.revents & POLLIN) {
 }
 ```
 
-#### 8.2.2. mmap — chia sẻ bộ nhớ với kernel
+#### 8.2.2. mmap - chia sẻ bộ nhớ với kernel
 
 Khi data lớn (DMA buffer, camera frame, ADC stream), copy từ kernel sang userspace qua `read()` tốn kém. Kernel có thể ánh xạ vùng nhớ kernel vào address space của application thông qua `mmap`.
 
@@ -1053,7 +1053,7 @@ Userspace app                       Kernel driver
                   không copy
 ```
 
-Application ghi vào vùng nhớ, kernel (hoặc phần cứng) đọc trực tiếp — không copy. Tương tự như shared memory giữa các process, nhưng ở đây là giữa user space và kernel/hardware.
+Application ghi vào vùng nhớ, kernel (hoặc phần cứng) đọc trực tiếp - không copy. Tương tự như shared memory giữa các process, nhưng ở đây là giữa user space và kernel/hardware.
 
 **Phía kernel driver:**
 
@@ -1075,12 +1075,12 @@ int fd = open("/dev/mysensor", O_RDWR);
 uint8_t *frame = mmap(NULL, FRAME_SIZE, PROT_READ,
                       MAP_SHARED, fd, 0);
 
-process_frame(frame, FRAME_SIZE);  // đọc trực tiếp — không có copy nào
+process_frame(frame, FRAME_SIZE);  // đọc trực tiếp - không có copy nào
 
 munmap(frame, FRAME_SIZE);
 ```
 
-**Đây là kỹ thuật V4L2 (Video4Linux) dùng cho camera:** toàn bộ pipeline camera trên embedded Linux đều dùng mmap để tránh copy frame buffer — vì một frame 1080p = 6MB, copy 30 lần/giây = 180MB/s chỉ để di chuyển data.
+**Đây là kỹ thuật V4L2 (Video4Linux) dùng cho camera:** toàn bộ pipeline camera trên embedded Linux đều dùng mmap để tránh copy frame buffer - vì một frame 1080p = 6MB, copy 30 lần/giây = 180MB/s chỉ để di chuyển data.
 
 #### 8.2.3. Signal
 
@@ -1099,7 +1099,7 @@ Kernel driver                    User app
    │     (push, không cần poll)     │ xử lý
 ```
 
-**Phía userspace app — lắng nghe Netlink:**
+**Phía userspace app - lắng nghe Netlink:**
 
 ```c
 int sock = socket(AF_NETLINK, SOCK_RAW, NETLINK_USER);
@@ -1119,7 +1119,7 @@ printf("Event từ driver: %s\n", (char*)NLMSG_DATA(nlh));
 // output: Event từ driver: TEMP_ALERT:85.0
 ```
 
-**Phía kernel driver — gửi event:**
+**Phía kernel driver - gửi event:**
 
 ```c
 struct sk_buff *skb = nlmsg_new(msg_size, GFP_ATOMIC);

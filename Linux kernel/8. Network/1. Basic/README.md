@@ -211,21 +211,21 @@ Khi một bên muốn kết thúc, quá trình đóng diễn ra qua 4 bước:
 ### TCP state machine
 
 Mỗi giai đoạn trên tương ứng với các trạng thái mà kết nối TCP đi qua. Trên linux, ta có thể xem trạng thái thực tế bằng lệnh `ss -tan` hoặc `netstat -tan`. Các trạng thái quan trọng nhất:
-- `LISTEN` — Server đang chờ kết nối đến
-- `SYN_SENT` — Client đã gửi SYN, đang chờ phản hồi
-- `SYN_RECEIVED` — Server nhận SYN, đã gửi SYN-ACK, chờ ACK cuối
-- `ESTABLISHED` — Kết nối thành công, đang truyền dữ liệu
-- `FIN_WAIT_1` / `FIN_WAIT_2` — Bên chủ động đóng, đang chờ xác nhận
-- `CLOSE_WAIT` — Bên bị động đã nhận FIN, chờ ứng dụng đóng socket
-- `TIME_WAIT` — Bên chủ động đóng chờ một khoảng thời gian (thường 2×MSL, khoảng 60 giây) để đảm bảo không còn gói tin cũ lưu lạc trên mạng
-- `CLOSED` — Kết nối đã kết thúc hoàn toàn
+- `LISTEN` - Server đang chờ kết nối đến
+- `SYN_SENT` - Client đã gửi SYN, đang chờ phản hồi
+- `SYN_RECEIVED` - Server nhận SYN, đã gửi SYN-ACK, chờ ACK cuối
+- `ESTABLISHED` - Kết nối thành công, đang truyền dữ liệu
+- `FIN_WAIT_1` / `FIN_WAIT_2` - Bên chủ động đóng, đang chờ xác nhận
+- `CLOSE_WAIT` - Bên bị động đã nhận FIN, chờ ứng dụng đóng socket
+- `TIME_WAIT` - Bên chủ động đóng chờ một khoảng thời gian (thường 2×MSL, khoảng 60 giây) để đảm bảo không còn gói tin cũ lưu lạc trên mạng
+- `CLOSED` - Kết nối đã kết thúc hoàn toàn
 
 ### Sự khác nhau giữa UDP và TCP
 
 | **Tiêu chí**           | **TCP**                                                                    | **UDP**                                                               |
 | ---------------------- | -------------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | **Định nghĩa**         | Giao thức **có kết nối**, đảm bảo truyền dữ liệu **tin cậy, đúng thứ tự**. | Giao thức **không kết nối**, truyền dữ liệu **nhanh, không đảm bảo**. |
-| **Cơ chế kết nối**     | Cần 3-way handshake để thiết lập kết nối giữa hai thiết bị.                | Không cần bắt tay — gửi gói tin ngay lập tức.                         |
+| **Cơ chế kết nối**     | Cần 3-way handshake để thiết lập kết nối giữa hai thiết bị.                | Không cần bắt tay - gửi gói tin ngay lập tức.                         |
 | **Độ tin cậy**         | Cao – tự động gửi lại nếu mất gói.                                         | Thấp – có thể mất hoặc lộn gói.                                       |
 | **Tốc độ**             | Chậm hơn do nhiều kiểm tra và xác nhận                                     | Nhanh hơn, độ trễ thấp hơn.                                           |
 | **Thứ tự dữ liệu**     | Bảo đảm đúng thứ tự.                                                       | Không đảm bảo thứ tự.                                                 |

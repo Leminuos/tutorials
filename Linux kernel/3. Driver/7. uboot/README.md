@@ -80,9 +80,9 @@ Với MMC layout như sau:
 
 Boot rom là firmware được hãng cung cấp SoC nạp sẵn vào internal ROM - một vùng nhớ ROM on-chip, không thể ghi, có kích thước nhỏ .
 
-Internal ROM có thể nằm ở bất kỳ physical address nào trong address space của SoC — điều này phụ thuộc vào quyết định thiết kế của hãng. Ví dụ với AM335x, internal ROM thực tế nằm ở vùng 0x40000000–0x4001FFFF (128KB). Nhưng tại thời điểm reset hoặc power on, SoC có hardware logic (thường gọi là address remapping hoặc address aliasing) để map địa chỉ 0x00000000 tới vùng ROM đó. Nên khi CPU thực hiện lệnh đầu tiên tại địa chỉ 0x00000000, nó thực chất đang đọc từ ROM ở 0x40000000.
+Internal ROM có thể nằm ở bất kỳ physical address nào trong address space của SoC - điều này phụ thuộc vào quyết định thiết kế của hãng. Ví dụ với AM335x, internal ROM thực tế nằm ở vùng 0x40000000–0x4001FFFF (128KB). Nhưng tại thời điểm reset hoặc power on, SoC có hardware logic (thường gọi là address remapping hoặc address aliasing) để map địa chỉ 0x00000000 tới vùng ROM đó. Nên khi CPU thực hiện lệnh đầu tiên tại địa chỉ 0x00000000, nó thực chất đang đọc từ ROM ở 0x40000000.
 
-**Tại sao lại làm vậy?** Điều này được thực thi tự động bởi hardware trong chip và được cố định với từng loại kiến trúc như ARM, Intel,... $\rightarrow$ hãng không thay đổi được. Nhưng hãng muốn linh hoạt trong việc đặt ROM, RAM, peripheral ở đâu trong 4GB address space, nên giải pháp là dùng address remapping: lúc boot thì alias 0x0 tới ROM, sau khi boot xong software có thể reconfigure memory map — ví dụ remap 0x0 tới RAM để vector table nằm trong RAM.
+**Tại sao lại làm vậy?** Điều này được thực thi tự động bởi hardware trong chip và được cố định với từng loại kiến trúc như ARM, Intel,... $\rightarrow$ hãng không thay đổi được. Nhưng hãng muốn linh hoạt trong việc đặt ROM, RAM, peripheral ở đâu trong 4GB address space, nên giải pháp là dùng address remapping: lúc boot thì alias 0x0 tới ROM, sau khi boot xong software có thể reconfigure memory map - ví dụ remap 0x0 tới RAM để vector table nằm trong RAM.
 
 Ngoài ra, tài nguyên mà boot rom có thể sử dụng rất hạn chế:
 - CPU chạy ở clock rất thấp do PLL clock chưa được khởi tạo.
@@ -131,35 +131,35 @@ Và đây là quá trình khi boot:
 
 ## 3. DDR là gì?
 
-DDR (Double Data Rate) là ram ngoài, nằm trên PCB, kết nối với SoC qua hàng chục đường tín hiệu song song: data lines (DQ), address lines (A), control lines (RAS, CAS, WE, CS), clock (CK/CK#), và data strobe (DQS). Không giống Internal SRAM — cứ ghi địa chỉ là đọc/ghi được ngay — DDR hoạt động theo protocol phức tạp hơn nhiều vì nó cần tốc độ cao và dung lượng lớn.
+DDR (Double Data Rate) là ram ngoài, nằm trên PCB, kết nối với SoC qua hàng chục đường tín hiệu song song: data lines (DQ), address lines (A), control lines (RAS, CAS, WE, CS), clock (CK/CK#), và data strobe (DQS). Không giống Internal SRAM - cứ ghi địa chỉ là đọc/ghi được ngay - DDR hoạt động theo protocol phức tạp hơn nhiều vì nó cần tốc độ cao và dung lượng lớn.
 
 **Cách DDR hoạt động**
 
 Hãy tưởng tượng DDR như một bảng tính Excel khổng lồ với hàng triệu ô. Data được tổ chức thành rows và columns. Khi CPU muốn đọc một ô, quá trình diễn ra qua nhiều bước tuần tự:
-- Bước 1 là Row Activate — mở một hàng lên. DDR chip phải load toàn bộ nội dung một row vào row buffer nội bộ. Giống như ta phải mở một ngăn kéo tủ hồ sơ trước khi lấy tài liệu.
-- Bước 2 là Column Read/Write — chọn cột trong row đã mở, đọc hoặc ghi data. Giống như tìm đúng tài liệu trong ngăn kéo đang mở.
-- Bước 3 là Precharge — đóng row hiện tại trước khi mở row khác. Giống như phải đóng ngăn kéo hiện tại trước khi mở ngăn kéo khác.
+- Bước 1 là Row Activate - mở một hàng lên. DDR chip phải load toàn bộ nội dung một row vào row buffer nội bộ. Giống như ta phải mở một ngăn kéo tủ hồ sơ trước khi lấy tài liệu.
+- Bước 2 là Column Read/Write - chọn cột trong row đã mở, đọc hoặc ghi data. Giống như tìm đúng tài liệu trong ngăn kéo đang mở.
+- Bước 3 là Precharge - đóng row hiện tại trước khi mở row khác. Giống như phải đóng ngăn kéo hiện tại trước khi mở ngăn kéo khác.
 
 Mỗi bước này tốn một khoảng thời gian nhất định, và DDR chip không cho phép ta chạy bước tiếp theo trước khi bước trước hoàn thành. Đây chính là các **timing parameters**.
 
 **Timing parameters**
 
-- `tRCD` là thời gian chờ giữa mở row và đọc/ghi column — gửi lệnh Activate xong, phải đợi `tRCD` nanosecond mới được gửi lệnh Read/Write. Nếu gửi sớm hơn, data đọc ra sẽ sai.
-- `tRP` là thời gian chờ để đóng row (Precharge) — phải đợi `tRP` nanosecond sau khi Precharge mới được mở row mới.
+- `tRCD` là thời gian chờ giữa mở row và đọc/ghi column - gửi lệnh Activate xong, phải đợi `tRCD` nanosecond mới được gửi lệnh Read/Write. Nếu gửi sớm hơn, data đọc ra sẽ sai.
+- `tRP` là thời gian chờ để đóng row (Precharge) - phải đợi `tRP` nanosecond sau khi Precharge mới được mở row mới.
 - `CAS Latency (CL)` là số clock cycle từ lúc gửi lệnh Read đến khi data thực sự xuất hiện trên data bus.
 - `tRAS` là thời gian tối thiểu một row phải giữ mở trước khi được phép đóng.
 
-Mỗi DDR chip có giá trị timing riêng, ghi trong datasheet. Ví dụ một chip DDR3 có thể có `CL=11`, `tRCD=13.75ns`, `tRP=13.75ns`. SPL phải program đúng những giá trị này vào DDR controller — controller sẽ tự động chèn đúng khoảng chờ khi giao tiếp với chip DDR.
+Mỗi DDR chip có giá trị timing riêng, ghi trong datasheet. Ví dụ một chip DDR3 có thể có `CL=11`, `tRCD=13.75ns`, `tRP=13.75ns`. SPL phải program đúng những giá trị này vào DDR controller - controller sẽ tự động chèn đúng khoảng chờ khi giao tiếp với chip DDR.
 
-Nếu set timing quá ngắn (nhanh hơn chip cho phép) thì data có thể bị corrupt, hệ thống crash hoặc tệ hơn là data sai ngầm mà không biết. Nếu set timing quá dài (chậm hơn cần thiết) thì hệ thống chạy chậm nhưng vẫn đúng — an toàn hơn nhưng lãng phí performance.
+Nếu set timing quá ngắn (nhanh hơn chip cho phép) thì data có thể bị corrupt, hệ thống crash hoặc tệ hơn là data sai ngầm mà không biết. Nếu set timing quá dài (chậm hơn cần thiết) thì hệ thống chạy chậm nhưng vẫn đúng - an toàn hơn nhưng lãng phí performance.
 
-**DDR PHY — Tín hiệu vật lý**
+**DDR PHY - Tín hiệu vật lý**
 
-Ở trên là logic level — controller biết khi nào gửi lệnh gì. Nhưng còn physical level: tín hiệu chạy trên PCB ở tốc độ hàng trăm MHz đến hàng GHz, nên chất lượng tín hiệu rất quan trọng.
+Ở trên là logic level - controller biết khi nào gửi lệnh gì. Nhưng còn physical level: tín hiệu chạy trên PCB ở tốc độ hàng trăm MHz đến hàng GHz, nên chất lượng tín hiệu rất quan trọng.
 
-DDR PHY (Physical Interface) là phần hardware nằm giữa controller logic và pin SoC. SPL cần cấu hình PHY với drive strength — dòng điện đẩy tín hiệu lên đường trace mạnh bao nhiêu. Quá yếu thì tín hiệu không đủ biên độ, quá mạnh thì gây nhiễu. Ngoài ra, ODT (On-Die Termination) — điện trở kết thúc đường truyền nằm ngay trong chip DDR, giúp giảm phản xạ tín hiệu. Giống như ta đặt miếng mút ở cuối ống nước để sóng không dội ngược lại. Và slew rate — tốc độ chuyển đổi 0 $\rightarrow$ 1 và 1 $\rightarrow$ 0. Quá nhanh gây nhiễu EMI, quá chậm thì tín hiệu không kịp ổn định trước clock edge tiếp theo.
+DDR PHY (Physical Interface) là phần hardware nằm giữa controller logic và pin SoC. SPL cần cấu hình PHY với drive strength - dòng điện đẩy tín hiệu lên đường trace mạnh bao nhiêu. Quá yếu thì tín hiệu không đủ biên độ, quá mạnh thì gây nhiễu. Ngoài ra, ODT (On-Die Termination) - điện trở kết thúc đường truyền nằm ngay trong chip DDR, giúp giảm phản xạ tín hiệu. Giống như ta đặt miếng mút ở cuối ống nước để sóng không dội ngược lại. Và slew rate - tốc độ chuyển đổi 0 $\rightarrow$ 1 và 1 $\rightarrow$ 0. Quá nhanh gây nhiễu EMI, quá chậm thì tín hiệu không kịp ổn định trước clock edge tiếp theo.
 
-Giá trị tối ưu cho các tham số này phụ thuộc vào PCB layout cụ thể — trace dài bao nhiêu, có bao nhiêu chip DDR trên board, topology đi dây như thế nào. Cùng SoC, cùng DDR chip, nhưng hai board khác nhau có thể cần PHY config khác nhau.
+Giá trị tối ưu cho các tham số này phụ thuộc vào PCB layout cụ thể - trace dài bao nhiêu, có bao nhiêu chip DDR trên board, topology đi dây như thế nào. Cùng SoC, cùng DDR chip, nhưng hai board khác nhau có thể cần PHY config khác nhau.
 
 **DDR Training**
 
@@ -167,11 +167,11 @@ Giá trị tối ưu cho các tham số này phụ thuộc vào PCB layout cụ 
 
 DDR Training là quá trình hardware tự động thử nhiều giá trị timing, gửi pattern test, đọc lại kiểm tra, tìm ra khoảng timing hoạt động đúng, rồi chọn điểm giữa khoảng đó (điểm an toàn nhất).
 
-Hình dung như thế này: ta có một cửa sổ thời gian rất hẹp để "bắt" đúng data trên bus. Training giúp tìm chính xác cửa sổ đó ở đâu và rộng bao nhiêu, rồi đặt điểm sampling vào giữa cửa sổ — nơi có margin lớn nhất.
+Hình dung như thế này: ta có một cửa sổ thời gian rất hẹp để "bắt" đúng data trên bus. Training giúp tìm chính xác cửa sổ đó ở đâu và rộng bao nhiêu, rồi đặt điểm sampling vào giữa cửa sổ - nơi có margin lớn nhất.
 
 **Tại sao BOOT ROM không làm việc này?**
 
-Bây giờ ta có thể hiểu tại sao ROM Bootloader không thể khởi tạo DDR — nó cần biết board cụ thể dùng DDR chip gì (timing parameters), PCB layout ra sao (PHY config), và power supply cấp DDR ở voltage nào. Mỗi board là một bộ giá trị khác nhau. ROM là code chung cho mọi board dùng AM335x, nên không thể hardcode thông tin này. SPL mới là nơi chứa cấu hình DDR, được developer cấu hình khi port U-Boot cho board mới.
+Bây giờ ta có thể hiểu tại sao ROM Bootloader không thể khởi tạo DDR - nó cần biết board cụ thể dùng DDR chip gì (timing parameters), PCB layout ra sao (PHY config), và power supply cấp DDR ở voltage nào. Mỗi board là một bộ giá trị khác nhau. ROM là code chung cho mọi board dùng AM335x, nên không thể hardcode thông tin này. SPL mới là nơi chứa cấu hình DDR, được developer cấu hình khi port U-Boot cho board mới.
 
 ## 4. Second stage bootloader hay SPL/MLO
 
@@ -180,19 +180,19 @@ SPL là chương trình đầu tiên mà developer có thể build, sửa, debug
 Tại thời điểm ROM jump vào SPL, tài nguyên hệ thống vẫn rất nhiều giới hạn: CPU vẫn chạy ở clock rất thấp, chỉ có internal SRAM, DDR chưa hoạt động, cache và MMU vẫn tắt, và đa số peripheral chưa init.
 
 **Nhiệm vụ của SPL:**
-1. Cấu hình power management và PLL clock: Trước khi tăng clock lên cao, có thể phải tăng voltage cho CPU core. Trên BBB, SPL giao tiếp với TPS65217 PMIC qua I2C để set đúng voltage trước khi set PLL lên full speed. Thứ tự này rất quan trọng — nếu tăng clock trước khi tăng voltage, CPU có thể không ổn định. Ngược lại cũng vậy — tăng voltage quá cao khi clock thấp thì lãng phí điện và có thể gây nhiệt.
+1. Cấu hình power management và PLL clock: Trước khi tăng clock lên cao, có thể phải tăng voltage cho CPU core. Trên BBB, SPL giao tiếp với TPS65217 PMIC qua I2C để set đúng voltage trước khi set PLL lên full speed. Thứ tự này rất quan trọng - nếu tăng clock trước khi tăng voltage, CPU có thể không ổn định. Ngược lại cũng vậy - tăng voltage quá cao khi clock thấp thì lãng phí điện và có thể gây nhiệt.
 2. Khởi tạo DDR: Đây là lý do tồn tại chính của SPL và cũng là phần khó nhất. Khởi tạo DDR không đơn giản chỉ là bật controller lên  mà nó là một quy trình nhiều bước rất chi tiết (đã nói chi tiết ở phần [DDR](#ddr-là-gì)).
 3. Khởi tạo boot device: SPL cần đọc U-Boot image từ boot device, nên nó phải khởi tạo ngoại vi tương ứng. Ở đây có một điểm cần chú ý là SPL có thể boot từ device khác với device mà ROM dùng để load SPL. Ví dụ ROM load SPL từ SD card, nhưng SPL có thể load U-Boot từ eMMC hoặc SPI NOR hoặc network. Tuy nhiên, trên thực tế, SPL thường dùng cùng boot device với ROM để tránh việc phải setup phức tạp.
 4. Load Uboot vào DDR: SPL đọc U-Boot image từ boot device vào DDR. Vì bây giờ đã có DDR, image size không còn bị giới hạn bởi SRAM nữa.
 5. Jump tới Uboot: SPL set PC về entry point của U-Boot. Tại thời điểm này, tài nguyên hệ thống có thể sử dụng đã khác hẳn so với khi Boot ROM chạy: CPU ở full speed, DDR khả dụng với hàng trăm MB, clock tree đã cấu hình đầy đủ.
 
 :::warning Tại sao lại cần SPL?
-U-Boot quá lớn để lưu ở SRAM nên nó cần bộ nhớ RAM lớn hơn là DDR, nhưng để có DDR thì phải có code khởi tạo DDR, mà code đó phải chạy từ SRAM. SPL giải quyết bài toán này bằng cách làm trung gian — đủ nhỏ lưu ở SRAM, đủ chức năng để khởi tạo DDR.
+U-Boot quá lớn để lưu ở SRAM nên nó cần bộ nhớ RAM lớn hơn là DDR, nhưng để có DDR thì phải có code khởi tạo DDR, mà code đó phải chạy từ SRAM. SPL giải quyết bài toán này bằng cách làm trung gian - đủ nhỏ lưu ở SRAM, đủ chức năng để khởi tạo DDR.
 
 Ngoài ra, Boot ROM cũng không thể làm việc này vì cấu hình DDR mỗi board là khác nhau. Boot ROM là ROm chung cho mọi board dùng SoC đó, nên nó không thể biết board cụ thể dùng DDR chip gì, tốc độ bao nhiêu,... SPL mới là nơi chứa thông tin cấu hình DDR cho từng board cụ thể.
 :::
 
-Thông thường, SPL thực chất là U-Boot build ở chế độ SPL. Trong U-Boot source code, có config option dạng `CONFIG_SPL` — khi bật, U-Boot compiler sẽ build ra hai binary: SPL (nhỏ, chỉ chứa code cần thiết cho early init) và U-Boot proper (full bootloader).
+Thông thường, SPL thực chất là U-Boot build ở chế độ SPL. Trong U-Boot source code, có config option dạng `CONFIG_SPL` - khi bật, U-Boot compiler sẽ build ra hai binary: SPL (nhỏ, chỉ chứa code cần thiết cho early init) và U-Boot proper (full bootloader).
 
 Nghĩa là SPL và U-Boot dùng chung codebase, chung driver, chung build system. SPL chỉ đơn giản là U-Boot với hầu hết features bị loại bỏ. Kbi build U-Boot cho AM335x, file output là `MLO` (SPL) và `u-boot.img` (U-Boot proper) như hình dưới đây:
 
@@ -240,8 +240,8 @@ Ta sẽ đi vào chi tiết từng phần:
 ### 5.1. Khởi tạo phần cứng
 
 U-Boot chia quá trình khởi tạo thành hai phase rõ ràng, ngăn cách bởi bước **relocation**:
-- `board_init_f` — Ở thời điểm này U-Boot đang chạy tại load address mà SPL đặt nó vào. Phase này khởi tạo những thứ cơ bản nhất: serial console (để có UART output sớm nhất có thể), timer (để delay, timeout hoạt động),... Quan trọng nhất, pha này tính toán relocation address — U-Boot sẽ tự copy chính nó lên vùng cao nhất của DDR.
-- `board_init_r` — Đây mới là phase khởi tạo chính. U-Boot khởi tạo toàn bộ subsystem: full serial driver, I2C/SPI bus, MMC/SD controller, network (Ethernet PHY, MAC), USB host controller, display/framebuffer (nếu có), filesystem driver (FAT, ext4, UBI/UBIFS), và environment variable system. Sau pha này, U-Boot là một "mini OS" khá mạnh.
+- `board_init_f` - Ở thời điểm này U-Boot đang chạy tại load address mà SPL đặt nó vào. Phase này khởi tạo những thứ cơ bản nhất: serial console (để có UART output sớm nhất có thể), timer (để delay, timeout hoạt động),... Quan trọng nhất, pha này tính toán relocation address - U-Boot sẽ tự copy chính nó lên vùng cao nhất của DDR.
+- `board_init_r` - Đây mới là phase khởi tạo chính. U-Boot khởi tạo toàn bộ subsystem: full serial driver, I2C/SPI bus, MMC/SD controller, network (Ethernet PHY, MAC), USB host controller, display/framebuffer (nếu có), filesystem driver (FAT, ext4, UBI/UBIFS), và environment variable system. Sau pha này, U-Boot là một "mini OS" khá mạnh.
 
 :::warning Tại sao cần chia hai phase?
 SPL load U-Boot vào vùng thấp của DDR. Nhưng vùng thấp cần dành cho linux kernel . Nếu U-Boot ở đó thì load kernel sẽ ghi đè lên U-Boot. Do đó, U-Boot phải tự relocate lên vùng cao gần top-of-RAM. Trước khi relocate, nó cần biết DDR lớn bao nhiêu $\rightarrow$ cần init tối thiểu trước.
@@ -275,7 +275,7 @@ bootcmd
   └── run distro_bootcmd
 ```
 
-**`findfdt` — Xác định DTB theo board**
+**`findfdt` - Xác định DTB theo board**
 
 `findfdt` kiểm tra biến board_name để tự động chọn đúng file DTB cho từng board:
 
@@ -298,7 +298,7 @@ findfdt=
 `board_name` được set bởi uboot khi đọc EEPROM trên board lúc khởi động, mỗi BBB có mã riêng ghi trong EEPROM.
 :::
 
-**`init_console` — Khởi tạo UART console**
+**`init_console` - Khởi tạo UART console**
 
 ```bash
 init_console=
@@ -311,7 +311,7 @@ init_console=
 
 Set đúng UART console tùy theo board.
 
-**`finduuid` — Tìm UUID của rootfs partition**
+**`finduuid` - Tìm UUID của rootfs partition**
 
 ```bash
 finduuid=part uuid mmc ${mmcdev}:2 uuid
@@ -324,9 +324,9 @@ Lấy UUID của partition 2 (rootfs) để dùng trong bootargs:
 root=PARTUUID=${uuid}   # <- ổn định hơn
 ```
 
-**`distro_bootcmd` — Boot theo cơ chế distro boot**
+**`distro_bootcmd` - Boot theo cơ chế distro boot**
 
-Distro boot là cơ chế cho phép distro Linux chỉ cần cài các file cấu hình boot vào partition ext2/3/4 hoặc FAT, đánh dấu partition đó là bootable, và uboot (hoặc bất kỳ bootloader nào khác) sẽ tự tìm và thực thi các file đó — hoàn toàn tương tự như tạo file cấu hình `grub2` trên PC.
+Distro boot là cơ chế cho phép distro Linux chỉ cần cài các file cấu hình boot vào partition ext2/3/4 hoặc FAT, đánh dấu partition đó là bootable, và uboot (hoặc bất kỳ bootloader nào khác) sẽ tự tìm và thực thi các file đó - hoàn toàn tương tự như tạo file cấu hình `grub2` trên PC.
 
 File cấu hình boot đó là `extlinux.conf` theo chuẩn syslinux/extlinux, được uboot hỗ trợ thông qua lệnh `sysboot` hoặc `pxe boot`. Thay vì hardcode lệnh boot trong environment, ta mô tả cách boot trong một file text nằm trên boot partition. U-Boot đọc file này và tự thực hiện các bước load kernel, DTB, truyền bootargs.
 
@@ -532,7 +532,7 @@ bootz được gọi
 +---------------------------------+
       |
       v
-Kernel bắt đầu chạy — U-Boot không còn tồn tại
+Kernel bắt đầu chạy - U-Boot không còn tồn tại
 ```
 
 ### 5.7. Kernel tiếp nhận và xử lý
@@ -673,7 +673,7 @@ CONFIG_ENV_SIZE=0x10000       # 64KB
 CONFIG_ENV_SECT_SIZE=0x10000  # sector size, vì SPI flash erase theo sector
 ```
 
-U-Boot phải erase sector trước rồi mới ghi. Nếu mất điện giữa chừng, environment sẽ bị hỏng — đây là lý do cần redundant environment.
+U-Boot phải erase sector trước rồi mới ghi. Nếu mất điện giữa chừng, environment sẽ bị hỏng - đây là lý do cần redundant environment.
 
 **FAT partition**
 

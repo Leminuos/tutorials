@@ -1,20 +1,18 @@
-# Kernel module
+## 1. Tại sao lại có Kernel Module?
 
-## Tại sao lại có Kernel Module?
+Với MCU, khi muốn thêm tính năng mới, ví dụ như hỗ trợ thêm một loại cảm biến thì ta phải làm gì? Sửa code, biên dịch lại toàn bộ firmware, flash lại chip. Nếu sản phẩm đang chạy ngoài hiện trường thì đây là một vấn đề rất khó khăn.
 
-Với MCU, khi muốn thêm tính năng mới — ví dụ hỗ trợ thêm một loại cảm biến thì ta phải làm gì? Sửa code, biên dịch lại toàn bộ firmware, flash lại chip. Nếu sản phẩm đang chạy ngoài hiện trường, đây là một vấn đề thực sự.
+Linux kernel ban đầu được thiết kế theo kiến trúc **monolithic**, tức là toàn bộ kernel (scheduler, memory manager, driver, filesystem...) được biên dịch thành một binary duy nhất chạy trong kernel space. Về lý thuyết, điều này có nghĩa là mỗi khi muốn thêm driver mới, ta phải biên dịch lại toàn bộ kernel và reboot hệ thống.
 
-Linux kernel ban đầu được thiết kế theo kiến trúc **monolithic**, toàn bộ kernel (scheduler, memory manager, driver, filesystem...) được biên dịch thành một binary duy nhất chạy trong kernel space. Về lý thuyết, điều này có nghĩa là mỗi khi muốn thêm driver mới, ta phải biên dịch lại toàn bộ kernel và reboot hệ thống.
+Thực tế, điều này là không thể chấp nhận được trong môi trường production, server không thể reboot mỗi khi cần thêm driver card mạng mới hay thiết bị nhúng không thể reflash mỗi khi cần hỗ trợ thêm một peripheral.
 
-Thực tế, đây là điều không thể chấp nhận được trong môi trường production, server không thể reboot mỗi khi cần thêm driver card mạng mới hay thiết bị nhúng không thể reflash mỗi khi cần hỗ trợ thêm một peripheral.
+$\rightarrow$ Giải pháp: **Loadable Kernel Module**
 
-$\rightarrow$ Giải pháp: Loadable Kernel Module
+## 2. Kernel module là gì?
 
-## Kernel module là gì?
+### 2.1. Định nghĩa
 
-### Định nghĩa
-
-Kernel module là cơ chế cho phép biên dịch một tính năng kernel thành file binary riêng (`.ko`), và nạp vào kernel đang chạy mà không cần reboot.
+Kernel module là cơ chế cho phép biên dịch một tính năng kernel thành file binary riêng (`.ko`) và nạp vào kernel đang chạy mà không cần reboot.
 
 Ví dụ:
 
@@ -26,30 +24,11 @@ sudo insmod my_driver.ko
 sudo rmmod my_driver
 ```
 
-Đây không phải là một process mới được tạo ra. Module được ánh xạ trực tiếp vào kernel image đang chạy trong RAM — code của module chạy trong cùng không gian địa chỉ với kernel, với cùng mức quyền hạn.
+Đây không phải là một process mới được tạo ra. Module được ánh xạ trực tiếp vào kernel image đang chạy trong RAM - code của module chạy trong cùng không gian địa chỉ với kernel, với cùng mức quyền hạn.
 
-:::warning Hệ quả
-Một bug trong kernel module = một bug trong kernel.
-:::
+$\rightarrow$ **Hệ quả: Một bug trong kernel module = một bug trong kernel.**
 
-### Cách sử dụng
-
-- Nạp kernel module vào kernel: `sudo insmod mydriver.ko`
-- Gỡ kernel module khỏi kernel: `sudo rmmod mydriver`
-- Liệt kê các kernel module đang chạy trong kernel: `lsmod`
-
-Khi sử dụng `lsmode` để liệt kê các kernel module theo thứ tự được load gần nhất và nó sẽ hiển thị như hình minh hoạ sau:
-
-![lsmode](img/lsmode.png)
-
-Trong đó:
-- `module` có ý nghĩa là tên của module.
-- `size` là kích thước của file `.ko` chứ không phải kích thước của kernel module đang sử dụng.
-- `Used by` có ý nghĩa là số thread hoặc driver đang sử dụng tài nguyên của kernel module.
-
-Ta không thể remove một kernel module khi trường `Used by` khác 0 vì có kernel module hoặc thread đang dùng tài nguyên của kernel module.
-
-### File `.ko` là gì?
+### 2.2. File `.ko` là gì?
 
 Khi ta biên dịch một ứng dụng userspace, kết quả là một ELF binary có thể chạy độc lập. Kernel module cũng là ELF nhưng có những section đặc biệt mà binary userspace không có:
 
@@ -70,23 +49,41 @@ author:         Peizzon
 vermagic:       6.1.0 SMP mod_unload ARMv7
 ```
 
-## Cơ chế bảo vệ version
+### 2.3. Cách sử dụng
 
-Đây là điểm nhiều developer bị "bẫy" lần đầu. Khi `insmod` được gọi, kernel sẽ kiểm tra vermagic trong `.modinfo` của file `.ko` với vermagic của kernel đang chạy. Nếu không khớp, kernel từ chối load:
+- Nạp kernel module vào kernel: `sudo insmod mydriver.ko`
+- Gỡ kernel module khỏi kernel: `sudo rmmod mydriver`
+- Liệt kê các kernel module đang chạy trong kernel: `lsmod`
+
+Khi sử dụng `lsmode` để liệt kê các kernel module theo thứ tự được load gần nhất và nó sẽ hiển thị như hình minh hoạ sau:
+
+![lsmode](img/lsmode.png)
+
+Trong đó:
+- `module` có ý nghĩa là tên của module.
+- `size` là kích thước của file `.ko` chứ không phải kích thước của kernel module đang sử dụng.
+- `Used by` có ý nghĩa là số thread hoặc driver đang sử dụng tài nguyên của kernel module.
+
+Ta không thể remove một kernel module khi trường `Used by` khác 0 vì có kernel module hoặc thread đang dùng tài nguyên của kernel module.
+
+
+## 2.4. Cơ chế bảo vệ version
+
+Khi `insmod` được gọi, kernel sẽ kiểm tra vermagic trong `.modinfo` của file `.ko` với vermagic của kernel đang chạy. Nếu không match, kernel từ chối load:
 
 ```
 ERROR: could not insert module my_driver.ko: Invalid module format
 ```
 
-vermagic bao gồm: **kernel version + cấu hình biên dịch** (SMP, preempt, ARMv7...). Đây là lý do tại sao file `.ko` biên dịch cho kernel 6.1.0 sẽ không load được trên kernel 6.1.1, dù chỉ khác nhau một con số nhỏ.
+vermagic bao gồm: **kernel version + cấu hình biên dịch** (SMP, preempt, ARMv7...). Đây là lý do tại sao file `.ko` biên dịch cho kernel 6.1.0 sẽ không load được trên kernel 6.1.1 dù chỉ khác nhau một con số nhỏ.
 
-:::warning Hệ quả thực tế
-Khi cross-compile kernel module cho board, ta phải dùng đúng kernel source tree tương ứng với kernel đang chạy trên board — không phải kernel source bất kỳ cùng version.
+:::warning Lưu ý
+Khi cross-compile kernel module cho board, ta phải dùng đúng kernel source tree tương ứng với kernel đang chạy trên board, không phải kernel source bất kỳ cùng version.
 :::
 
-## Symbol linking
+## 3. Symbol linking
 
-Khi ta gọi `printk()` hay `request_irq()` trong module, compiler không biết địa chỉ thực của các hàm này tại thời điểm biên dịch. Địa chỉ chỉ được resolve lúc module được load vào kernel.
+Khi ta gọi `printk()` hay `request_irq()` trong module, compiler không biết địa chỉ thực của các hàm này tại thời điểm biên dịch. Địa chỉ chỉ được cấp phát tại thời điểm module được load vào kernel.
 
 Kernel duy trì một bảng symbol toàn cục:
 
@@ -102,10 +99,10 @@ c0521234 T request_irq
 Chỉ những hàm được kernel export bằng macro `EXPORT_SYMBOL()` mới có thể được module gọi. Đây là API boundary giữa kernel core và module.
 
 ```c
-/* Trong kernel source — hàm này module mới gọi được */
+/* Trong kernel source - hàm này module mới gọi được */
 EXPORT_SYMBOL(request_irq);
 
-/* Hàm internal — module không gọi được */
+/* Hàm internal - module không gọi được */
 static void internal_irq_setup(void) { ... }
 ```
 
@@ -113,7 +110,7 @@ static void internal_irq_setup(void) { ... }
 Ta cũng có thể sử dụng macro `EXPORT_SYMBOL` để lưu các biến định danh và chia sẻ biến cho các driver khác.
 :::
 
-## Cấu trúc kernel module
+## 4. Cấu trúc kernel module
 
 Cấu trúc source code của một kernel module sẽ như sau:
 
@@ -167,7 +164,7 @@ Ngoài ra, một macro kernel đặc biệt là `MODULE_LICENSE` được dùng 
 
 Hàm `printk` được định nghĩa trong linux kernel và được cung cấp cho các module. Nó hoạt động như hàm `printf` trong thư viện C chuẩn. Log sẽ được in trong file `var/log/messages`.
 
-## Kernel header
+## 5. Kernel header
 
 Kernel Header được hiểu là thư viện chứa tập hợp các file header chứa khai báo về các hàm, cấu trúc dữ liệu, macro, và hằng số cần thiết để biên dịch các kernel module hoặc phần mềm tương tác với Linux Kernel.
 
@@ -175,7 +172,7 @@ Mỗi hệ điều hành lại có kernel header khác nhau, ví dụ như raspb
 
 Kernel Header nằm trong thư mục `/usr/src/linux-headers-$(uname -r)/` hoặc `/lib/modules/$(uname -r)/build/include/`.
 
-## Build loadable kernel module
+## 6. Build loadable kernel module
 
 Để thực hiện build loadable kernel module, ta thực hiện lệnh `make -C` để thực hiện lệnh make từ build system của linux kernel hay `kbuild`.
 
@@ -234,21 +231,21 @@ Lúc này, `$(KDIR)` cần trỏ đúng tới đường dẫn chứa source linu
 [Testing of an lkm on target](https://fastbitlab.com/testing-of-an-lkm-on-target/)
 [How to create makefile](https://fastbitlab.com/how-to-create-makefile/)
 
-## Kernel timer
+## 7. Kernel timer
 
-Trong userspace, ta dùng `sleep()` hoặc `setitimer()` để delay. Trong kernel, cách đúng là dùng kernel timer — một cơ chế cho phép đăng ký một callback sẽ được gọi sau một khoảng thời gian nhất định.
+Trong userspace, ta dùng `sleep()` hoặc `setitimer()` để delay. Trong kernel, cách đúng là dùng kernel timer - một cơ chế cho phép đăng ký một callback sẽ được gọi sau một khoảng thời gian nhất định.
 
 ```c
 #include <linux/timer.h>
 
 struct timer_list my_timer;
 
-/* Callback — chạy trong softirq context, ràng buộc tương tự interrupt handler */
+/* Callback - chạy trong softirq context, ràng buộc tương tự interrupt handler */
 static void timer_callback(struct timer_list *t)
 {
     printk(KERN_INFO "Timer fired!\n");
 
-    /* Tự schedule lại sau 1 giây — tạo periodic timer */
+    /* Tự schedule lại sau 1 giây - tạo periodic timer */
     mod_timer(&my_timer, jiffies + HZ);
 }
 
@@ -257,7 +254,7 @@ static int __init timer_init(void)
     /* Khởi tạo timer và gán callback */
     timer_setup(&my_timer, timer_callback, 0);
 
-    /* Kích hoạt lần đầu — HZ = số jiffies trong 1 giây */
+    /* Kích hoạt lần đầu - HZ = số jiffies trong 1 giây */
     mod_timer(&my_timer, jiffies + HZ);
 
     printk(KERN_INFO "Timer started\n");
@@ -266,23 +263,23 @@ static int __init timer_init(void)
 
 static void __exit timer_exit(void)
 {
-    /* Hủy timer trước khi unload — bắt buộc */
+    /* Hủy timer trước khi unload - bắt buộc */
     del_timer_sync(&my_timer);
     printk(KERN_INFO "Timer stopped\n");
 }
 ```
 
-- **`jiffies`** là bộ đếm tick của kernel — tăng lên 1 mỗi timer interrupt.
+- **`jiffies`** là bộ đếm tick của kernel - tăng lên 1 mỗi timer interrupt.
 - **`HZ`** là số tick trong 1 giây (thường 100, 250, hoặc 1000 tùy config).
 - `jiffies + HZ` có nghĩa là "1 giây kể từ bây giờ".
 
-Timer callback chạy trong softirq context — ràng buộc tương tự interrupt handler: không được sleep, không được dùng `GFP_KERNEL`.
+Timer callback chạy trong softirq context - ràng buộc tương tự interrupt handler: không được sleep, không được dùng `GFP_KERNEL`.
 
-## Macro `container_of`
+## 8. Macro `container_of`
 
 Đây là một trong những macro quan trọng nhất trong toàn bộ Linux kernel source. Hiểu `container_of` là hiểu một phần lớn tư duy thiết kế của kernel.
 
-### Vấn đề: callback chỉ nhận được một pointer
+### 8.1. Vấn đề: callback chỉ nhận được một pointer
 
 Khi timer callback được gọi, prototype cố định:
 
@@ -292,7 +289,7 @@ static void timer_callback(struct timer_list *t);
 
 Chỉ nhận được tham số `struct timer_list *t`. Nhưng trong thực tế, ta cần truy cập vào toàn bộ context của driver. Ví dụ GPIO base address, IRQ number, trạng thái LED. Vậy thì phải Làm thế nào?
 
-### Giải pháp của kernel
+### 8.2. Giải pháp của kernel
 
 ```c
 /* Định nghĩa struct chứa toàn bộ context của driver */
@@ -323,7 +320,7 @@ static void timer_callback(struct timer_list *t)
 }
 ```
 
-### Cơ chế hoạt động của `container_of`
+### 8.3. Cơ chế hoạt động của `container_of`
 
 ```c
 #define container_of(ptr, type, member) \
@@ -352,7 +349,7 @@ container_of(t, struct led_dev, timer)
 = &my_dev
 ```
 
-### `container_of` xuất hiện ở khắp nơi trong kernel
+### 8.4. `container_of` xuất hiện ở khắp nơi trong kernel
 
 Pattern này không chỉ dùng cho timer. Bất cứ khi nào kernel callback chỉ truyền vào một pointer đến một member cụ thể, `container_of` là cách lấy lại context:
 
@@ -361,23 +358,23 @@ Pattern này không chỉ dùng cho timer. Bất cứ khi nào kernel callback c
 - `struct kobject`- device model
 - `struct file_operations`- character device
 
-## Debug
+## 9. Debug
 
 Ở userspace, workflow debug rất quen thuộc: attach GDB, đặt breakpoint, chạy từng dòng, inspect biến. Workflow này gần như không áp dụng được trong kernel vì một lý do căn bản:
 
-**Khi GDB dừng execution tại breakpoint, toàn bộ kernel dừng theo** — scheduler không chạy, interrupt không được xử lý, watchdog timer không được reset. Sau vài giây, hệ thống treo hoặc reboot.
+**Khi GDB dừng execution tại breakpoint, toàn bộ kernel dừng theo** - scheduler không chạy, interrupt không được xử lý, watchdog timer không được reset. Sau vài giây, hệ thống treo hoặc reboot.
 
-### Các lựa chọn debug kernel — từ mạnh đến yếu
+### 9.1. Các lựa chọn debug kernel
 
-**Trace32** — công cụ mạnh nhất, dùng trong môi trường professional. Kết nối qua JTAG, có hardware debug unit riêng nên có thể dừng CPU mà không làm treo hệ thống. Nhược điểm: cần mua cả hardware lẫn software license, chi phí cao.
+**Trace32:** công cụ mạnh nhất, dùng trong môi trường professional. Kết nối qua JTAG, có hardware debug unit riêng nên có thể dừng CPU mà không làm treo hệ thống. Nhược điểm: cần mua cả hardware lẫn software license, chi phí cao.
 
-**JTAG thông thường (OpenOCD + GDB)** — đi qua hardware debug module của SoC, ổn định hơn software GDB thuần túy. Thường dùng trong giai đoạn bringup board — debug bootloader, early kernel init. Vẫn có giới hạn khi kernel đang chạy đầy đủ.
+**JTAG thông thường (OpenOCD + GDB):** đi qua hardware debug module của SoC, ổn định hơn software GDB thuần túy. Thường dùng trong giai đoạn bringup boa:rd debug bootloader, early kernel init. Vẫn có giới hạn khi kernel đang chạy đầy đủ.
 
-**printk** — công cụ thực tế nhất cho driver development hàng ngày. Không cần hardware đặc biệt, luôn hoạt động, không làm thay đổi timing của hệ thống.
+**printk:** công cụ thực tế nhất cho driver development hàng ngày. Không cần hardware đặc biệt, luôn hoạt động, không làm thay đổi timing của hệ thống.
 
-### Chiến lược dùng printk hiệu quả
+### 9.2. Chiến lược dùng printk hiệu quả
 
-Khi dung `printk` thì log sẽ được lưu vào ring buffer của kernel, đọc khi cần — không in liên tục ra terminal.
+Khi dung `printk` thì log sẽ được lưu vào ring buffer của kernel, đọc khi cần - không in liên tục ra terminal.
 
 Đối với `printk`, nó được gán với log level. Có tám log level, log level càng thấp thì độ ưu tiên càng cao.
 
@@ -400,7 +397,7 @@ hoặc nếu không thêm log level như sau thì mặc định của nó là `C
 printk(“Hello this is kernel code running \n”);
 ```
 
-Chỉ bật `KERN_DEBUG` khi cần — log nhiều quá làm chậm hệ thống và che lấp log quan trọng:
+Chỉ bật `KERN_DEBUG` khi cần - log nhiều quá làm chậm hệ thống và che lấp log quan trọng:
 
 ```bash
 # Bật log level debug cho module cụ thể
@@ -416,16 +413,16 @@ dmesg | head -20
 dmesg -w
 ```
 
-### Heisenbug trong kernel — bug biến mất khi thêm log
+### 9.3. Heisenbug trong kernel - bug biến mất khi thêm log
 
-Đây là hiện tượng ta sẽ gặp sớm hay muộn trong kernel development. Một bug race condition hoặc timing-sensitive chỉ xuất hiện khi không có log — vừa thêm `printk()` vào để debug, bug biến mất.
+Đây là hiện tượng ta sẽ gặp sớm hay muộn trong kernel development. Một bug race condition hoặc timing-sensitive chỉ xuất hiện khi không có log - vừa thêm `printk()` vào để debug, bug biến mất.
 
-Lý do: `printk()` không phải là hàm nhanh. Nó acquire lock để ghi vào ring buffer, tạo ra memory barrier, và thay đổi timing của toàn bộ đoạn code xung quanh. Race condition vốn phụ thuộc vào timing chính xác — một `printk()` có thể làm thay đổi timing đủ để race không còn xảy ra nữa.
+Lý do: `printk()` không phải là hàm nhanh. Nó acquire lock để ghi vào ring buffer, tạo ra memory barrier, và thay đổi timing của toàn bộ đoạn code xung quanh. Race condition vốn phụ thuộc vào timing chính xác - một `printk()` có thể làm thay đổi timing đủ để race không còn xảy ra nữa.
 
 Khi gặp tình huống này:
 
 ```c
-/* Thay vì printk trực tiếp, dùng trace_printk — nhanh hơn nhiều */
+/* Thay vì printk trực tiếp, dùng trace_printk - nhanh hơn nhiều */
 trace_printk("GPIO val = 0x%08x\n", val);
 ```
 
@@ -434,9 +431,9 @@ trace_printk("GPIO val = 0x%08x\n", val);
 cat /sys/kernel/debug/tracing/trace
 ```
 
-`trace_printk()` ghi vào **ftrace buffer** thay vì ring buffer — nhanh hơn đáng kể, ít ảnh hưởng timing hơn.
+`trace_printk()` ghi vào ftrace buffer thay vì ring buffer - nhanh hơn đáng kể, ít ảnh hưởng timing hơn.
 
-### Đọc kernel panic message
+### 9.4. Đọc kernel panic message
 
 Khi kernel module crash, đây là thông tin quan trọng nhất anh có. Ví dụ một panic thực tế:
 
@@ -450,9 +447,9 @@ Call Trace:
 ```
 
 Cách đọc:
-- **`NULL pointer dereference`** — dereference con trỏ NULL
-- **`button_handler+0x18`** — crash xảy ra tại offset `0x18` trong hàm `button_handler`
-- **Call Trace** — chuỗi hàm dẫn đến crash, đọc từ trên xuống
+- **`NULL pointer dereference`:** dereference con trỏ NULL
+- **`button_handler+0x18`:** crash xảy ra tại offset `0x18` trong hàm `button_handler`
+- **Call Trace:** chuỗi hàm dẫn đến crash, đọc từ trên xuống
 
 Tìm chính xác dòng code bị crash:
 

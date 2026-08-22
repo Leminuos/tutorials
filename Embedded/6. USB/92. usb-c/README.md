@@ -1,6 +1,6 @@
 ## 1. Tổng quan USB Type-C
  
-**USB Type-C** là chuẩn connector vật lý thế hệ mới, được thiết kế để thay thế tất cả các loại connector USB trước đó (Type-A, Type-B, Mini-B, Micro-B). Type-C không chỉ là hình dạng đầu cắm — nó đi kèm một hệ sinh thái giao thức phức tạp hơn nhiều so với USB 2.0/3.0 truyền thống
+**USB Type-C** là chuẩn connector vật lý thế hệ mới, được thiết kế để thay thế tất cả các loại connector USB trước đó (Type-A, Type-B, Mini-B, Micro-B). Type-C không chỉ là hình dạng đầu cắm - nó đi kèm một hệ sinh thái giao thức phức tạp hơn nhiều so với USB 2.0/3.0 truyền thống
 
 **Tại sao USB Type-C được sinh ra?**
  
@@ -13,14 +13,14 @@ USB Type-C ra đời để giải quyết ba vấn đề cốt lõi:
  
 | Đặc điểm | Mô tả |
 |---|---|
-| **Reversible** | Cắm chiều nào cũng được — không phân biệt trên/dưới |
+| **Reversible** | Cắm chiều nào cũng được - không phân biệt trên/dưới |
 | **Symmetrical** | Cả hai đầu cáp đều giống nhau (không còn Type-A $\leftrightarrow$ Type-B) |
 | **Đa năng** | Hỗ trợ USB 2.0, USB 3.x, Thunderbolt, DisplayPort, sạc, audio |
 | **Cấp nguồn cao** | Lên đến 240W (48V × 5A) với USB PD 3.1 Extended Power Range |
 | **Nhỏ gọn** | Kích thước tương đương Micro-B, phù hợp thiết bị mỏng |
  
 :::warning Lưu ý quan trọng
-USB Type-C là connector (đầu cắm vật lý), không phải protocol. Một cổng Type-C có thể chỉ hỗ trợ USB 2.0 (480 Mb/s) hoặc hỗ trợ đến USB4 (40 Gb/s) — tùy vào phần cứng bên trong. Không phải cổng Type-C nào cũng nhanh hoặc cấp nguồn cao.
+USB Type-C là connector (đầu cắm vật lý), không phải protocol. Một cổng Type-C có thể chỉ hỗ trợ USB 2.0 (480 Mb/s) hoặc hỗ trợ đến USB4 (40 Gb/s) - tùy vào phần cứng bên trong. Không phải cổng Type-C nào cũng nhanh hoặc cấp nguồn cao.
 :::
 
 ## 2. Pinout USB Type-C
@@ -41,30 +41,30 @@ USB Type-C có 24 chân, được bố trí đối xứng để hỗ trợ cắm
 |---|---|---|---|
 | **VBUS** | A4, A9, B4, B9 | 4 | Nguồn (5V–48V), nhiều chân để chịu dòng cao |
 | **GND** | A1, A12, B1, B12 | 4 | Ground |
-| **D+/D−** | A6/A7, B6/B7 | 2 cặp | USB 2.0 data — chỉ 1 cặp active, cặp còn lại dự phòng cho đảo chiều |
+| **D+/D−** | A6/A7, B6/B7 | 2 cặp | USB 2.0 data - chỉ 1 cặp active, cặp còn lại dự phòng cho đảo chiều |
 | **TX/RX** | A2/A3 (TX1), A10/A11 (RX2), B2/B3 (TX2), B10/B11 (RX1) | 4 cặp | USB 3.x SuperSpeed lanes |
-| **CC** | A5 (CC1), B5 (CC2) | 2 | **Configuration Channel** — phát hiện kết nối, xác định hướng cắm, thương lượng nguồn |
-| **SBU** | A8 (SBU1), B8 (SBU2) | 2 | **Sideband Use** — dùng cho Alternate Mode (DisplayPort, audio,...) |
+| **CC** | A5 (CC1), B5 (CC2) | 2 | **Configuration Channel** - phát hiện kết nối, xác định hướng cắm, thương lượng nguồn |
+| **SBU** | A8 (SBU1), B8 (SBU2) | 2 | **Sideband Use** - dùng cho Alternate Mode (DisplayPort, audio,...) |
 
 ## 3. Data Role và Power Role
 
-Trong USB Type-C, data role và power role là hai khái niệm tách biệt — đây là điểm khác biệt lớn so với USB truyền thống (host luôn là nguồn, device luôn tiêu thụ).
+Trong USB Type-C, data role và power role là hai khái niệm tách biệt - đây là điểm khác biệt lớn so với USB truyền thống (host luôn là nguồn, device luôn tiêu thụ).
 
 ### 3.1. Data Role
  
 | Vai trò | Tên đầy đủ | Mô tả |
 |---|---|---|
-| **DFP** | Downstream Facing Port | Port phía host — gửi data xuống device. Cung cấp VBUS và VCONN |
-| **UFP** | Upstream Facing Port | Port phía device — nhận data từ host. Tiêu thụ VBUS |
+| **DFP** | Downstream Facing Port | Port phía host - gửi data xuống device. Cung cấp VBUS và VCONN |
+| **UFP** | Upstream Facing Port | Port phía device - nhận data từ host. Tiêu thụ VBUS |
 | **DRD** | Dual-Role Data | Port có thể hoạt động cả DFP lẫn UFP |
  
 ### 3.2. Power Role
  
 | Vai trò | Mô tả |
 |---|---|
-| **Source** | Port cấp nguồn VBUS — thường là host hoặc charger |
-| **Sink** | Port tiêu thụ nguồn VBUS — thường là device |
-| **DRP** | Dual-Role Power — cổng có thể làm cả Source lẫn Sink, thương lượng khi kết nối |
+| **Source** | Port cấp nguồn VBUS - thường là host hoặc charger |
+| **Sink** | Port tiêu thụ nguồn VBUS - thường là device |
+| **DRP** | Dual-Role Power - cổng có thể làm cả Source lẫn Sink, thương lượng khi kết nối |
 
 ### 3.3. Tại sao tách Data Role và Power Role?
  
@@ -139,7 +139,7 @@ V_CC = 3.3V × Rd / (Rp + Rd) = 3.3V × 5.1kΩ / (56kΩ + 5.1kΩ) ≈ 0.275V
 Source so sánh `V_CC` với ngưỡng để quyết định: nếu `V_CC` thấp hơn ngưỡng $\rightarrow$ có device. Nếu `V_CC` cao (gần 3.3V) $\rightarrow$ không có device.
  
 :::warning Điểm khác biệt quan trọng với USB Type-A cũ:
-Ở USB Type-A, host detect device qua pull-up trên D+/D−. Ở USB Type-C, chân CC là bắt buộc cho việc detect — D+/D− không còn đóng vai trò này. Nếu thiết kế phần cứng Type-C mà thiếu Rp hoặc Rd trên CC, hệ thống sẽ không hoạt động.
+Ở USB Type-A, host detect device qua pull-up trên D+/D−. Ở USB Type-C, chân CC là bắt buộc cho việc detect - D+/D− không còn đóng vai trò này. Nếu thiết kế phần cứng Type-C mà thiếu Rp hoặc Rd trên CC, hệ thống sẽ không hoạt động.
 :::
 
 :::warning Cable USB Type-C to USB 2.0:
@@ -157,7 +157,7 @@ Source dùng kết quả này để điều khiển MUX (multiplexer) bên trong
 |---|---|---|---|
 | Detect Rd | Hở | Chiều 1 (normal) | USB 2.0: A6/A7, SuperSpeed: TX1/RX2 |
 | Hở | Detect Rd | Chiều 2 (flipped) | USB 2.0: B6/B7, SuperSpeed: TX2/RX1 |
-| Cả hai hở | Cả hai hở | — | Không có cable |
+| Cả hai hở | Cả hai hở | - | Không có cable |
 
 ```mermaid
 flowchart TD
@@ -196,7 +196,7 @@ Tức là một chân CC vừa làm nhiệm vụ detect (qua mức DC từ bộ 
 
 ### 5.1. eMarker IC là gì?
 
-eMarker (viết tắt của **Electronically Marked Cable Assembly — EMCA**) là một IC nhỏ được nhúng bên trong cable USB Type-C, nằm ở một trong hai đầu plug.
+eMarker (viết tắt của **Electronically Marked Cable Assembly - EMCA**) là một IC nhỏ được nhúng bên trong cable USB Type-C, nằm ở một trong hai đầu plug.
 
 **Chức năng của eMarker**
 
@@ -221,7 +221,7 @@ eMarker (viết tắt của **Electronically Marked Cable Assembly — EMCA**) l
 
 **Cách Source đọc thông tin eMarker**
 
-Source giao tiếp với eMarker qua **SOP' (SOP Prime) message** trên CC line — đây là loại PD message đặc biệt dành cho cable (khác với SOP thông thường dành cho device ở đầu kia):
+Source giao tiếp với eMarker qua **SOP' (SOP Prime) message** trên CC line - đây là loại PD message đặc biệt dành cho cable (khác với SOP thông thường dành cho device ở đầu kia):
 
 ```mermaid
 sequenceDiagram
@@ -231,23 +231,23 @@ sequenceDiagram
  
     Note over SRC,SNK: CC đã detect $\rightarrow$ VCONN đã cấp cho eMarker
  
-    SRC->>EM: SOP' — Discover Identity
-    EM->>SRC: SOP' — Identity response
+    SRC->>EM: SOP' - Discover Identity
+    EM->>SRC: SOP' - Identity response
     Note over SRC: Đọc thông tin cable:<br/>- Max current: 5A <br/>- Speed: USB 3.2 Gen 2 <br/>- Type: Passive
  
     Note over SRC: Cable chịu 5A $\rightarrow$ An toàn để cấp 20V/5A
-    SRC->>SNK: SOP — Source_Capabilities (bao gồm PDO 20V/5A)
+    SRC->>SNK: SOP - Source_Capabilities (bao gồm PDO 20V/5A)
 ```
  
 :::warning Chú ý
-Nếu Source không đọc được eMarker (cable không có eMarker, hoặc eMarker không phản hồi), Source bị giới hạn ở 3A — không được cấp 5A dù Sink request. Đây là cơ chế bảo vệ quan trọng: cable không đủ tiêu chuẩn mang 5A có thể quá nhiệt hoặc gây cháy.
+Nếu Source không đọc được eMarker (cable không có eMarker, hoặc eMarker không phản hồi), Source bị giới hạn ở 3A - không được cấp 5A dù Sink request. Đây là cơ chế bảo vệ quan trọng: cable không đủ tiêu chuẩn mang 5A có thể quá nhiệt hoặc gây cháy.
 :::
 
 ### 5.2. Cơ chế VCONN
 
-eMarker IC cần nguồn điện để hoạt động. Nguồn này được cấp qua VCONN — sử dụng chân CC không dùng cho giao tiếp.
+eMarker IC cần nguồn điện để hoạt động. Nguồn này được cấp qua VCONN - sử dụng chân CC không dùng cho giao tiếp.
 
-Nhớ lại: cable chỉ có một đường CC dùng cho giao tiếp PD với device ở đầu kia. Chân CC còn lại ở phía Source không kết nối đến Sink — chân này được tận dụng để cấp 5V cho eMarker:
+Nhớ lại: cable chỉ có một đường CC dùng cho giao tiếp PD với device ở đầu kia. Chân CC còn lại ở phía Source không kết nối đến Sink - chân này được tận dụng để cấp 5V cho eMarker:
 
 ```mermaid
 flowchart LR
@@ -264,7 +264,7 @@ flowchart LR
  
     subgraph "Sink"
         CC1_D["CC1<br/>🔗 Giao tiếp PD<br/>với Source"]
-        CC2_D["CC2<br/>(hở — không<br/>nối trong cable)"]
+        CC2_D["CC2<br/>(hở - không<br/>nối trong cable)"]
     end
  
     CC1_S --- CC_WIRE --- CC1_D
@@ -291,14 +291,14 @@ Source sử dụng FET để enable hoặc disable VBUS. Quy trình:
 5. **Detect detach**: Khi device rút cable $\rightarrow$ CC trở về mức cao (hở) $\rightarrow$ Source disable FET $\rightarrow$ ngắt VBUS và VCONN.
 
 :::warning
-Source không được cấp VBUS trước khi detect device trên CC pin. Đây là yêu cầu bắt buộc của USB Type-C spec — khác với USB Type-A cũ (VBUS luôn có sẵn 5V trên downstream port).
+Source không được cấp VBUS trước khi detect device trên CC pin. Đây là yêu cầu bắt buộc của USB Type-C spec - khác với USB Type-A cũ (VBUS luôn có sẵn 5V trên downstream port).
 :::
 
 ## 7. Alternate Modes
 
-USB Type-C cho phép tái sử dụng các chân SuperSpeed (TX/RX) và SBU cho giao thức không phải USB — gọi là Alternate Mode.
+USB Type-C cho phép tái sử dụng các chân SuperSpeed (TX/RX) và SBU cho giao thức không phải USB - gọi là Alternate Mode.
 
-Các chân SBU1 (A8) và SBU2 (B8) — Sideband Use — được dành riêng cho Alternate Mode:
+Các chân SBU1 (A8) và SBU2 (B8) - Sideband Use - được dành riêng cho Alternate Mode:
 - DisplayPort Alt Mode: SBU dùng làm AUX channel.
 - USB4: SBU dùng làm Sideband Channel (SBTX/SBRX), mapping tùy hướng cable.
 - Audio Adapter Accessory: SBU1 = mic, SBU2 = ground sense.
@@ -316,7 +316,7 @@ Các chân SBU1 (A8) và SBU2 (B8) — Sideband Use — được dành riêng ch
 
 1. Host và device phải thiết lập Explicit Contract qua USB PD trước.
 2. Sử dụng Structured VDM (Vendor Defined Message) trên CC pin để discover và enter/exit Alternate Mode.
-3. Alternate Mode không hỗ trợ qua USB hub — chỉ kết nối point-to-point trực tiếp giữa host và device.
+3. Alternate Mode không hỗ trợ qua USB hub - chỉ kết nối point-to-point trực tiếp giữa host và device.
 
 ```mermaid
 sequenceDiagram
@@ -335,7 +335,7 @@ sequenceDiagram
     D->>H: Mode capabilities (vd: 4-lane DP, pin assignment C)
  
     H->>D: Enter Mode (VDM)
-    D->>H: ACK — Mode entered
+    D->>H: ACK - Mode entered
  
     Note over H,D: Alternate Mode active<br/>TX/RX lanes giờ mang tín hiệu DisplayPort
 ```

@@ -8,7 +8,7 @@ Trong Linux nhúng, Device Tree được dùng để tách mô tả phần cứn
 
 Vậy làm thế nào để trừu tượng hóa chân điều khiển LED, tức là kernel chỉ có nhiệm vụ điều khiển LED, còn "chân nào" do một thành phần khác đảm nhiệm? Lúc đó khi đổi GPIO2 sang GPIO5 hệ thống vẫn chạy tốt mà không cần build lại kernel.
 
-$\rightarrow$ Người ta tạo ra Device Tree hoặc ACPI. ACPI chủ yếu dùng cho x86 (và một phần ARM server); với hệ thống nhúng Linux ta dùng Device Tree — tách mô tả phần cứng ra khỏi kernel thành một file dữ liệu riêng biệt.
+$\rightarrow$ Người ta tạo ra Device Tree hoặc ACPI. ACPI chủ yếu dùng cho x86 (và một phần ARM server); với hệ thống nhúng Linux ta dùng Device Tree - tách mô tả phần cứng ra khỏi kernel thành một file dữ liệu riêng biệt.
 
 > **Lịch sử:** Device Tree không phải phát minh của Linux. Nó bắt nguồn từ Open Firmware (IEEE 1275) của Sun/Apple được PowerPC dùng từ lâu và được ARM Linux áp dụng rộng rãi từ khoảng kernel 3.x (2011) sau lời phê bình nổi tiếng của Linus Torvalds về "board file hell" trong `arch/arm/mach-*`.
 
@@ -318,7 +318,7 @@ Khi compile, `dtc` tự động gán một số nguyên duy nhất được gọ
 Hai cách tham chiếu:
 
 ```dts
-clocks = <&uart_clk>;            /* qua label — phổ biến nhất */
+clocks = <&uart_clk>;            /* qua label - phổ biến nhất */
 clocks = <&{/soc/clock@1000}>;   /* qua đường dẫn tuyệt đối */
 ```
 
@@ -377,7 +377,7 @@ Driver khai báo bảng các chuỗi compatible mà nó hỗ trợ:
 static const struct of_device_id omap_serial_of_match[] = {
     { .compatible = "ti,am335x-uart", .data = &uart_am335x_data },
     { .compatible = "ti,omap3-uart",  .data = &uart_omap3_data  },
-    { /* sentinel — bắt buộc, đánh dấu kết thúc bảng */ }
+    { /* sentinel - bắt buộc, đánh dấu kết thúc bảng */ }
 };
 MODULE_DEVICE_TABLE(of, omap_serial_of_match);
 ```
@@ -418,7 +418,7 @@ Hai property này đặt trên node cha, quy định cách đọc property `reg`
 
 > **Tại sao cần?**
 >
-> Trong SoC không chỉ có một không gian địa chỉ tuyến tính duy nhất — có nhiều bus lồng nhau: memory-mapped bus, I2C, SPI, PCI, USB,... Mỗi loại bus đánh địa chỉ theo cách khác nhau. I2C chỉ cần 1 số (địa chỉ 7-bit) và không có khái niệm "kích thước". Memory-mapped bus 64-bit cần 2 cell cho địa chỉ và 2 cell cho kích thước. Node con không tự quyết định — nó phải theo mô tả của node cha.
+> Trong SoC không chỉ có một không gian địa chỉ tuyến tính duy nhất - có nhiều bus lồng nhau: memory-mapped bus, I2C, SPI, PCI, USB,... Mỗi loại bus đánh địa chỉ theo cách khác nhau. I2C chỉ cần 1 số (địa chỉ 7-bit) và không có khái niệm "kích thước". Memory-mapped bus 64-bit cần 2 cell cho địa chỉ và 2 cell cho kích thước. Node con không tự quyết định - nó phải theo mô tả của node cha.
 
 Các tổ hợp thường gặp:
 
@@ -529,7 +529,7 @@ Nếu node con nằm trong một bus, `reg` của nó là địa chỉ trong kh�
 
 $\rightarrow$ Kernel dùng `ranges` để quy đổi `0x20000` $\rightarrow$ địa chỉ vật lý `0x48020000`.
 
-**`ranges;` rỗng (không có giá trị)** nghĩa là ánh xạ 1:1 — địa chỉ con bằng đúng địa chỉ cha. Đây là trường hợp phổ biến nhất trong DTS thực tế:
+**`ranges;` rỗng (không có giá trị)** nghĩa là ánh xạ 1:1 - địa chỉ con bằng đúng địa chỉ cha. Đây là trường hợp phổ biến nhất trong DTS thực tế:
 
 ```dts
 soc {
@@ -626,7 +626,7 @@ static bool __of_device_is_available(const struct device_node *device)
 | `interrupt-names` | string list | Đặt tên cho từng interrupt trong `interrupts` |
 | `clock-names` | string list | Đặt tên cho từng clock trong `clocks` |
 | `dma-names` | string list | Đặt tên cho từng DMA channel trong `dmas` |
-| `label` | string | Nhãn hiển thị cho userspace (LED, partition,...) — khác hoàn toàn với *node label* trong DTS |
+| `label` | string | Nhãn hiển thị cho userspace (LED, partition,...) - khác hoàn toàn với *node label* trong DTS |
 | `phandle` | u32 | Do `dtc` tự sinh, không viết tay |
 
 :::warning Đừng nhầm hai chữ "label"
@@ -660,7 +660,7 @@ Nghĩa là dòng `bootargs` viết trong DTS thường bị uboot thay bằng gi
 
 ```dts
 chosen {
-    /* để trống — bootloader sẽ điền */
+    /* để trống - bootloader sẽ điền */
 };
 ```
 
@@ -813,7 +813,7 @@ Cơ chế tương tự được dùng ở rất nhiều subsystem:
 | `mmc` | mmc core | `mmcblk<N>` |
 | `ethernet` | net core / of_net | Thứ tự interface, tra MAC từ NVMEM |
 | `gpio` | gpiolib | Base number của gpiochip (legacy) |
-| `rtc` | RTC core | `/dev/rtc<N>` — `rtc0` là RTC mặc định của hệ thống |
+| `rtc` | RTC core | `/dev/rtc<N>` - `rtc0` là RTC mặc định của hệ thống |
 
 Ngoài ra còn `of_alias_get_highest_id("serial")` để driver biết ID lớn nhất đã bị chiếm, và `of_alias_get_alias_list()` để lấy bitmap các ID đã dùng.
 
@@ -857,7 +857,7 @@ Mô tả bộ nhớ vật lý khả dụng. Gần như bắt buộc trừ khi bo
 
 ```dts
 memory@80000000 {
-    device_type = "memory";     /* bắt buộc — kernel nhận diện node qua đây */
+    device_type = "memory";     /* bắt buộc - kernel nhận diện node qua đây */
     reg = <0x80000000 0x10000000>;  /* 256 MB tại 0x80000000 */
 };
 ```
@@ -893,7 +893,7 @@ lcdc@4830e000 {
 
 | Property | Ý nghĩa |
 |---|---|
-| `no-map` | Kernel không tạo linear mapping — bắt buộc khi vùng nhớ do firmware/hardware sở hữu |
+| `no-map` | Kernel không tạo linear mapping - bắt buộc khi vùng nhớ do firmware/hardware sở hữu |
 | `reusable` | Kernel được phép dùng vùng này cho mục đích khác cho đến khi driver claim |
 | `alignment` / `size` | Dùng khi muốn kernel **tự chọn** vị trí thay vì cố định `reg` |
 | `compatible = "shared-dma-pool"` | Vùng này là CMA pool dùng chung cho DMA |
@@ -934,7 +934,7 @@ firmware {
 
 Trên MCU, developer thường hard-code số IRQ từ datasheet trực tiếp vào firmware. Cách này ổn vì firmware và hardware gắn chặt với nhau.
 
-Trên Linux, driver phải hoạt động được trên nhiều board khác nhau — cùng một UART controller nhưng có thể nối vào interrupt controller khác nhau, với số IRQ khác nhau tùy board. Driver không thể tự biết — thông tin này phải đến từ DTS.
+Trên Linux, driver phải hoạt động được trên nhiều board khác nhau - cùng một UART controller nhưng có thể nối vào interrupt controller khác nhau, với số IRQ khác nhau tùy board. Driver không thể tự biết - thông tin này phải đến từ DTS.
 
 ### 6.1. Interrupt controller
 
@@ -954,7 +954,7 @@ intc: interrupt-controller@48200000 {
 };
 ```
 
-`#interrupt-cells = <1>` nghĩa là mỗi interrupt chỉ cần 1 cell — số IRQ (hardware IRQ number, không phải Linux IRQ number).
+`#interrupt-cells = <1>` nghĩa là mỗi interrupt chỉ cần 1 cell - số IRQ (hardware IRQ number, không phải Linux IRQ number).
 
 Controller phức tạp hơn cần nhiều cell hơn. Ví dụ GIC của ARM dùng 3 cell:
 
@@ -1042,14 +1042,14 @@ gpio-keys {
         linux,code = <KEY_ENTER>;
         interrupt-parent = <&gpio0>;
         interrupts = <31 IRQ_TYPE_EDGE_FALLING>;
-        /*            ↑ pin  ↑ trigger type — khớp #interrupt-cells = <2> */
+        /*            ↑ pin  ↑ trigger type - khớp #interrupt-cells = <2> */
     };
 };
 ```
 
 ### 6.4. Kế thừa `interrupt-parent`
 
-Khai báo `interrupt-parent` trên từng node rất lặp lại nếu hầu hết thiết bị nối vào cùng một controller. DTS cho phép khai báo ở node cha — node con kế thừa nếu không tự khai báo:
+Khai báo `interrupt-parent` trên từng node rất lặp lại nếu hầu hết thiết bị nối vào cùng một controller. DTS cho phép khai báo ở node cha - node con kế thừa nếu không tự khai báo:
 
 ```dts
 / {
@@ -1067,7 +1067,7 @@ Khai báo `interrupt-parent` trên từng node rất lặp lại nếu hầu h�
 
 ### 6.5. `interrupts-extended`
 
-Khi một thiết bị có nhiều interrupt đến từ **các controller khác nhau**, `interrupt-parent` + `interrupts` không đủ. Dùng `interrupts-extended` — mỗi entry mang theo phandle của controller riêng:
+Khi một thiết bị có nhiều interrupt đến từ **các controller khác nhau**, `interrupt-parent` + `interrupts` không đủ. Dùng `interrupts-extended` - mỗi entry mang theo phandle của controller riêng:
 
 ```dts
 device@1000 {
@@ -1077,7 +1077,7 @@ device@1000 {
 };
 ```
 
-`interrupts-extended` và `interrupts` loại trừ nhau — nếu cả hai cùng có, kernel ưu tiên `interrupts-extended`.
+`interrupts-extended` và `interrupts` loại trừ nhau - nếu cả hai cùng có, kernel ưu tiên `interrupts-extended`.
 
 ### 6.6. Trigger type
 
@@ -1156,7 +1156,7 @@ tmp102@48 {
     reg = <0x48>;
 
     gpios = <&gpio1 28 GPIO_ACTIVE_LOW>,   /* GPIO thứ 0 */
-            <&gpio2 5  GPIO_ACTIVE_HIGH>;  /* GPIO thứ 1 — provider khác */
+            <&gpio2 5  GPIO_ACTIVE_HIGH>;  /* GPIO thứ 1 - provider khác */
     gpio-names = "alert", "reset";
 };
 ```
@@ -1299,7 +1299,7 @@ if (ret)
 
 unsigned long rate = clk_get_rate(fclk);
 
-/* Hoặc gộp cả cụm — kernel tự đếm và lấy hết */
+/* Hoặc gộp cả cụm - kernel tự đếm và lấy hết */
 struct clk_bulk_data *clks;
 int num = devm_clk_bulk_get_all(dev, &clks);
 clk_bulk_prepare_enable(num, clks);
@@ -1404,7 +1404,7 @@ static int tmp102_probe(struct i2c_client *client)
     alert = devm_gpiod_get(&client->dev, "alert", GPIOD_IN);
     if (IS_ERR(alert))
         /* Có thể là -EPROBE_DEFER nếu gpio1 chưa probe.
-         * KHÔNG in dev_err() cho trường hợp này — sẽ spam log. */
+         * KHÔNG in dev_err() cho trường hợp này - sẽ spam log. */
         return dev_err_probe(&client->dev, PTR_ERR(alert),
                              "failed to get alert gpio\n");
     ...
@@ -1457,21 +1457,21 @@ Trước khi kernel chạy, bootloader thực hiện:
 
 1. Load file `board.dtb` từ storage (SD card, eMMC, NAND,...) vào một vùng RAM.
 2. (Tùy chọn) Apply các Device Tree Overlay (`.dtbo`) lên DTB gốc.
-3. (Tùy chọn) Sửa một số property trong DTB — U-Boot thường cập nhật node `/chosen` với `bootargs`, ghi MAC address vào node ethernet, sửa `reg` của node `/memory` theo dung lượng RAM thực tế.
+3. (Tùy chọn) Sửa một số property trong DTB - U-Boot thường cập nhật node `/chosen` với `bootargs`, ghi MAC address vào node ethernet, sửa `reg` của node `/memory` theo dung lượng RAM thực tế.
 4. Truyền địa chỉ DTB trong RAM cho kernel:
    - ARM 32-bit: đặt vào thanh ghi `r2`
    - ARM 64-bit: đặt vào thanh ghi `x0`
-   - Lệnh boot: `bootz ${loadaddr} - ${fdtaddr}` — dấu `-` nghĩa là không có initrd, `${fdtaddr}` là địa chỉ DTB
+   - Lệnh boot: `bootz ${loadaddr} - ${fdtaddr}` - dấu `-` nghĩa là không có initrd, `${fdtaddr}` là địa chỉ DTB
 
 ### 8.2. Giai đoạn 2: Early boot
 
 Ngay khi kernel bắt đầu chạy, trước khi bất kỳ driver nào được load:
 
 1. **Validate header:** Kiểm tra magic number `0xd00dfeed` ở đầu DTB để xác nhận đây là FDT hợp lệ. Sai $\rightarrow$ kernel dừng ngay (thường không có log vì console chưa có).
-2. **Scan `/chosen`:** Đọc `bootargs` để lấy kernel command line (console, root filesystem,...). Đây là lý do ta thấy kernel log ngay từ đầu — console được cấu hình từ DTB.
+2. **Scan `/chosen`:** Đọc `bootargs` để lấy kernel command line (console, root filesystem,...). Đây là lý do ta thấy kernel log ngay từ đầu - console được cấu hình từ DTB.
 3. **Scan `/memory`:** Đọc vùng RAM khả dụng để thiết lập memory management (memblock).
 4. **Scan `/reserved-memory`:** Loại các vùng nhớ đã đặt trước ra khỏi allocator.
-5. **Unflatten:** Chuyển DTB (flat binary — mảng byte liên tục) thành cấu trúc cây trong kernel memory — mỗi node thành `struct device_node`, mỗi property thành `struct property`. Sau bước này kernel có cây in-memory dễ duyệt.
+5. **Unflatten:** Chuyển DTB (flat binary - mảng byte liên tục) thành cấu trúc cây trong kernel memory - mỗi node thành `struct device_node`, mỗi property thành `struct property`. Sau bước này kernel có cây in-memory dễ duyệt.
 
 ```
 DTB (flat binary)                    Kernel memory (unflattened tree)
@@ -1515,13 +1515,13 @@ Machine model: ...
 Unrecognized/unsupported machine ID
 ```
 
-(ARM64 không dùng cơ chế này — mọi thứ đều generic và điều khiển hoàn toàn bằng DT.)
+(ARM64 không dùng cơ chế này - mọi thứ đều generic và điều khiển hoàn toàn bằng DT.)
 
 ### 8.4. Giai đoạn 4: Tạo device từ Device Tree
 
-Sau khi các subsystem cơ bản sẵn sàng (memory, interrupt, clock), kernel bắt đầu tạo device. Không phải mọi node đều tạo device cùng lúc — cách tạo phụ thuộc vị trí node trong cây.
+Sau khi các subsystem cơ bản sẵn sàng (memory, interrupt, clock), kernel bắt đầu tạo device. Không phải mọi node đều tạo device cùng lúc - cách tạo phụ thuộc vị trí node trong cây.
 
-**Node gốc và node trên `simple-bus`** — được `of_platform_populate()` xử lý ngay trong quá trình boot:
+**Node gốc và node trên `simple-bus`** - được `of_platform_populate()` xử lý ngay trong quá trình boot:
 
 ```
 of_platform_populate()
@@ -1542,13 +1542,13 @@ Mỗi node có property `compatible` sẽ tạo một `struct platform_device` c
 - Tên: `"<unit-address>.<node-name>"`, ví dụ `"44e09000.serial"`
 - Resource IOMEM: parse từ property `reg`
 - Resource IRQ: parse từ property `interrupts`
-- Con trỏ `dev.of_node` đến `device_node` gốc trong cây DT — để driver đọc property khác sau này
+- Con trỏ `dev.of_node` đến `device_node` gốc trong cây DT - để driver đọc property khác sau này
 
 :::warning `of_platform_populate()` chỉ đi xuống một tầng
-Nó tạo device cho node con trực tiếp của node được truyền vào, và **chỉ đệ quy xuống** những node có `compatible` là `"simple-bus"`, `"simple-mfd"`, `"isa"`, `"arm,amba-bus"`. Node con của một I2C controller sẽ không bị tạo thành `platform_device` — đúng như mong muốn.
+Nó tạo device cho node con trực tiếp của node được truyền vào, và **chỉ đệ quy xuống** những node có `compatible` là `"simple-bus"`, `"simple-mfd"`, `"isa"`, `"arm,amba-bus"`. Node con của một I2C controller sẽ không bị tạo thành `platform_device` - đúng như mong muốn.
 :::
 
-**Node con trên bus I2C, SPI** — không được tạo ở bước này. Chúng được tạo sau khi bus driver probe thành công:
+**Node con trên bus I2C, SPI** - không được tạo ở bước này. Chúng được tạo sau khi bus driver probe thành công:
 
 ```
 (sau khi omap_i2c_probe() chạy xong cho node i2c@4802a000)
@@ -1559,9 +1559,9 @@ Nó tạo device cho node con trực tiếp của node được truyền vào, v
   └── ...
 ```
 
-Đây là lý do khi I2C bus driver lỗi hoặc chưa load, **tất cả** thiết bị I2C con đều biến mất — chúng phụ thuộc vào bus driver để được tạo ra.
+Đây là lý do khi I2C bus driver lỗi hoặc chưa load, **tất cả** thiết bị I2C con đều biến mất - chúng phụ thuộc vào bus driver để được tạo ra.
 
-**Node có `status = "disabled"` / `"fail"`** — bị bỏ qua hoàn toàn, không tạo device.
+**Node có `status = "disabled"` / `"fail"`** - bị bỏ qua hoàn toàn, không tạo device.
 
 ### 8.5. Giai đoạn 5: Driver matching và probe
 
@@ -1598,7 +1598,7 @@ serial@44e09000 {
 `"ti,am335x-uart"` match entry đầu tiên trong bảng → kernel lấy luôn `.data = &uart_am335x_data` kèm theo (driver dùng data này để biết variant cụ thể). `"ti,omap3-uart"` không được xét đến nữa.
 :::
 
-`MODULE_DEVICE_TABLE(of, ...)` là bắt buộc nếu driver được build thành module — nó sinh metadata để `udev`/`modprobe` tự động load module khi gặp device có compatible tương ứng.
+`MODULE_DEVICE_TABLE(of, ...)` là bắt buộc nếu driver được build thành module - nó sinh metadata để `udev`/`modprobe` tự động load module khi gặp device có compatible tương ứng.
 
 #### 8.5.2. Probe
 
@@ -1676,7 +1676,7 @@ cat /sys/kernel/debug/devices_deferred
 **Device Tree:**
 
 ```dts
-/* SoC dtsi — I2C controller */
+/* SoC dtsi - I2C controller */
 i2c2: i2c@4819c000 {
     compatible = "ti,omap4-i2c";
     reg = <0x4819c000 0x1000>;
@@ -1686,7 +1686,7 @@ i2c2: i2c@4819c000 {
     status = "disabled";
 };
 
-/* Board dts — bật I2C2 và thêm cảm biến */
+/* Board dts - bật I2C2 và thêm cảm biến */
 &i2c2 {
     status = "okay";
     clock-frequency = <400000>;
@@ -1843,7 +1843,7 @@ of_address_to_resource(np, 0, &r);
 ### 9.4. Lấy match data
 
 ```c
-/* Cách hiện đại — trả về .data của entry đã match */
+/* Cách hiện đại - trả về .data của entry đã match */
 const struct my_variant *v = of_device_get_match_data(dev);
 
 /* Cách cũ */
@@ -1856,15 +1856,15 @@ if (match)
 
 ### 10.1. Vấn đề mà Overlay giải quyết
 
-Với Device Tree thông thường, toàn bộ mô tả phần cứng được compile thành một DTB duy nhất tại build time. Muốn thay đổi bất cứ điều gì — thêm cảm biến, bật thêm SPI peripheral, đổi cấu hình pin — phải sửa DTS và compile lại DTB.
+Với Device Tree thông thường, toàn bộ mô tả phần cứng được compile thành một DTB duy nhất tại build time. Muốn thay đổi bất cứ điều gì - thêm cảm biến, bật thêm SPI peripheral, đổi cấu hình pin - phải sửa DTS và compile lại DTB.
 
 Điều này gây khó khăn trong một số tình huống thực tế:
 
-- **Board mở rộng:** BeagleBone có hàng chục cape khác nhau (LCD cape, motor cape, relay cape,...). Mỗi cape thêm thiết bị mới với cấu hình pin khác nhau. Nếu không có overlay, cần tạo một DTB riêng cho mỗi tổ hợp cape — số tổ hợp tăng theo cấp số nhân.
+- **Board mở rộng:** BeagleBone có hàng chục cape khác nhau (LCD cape, motor cape, relay cape,...). Mỗi cape thêm thiết bị mới với cấu hình pin khác nhau. Nếu không có overlay, cần tạo một DTB riêng cho mỗi tổ hợp cape - số tổ hợp tăng theo cấp số nhân.
 - **Prototyping nhanh:** Developer muốn thử thêm/bớt thiết bị mà không phải rebuild DTB mỗi lần.
 - **Sản phẩm nhiều biến thể:** Cùng mainboard nhưng nhiều cấu hình (có/không màn hình, có/không cảm biến). Mỗi biến thể chỉ cần thêm/bớt overlay thay vì duy trì nhiều DTB riêng.
 
-**Giải pháp:** Device Tree Overlay — một mảnh Device Tree nhỏ (fragment) được apply lên DTB gốc tại boot time hoặc runtime, thêm hoặc sửa node mà không cần recompile DTB gốc.
+**Giải pháp:** Device Tree Overlay - một mảnh Device Tree nhỏ (fragment) được apply lên DTB gốc tại boot time hoặc runtime, thêm hoặc sửa node mà không cần recompile DTB gốc.
 
 ### 10.2. Overlay hoạt động như thế nào
 
@@ -1884,7 +1884,7 @@ Khi apply overlay, U-Boot thực hiện:
 
 1. Load base DTB vào RAM.
 2. Load overlay DTBO vào RAM (vùng khác).
-3. **Resolve** các label trong overlay — tra bảng `__symbols__` trong base DTB để đổi tên label thành số phandle thật.
+3. **Resolve** các label trong overlay - tra bảng `__symbols__` trong base DTB để đổi tên label thành số phandle thật.
 4. **Merge:** thêm node mới, ghi đè property đã tồn tại.
 5. Truyền DTB đã merge cho kernel.
 
@@ -1912,7 +1912,7 @@ File overlay có đuôi `.dtso` (convention mới) hoặc `.dts` (cũ), bắt bu
 /plugin/;              /* ← đánh dấu đây là overlay, không phải DTS thường */
 ```
 
-**Cách 1 — Tham chiếu qua label (khuyến khích):**
+**Cách 1 - Tham chiếu qua label (khuyến khích):**
 
 ```dts
 /dts-v1/;
@@ -1935,7 +1935,7 @@ File overlay có đuôi `.dtso` (convention mới) hoặc `.dts` (cũ), bắt bu
 
 Yêu cầu: base DTB phải được compile với `-@` để giữ `__symbols__`. Nếu không, overlay không resolve được `&i2c2`.
 
-**Cách 2 — Tham chiếu qua đường dẫn tuyệt đối:**
+**Cách 2 - Tham chiếu qua đường dẫn tuyệt đối:**
 
 Dùng khi base DTB không có symbol, hoặc muốn chỉ định chính xác vị trí:
 
@@ -1955,7 +1955,7 @@ Cách này kém linh hoạt vì path có thể khác nhau giữa các version DT
 
 **Cú pháp `fragment` (dạng khai triển đầy đủ):**
 
-Hai cú pháp trên là "syntactic sugar". `dtc` khai triển chúng thành dạng fragment sau — hiểu dạng này rất hữu ích khi decompile overlay để debug:
+Hai cú pháp trên là "syntactic sugar". `dtc` khai triển chúng thành dạng fragment sau - hiểu dạng này rất hữu ích khi decompile overlay để debug:
 
 ```dts
 /dts-v1/;
@@ -1977,7 +1977,7 @@ Hai cú pháp trên là "syntactic sugar". `dtc` khai triển chúng thành dạ
 
 ### 10.4. Compile và apply overlay
 
-**Bước 1 — Compile base DTB với `-@`:**
+**Bước 1 - Compile base DTB với `-@`:**
 
 ```bash
 # Flag -@ giữ lại bảng __symbols__ trong DTB
@@ -1997,7 +1997,7 @@ fdtdump base.dtb | grep "__symbols__"
 # Nếu không thấy → compile lại với -@
 ```
 
-**Bước 2 — Compile overlay:**
+**Bước 2 - Compile overlay:**
 
 ```bash
 dtc -@ -I dts -O dtb -o cape.dtbo cape.dtso
@@ -2007,7 +2007,7 @@ dtc -@ -I dts -O dtb -o cape.dtbo cape.dtso
 make dtbs
 ```
 
-**Bước 3 — Apply trong U-Boot:**
+**Bước 3 - Apply trong U-Boot:**
 
 ```bash
 # Load base DTB
@@ -2037,28 +2037,28 @@ DTB được load vào RAM có kích thước vừa khít. Nếu không `fdt res
 
 Thay vì gõ lệnh thủ công mỗi lần boot:
 
-**Cách 1 — Biến `fdtoverlays` (U-Boot mainline, distro boot):**
+**Cách 1 - Biến `fdtoverlays` (U-Boot mainline, distro boot):**
 
 ```bash
 setenv fdtoverlays "/overlays/relay-cape.dtbo /overlays/sensor-cape.dtbo"
 saveenv
 ```
 
-**Cách 2 — File `overlays.txt` (Toradex, BeagleBone mới):**
+**Cách 2 - File `overlays.txt` (Toradex, BeagleBone mới):**
 
 ```bash
 # /boot/overlays.txt
 fdt_overlays=BB-RELAY-CAPE.dtbo BB-I2C-SENSOR.dtbo
 ```
 
-**Cách 3 — `uEnv.txt` (BeagleBone truyền thống):**
+**Cách 3 - `uEnv.txt` (BeagleBone truyền thống):**
 
 ```bash
 # /boot/uEnv.txt
 dtb_overlay=/lib/firmware/BB-RELAY-CAPE-00A0.dtbo
 ```
 
-**Cách 4 — `config.txt` (Raspberry Pi, do firmware xử lý):**
+**Cách 4 - `config.txt` (Raspberry Pi, do firmware xử lý):**
 
 ```ini
 dtoverlay=spi1-1cs
@@ -2090,7 +2090,7 @@ rmdir /sys/kernel/config/device-tree/overlays/my-overlay
 ```
 
 :::warning Runtime overlay kém ổn định hơn
-Runtime overlay phức tạp hơn boot-time overlay vì kernel phải xử lý thêm/gỡ device động. Không phải driver nào cũng hỗ trợ tốt — một số driver có bug khi bị remove rồi probe lại. `CONFIG_OF_CONFIGFS` cũng không có trong kernel mainline (là patch của một số distro nhúng). Trong production, boot-time overlay (U-Boot) ổn định hơn.
+Runtime overlay phức tạp hơn boot-time overlay vì kernel phải xử lý thêm/gỡ device động. Không phải driver nào cũng hỗ trợ tốt - một số driver có bug khi bị remove rồi probe lại. `CONFIG_OF_CONFIGFS` cũng không có trong kernel mainline (là patch của một số distro nhúng). Trong production, boot-time overlay (U-Boot) ổn định hơn.
 :::
 
 ## 11. Device Tree bindings
@@ -2156,7 +2156,7 @@ Example:
 
 ### 11.3. Định dạng mới: YAML schema
 
-Từ kernel 5.x, binding mới bắt buộc viết bằng **YAML** theo chuẩn JSON-Schema — nhờ vậy DTS có thể được **validate tự động**:
+Từ kernel 5.x, binding mới bắt buộc viết bằng **YAML** theo chuẩn JSON-Schema - nhờ vậy DTS có thể được **validate tự động**:
 
 ```yaml
 # Documentation/devicetree/bindings/hwmon/ti,tmp102.yaml
@@ -2221,10 +2221,10 @@ Việc validate phát hiện sớm: thiếu property bắt buộc, sai kiểu d�
 ### 11.5. Quy tắc viết DTS đúng chuẩn
 
 - Luôn tìm và đọc binding trước khi viết node mới.
-- Tên node dùng tên **generic** (`temp-sensor@48`, không phải `tmp102@48` — dù nhiều DTS cũ vẫn dùng tên model).
+- Tên node dùng tên **generic** (`temp-sensor@48`, không phải `tmp102@48` - dù nhiều DTS cũ vẫn dùng tên model).
 - Không tự đặt property mới ngoài binding; nếu thực sự cần, phải có prefix vendor (`ti,my-property`) và tốt nhất là gửi binding lên upstream.
 - DT là **ABI ổn định**: DTB cũ phải boot được kernel mới. Vì vậy không đổi ý nghĩa property đã tồn tại, chỉ thêm mới.
-- Không mô tả cấu hình phần mềm trong DT (ví dụ: "bật debug log") — chỉ mô tả phần cứng.
+- Không mô tả cấu hình phần mềm trong DT (ví dụ: "bật debug log") - chỉ mô tả phần cứng.
 
 ## 12. Troubleshoot & Debug
 
@@ -2261,11 +2261,11 @@ Cách nhanh nhất để kiểm tra DTB có đúng như mong muốn:
 dtc -I dtb -O dts -o result.dts board.dtb
 ```
 
-`result.dts` là kết quả sau khi `dtc` đã merge toàn bộ include, override và node splitting — **đây là thứ kernel thực sự nhìn thấy**. Kiểm tra file này giúp phát hiện:
+`result.dts` là kết quả sau khi `dtc` đã merge toàn bộ include, override và node splitting - **đây là thứ kernel thực sự nhìn thấy**. Kiểm tra file này giúp phát hiện:
 
-- Override không có tác dụng — property vẫn giữ giá trị cũ từ file cha
-- Thứ tự include sai — file bật peripheral bị include *trước* file định nghĩa nó
-- Include bị thiếu — node không xuất hiện trong output
+- Override không có tác dụng - property vẫn giữ giá trị cũ từ file cha
+- Thứ tự include sai - file bật peripheral bị include *trước* file định nghĩa nó
+- Include bị thiếu - node không xuất hiện trong output
 - Node bị `/delete-node/` ở đâu đó ngoài dự kiến
 
 ### 12.3. Dump DTB tại runtime
@@ -2285,14 +2285,14 @@ dtc -I dtb -O dts -o /tmp/running.dts /tmp/running.dtb
 
 ### 12.4. Công cụ `fdtdump`, `fdtget`, `fdtput`
 
-`fdtdump` — dump toàn bộ nội dung DTB ra text:
+`fdtdump` - dump toàn bộ nội dung DTB ra text:
 
 ```bash
 fdtdump board.dtb | less
 fdtdump board.dtb | grep -A 10 "leds"
 ```
 
-`fdtget` — đọc property cụ thể:
+`fdtget` - đọc property cụ thể:
 
 ```bash
 # Liệt kê node con
@@ -2314,7 +2314,7 @@ fdtget -t x board.dtb /ocp/serial@44e09000 reg
 # 44e09000 2000
 ```
 
-`fdtput` — sửa property trực tiếp trong DTB (không cần recompile):
+`fdtput` - sửa property trực tiếp trong DTB (không cần recompile):
 
 ```bash
 fdtput -t s board.dtb /ocp/serial@48022000 status okay
@@ -2372,18 +2372,18 @@ Output mẫu:
 
 Khi đã có đường dẫn đến node, các property đáng quan tâm:
 
-- `compatible` — chuỗi có đúng như driver mong đợi không?
-- `status` — `"okay"` hay `"disabled"`?
-- `reg` — địa chỉ base và size
+- `compatible` - chuỗi có đúng như driver mong đợi không?
+- `status` - `"okay"` hay `"disabled"`?
+- `reg` - địa chỉ base và size
 - `gpios`, `interrupts`, `clocks`,...
 
 Đọc bằng:
 
-- `cat` — với property kiểu chuỗi
-- `hexdump -C` — với property kiểu số/binary
-- `xxd -e -g4` — xem u32 nhưng nhớ DTB là big-endian
+- `cat` - với property kiểu chuỗi
+- `hexdump -C` - với property kiểu số/binary
+- `xxd -e -g4` - xem u32 nhưng nhớ DTB là big-endian
 
-Ví dụ 1 — chuỗi:
+Ví dụ 1 - chuỗi:
 
 ```bash
 cat /sys/firmware/devicetree/base/ocp/.../ili9341@0/compatible
@@ -2398,7 +2398,7 @@ tr '\0' '\n' < .../compatible
 # ilitek,ili9341
 ```
 
-Ví dụ 2 — số:
+Ví dụ 2 - số:
 
 ```bash
 hexdump -C /sys/firmware/devicetree/base/ocp/.../ili9341@0/spi-max-frequency
@@ -2408,7 +2408,7 @@ hexdump -C /sys/firmware/devicetree/base/ocp/.../ili9341@0/spi-max-frequency
 ```
 
 :::warning `/sys/firmware/devicetree/base` không phản ánh việc driver đã chạy
-Nó là bản DTB gốc bootloader truyền vào, được kernel expose ra userspace — bao gồm **cả node `disabled`**. Thấy node ở đây không có nghĩa driver đã chạy. Kernel chỉ tạo device và probe driver cho node `okay`.
+Nó là bản DTB gốc bootloader truyền vào, được kernel expose ra userspace - bao gồm **cả node `disabled`**. Thấy node ở đây không có nghĩa driver đã chạy. Kernel chỉ tạo device và probe driver cho node `okay`.
 :::
 
 ### 12.6. Kiểm tra driver đã đăng ký chưa
@@ -2537,7 +2537,7 @@ ls -l /sys/bus/platform/devices/44e09000.serial/driver
 cat /sys/bus/platform/devices/44e09000.serial/driver/uevent
 # DRIVER=omap_serial
 
-# Từ phía driver — xem driver quản lý những device nào
+# Từ phía driver - xem driver quản lý những device nào
 ls /sys/bus/platform/drivers/omap_serial/
 # 44e09000.serial  48022000.serial  bind  unbind  uevent
 # Các entry dạng "addr.name" là device đã match thành công
@@ -2545,7 +2545,7 @@ ls /sys/bus/platform/drivers/omap_serial/
 
 #### 12.7.3. Bind/unbind thủ công
 
-Hữu ích khi debug — ép driver nhả hoặc nhận device mà không cần reboot:
+Hữu ích khi debug - ép driver nhả hoặc nhận device mà không cần reboot:
 
 ```bash
 # Gỡ driver khỏi device (gọi remove())

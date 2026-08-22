@@ -51,7 +51,7 @@ Ngoài ra còn hai directive dùng để xoá node, hay gặp khi đọc file DT
 
 **`/omit-if-no-ref/`** đặt ngay trước phần khai báo node, nó nói với trình sinh code rằng:
 
-> Nếu không có ai tham chiếu (`&label`) tới node này ở bất kỳ đâu trong devicetree thì bỏ nó đi — đừng sinh macro, đừng đưa vào build.
+> Nếu không có ai tham chiếu (`&label`) tới node này ở bất kỳ đâu trong devicetree thì bỏ nó đi - đừng sinh macro, đừng đưa vào build.
 
 Nó sinh ra để giải quyết đúng một bài toán: giảm dung lượng firmware do các node pinctrl không dùng đến.
 
@@ -1025,7 +1025,7 @@ Trong `devicetree_generated.h`, mỗi node có ba macro liên quan:
 
 ```c
 DT_DEP_ORD(DT_NODELABEL(bme280))             /* 47 */
-DT_REQUIRES_DEP_ORDS(DT_NODELABEL(bme280))   /* 3, 20  — những node nó cần */
+DT_REQUIRES_DEP_ORDS(DT_NODELABEL(bme280))   /* 3, 20  - những node nó cần */
 DT_SUPPORTS_DEP_ORDS(DT_NODELABEL(bme280))   /* những node cần tới nó */
 ```
 

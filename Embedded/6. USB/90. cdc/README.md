@@ -26,27 +26,27 @@
 
 ## 1. Tổng quan
 
-**CDC (Communication Device Class)** là một USB device class được thiết kế cho các thiết bị truyền thông — modem, network adapter, serial port,... Trong đó, **CDC-ACM (Abstract Control Model)** là subclass phổ biến nhất, cho phép thiết bị USB hoạt động như một Virtual COM Port (cổng serial ảo) trên máy tính.
+**CDC (Communication Device Class)** là một USB device class được thiết kế cho các thiết bị truyền thông - modem, network adapter, serial port,... Trong đó, **CDC-ACM (Abstract Control Model)** là subclass phổ biến nhất, cho phép thiết bị USB hoạt động như một Virtual COM Port (cổng serial ảo) trên máy tính.
 
 Khi MCU implement CDC-ACM, nó sẽ xuất hiện trên PC dưới dạng:
 - **Windows**: `COMx` (ví dụ COM3, COM5)
 - **Linux**: `/dev/ttyACMx` hoặc `/dev/ttyUSBx`
 - **macOS**: `/dev/cu.usbmodemXXXX`
 
-Từ góc nhìn phần mềm PC, giao tiếp với thiết bị CDC-ACM giống hệt giao tiếp UART qua serial port — dùng cùng API (open, read, write, close), cùng các tool (PuTTY, minicom, screen, Arduino Serial Monitor).
+Từ góc nhìn phần mềm PC, giao tiếp với thiết bị CDC-ACM giống hệt giao tiếp UART qua serial port - dùng cùng API (open, read, write, close), cùng các tool (PuTTY, minicom, screen, Arduino Serial Monitor).
 
 ## 2. Tại sao CDC-ACM quan trọng trong embedded?
  
 | Ưu điểm | Mô tả |
 |---|---|
-| **Thay thế UART-to-USB bridge** | Không cần chip CP2102, CH340, FTDI — MCU có USB peripheral tự làm được |
+| **Thay thế UART-to-USB bridge** | Không cần chip CP2102, CH340, FTDI - MCU có USB peripheral tự làm được |
 | **Debug & logging** | Gửi log/debug message từ MCU lên PC qua Virtual COM Port |
 | **Firmware update** | Dùng CDC-ACM làm kênh truyền firmware (custom bootloader) |
 | **Giao tiếp PC ↔ MCU** | Truyền command/data hai chiều, đơn giản hơn custom USB protocol |
 | **Driverless** | Windows 10+, Linux, macOS đều có driver CDC-ACM tích hợp sẵn |
  
 :::warning Chú ý
-CDC-ACM mô phỏng giao tiếp serial nhưng thực tế truyền qua USB bus. Các thông số serial (baud rate, parity, stop bits) mà PC gửi xuống không ảnh hưởng đến tốc độ truyền USB — chúng chỉ có ý nghĩa nếu MCU dùng chúng để cấu hình một UART thật phía sau (ví dụ: USB-to-UART bridge). Nếu MCU chỉ xử lý data nội bộ, firmware có thể nhận và bỏ qua các thông số này.
+CDC-ACM mô phỏng giao tiếp serial nhưng thực tế truyền qua USB bus. Các thông số serial (baud rate, parity, stop bits) mà PC gửi xuống không ảnh hưởng đến tốc độ truyền USB - chúng chỉ có ý nghĩa nếu MCU dùng chúng để cấu hình một UART thật phía sau (ví dụ: USB-to-UART bridge). Nếu MCU chỉ xử lý data nội bộ, firmware có thể nhận và bỏ qua các thông số này.
 :::
 
 ## 3. Kiến trúc CDC-ACM
@@ -84,7 +84,7 @@ flowchart TD
 | Endpoint | Type | Hướng | Chức năng |
 |---|---|---|---|
 | **EP0** | Control | Bidirectional | Standard Request + CDC Class Request (SET_LINE_CODING,...) |
-| **Notification EP** | Interrupt IN | Device $\rightarrow$ Host | Thông báo sự kiện (vd: `SERIAL_STATE` — DCD, DSR thay đổi) |
+| **Notification EP** | Interrupt IN | Device $\rightarrow$ Host | Thông báo sự kiện (vd: `SERIAL_STATE` - DCD, DSR thay đổi) |
 | **Data IN EP** | Bulk IN | Device $\rightarrow$ Host | Gửi data từ MCU lên PC |
 | **Data OUT EP** | Bulk OUT | Host $\rightarrow$ Device | Nhận data từ PC xuống MCU |
 
@@ -104,7 +104,7 @@ PC gửi thông số serial xuống device:
 | `wIndex` | Interface number (thường = 0) |
 | `wLength` | `0x0007` (7 byte) |
  
-**Data Stage — 7 byte Line Coding Structure:**
+**Data Stage - 7 byte Line Coding Structure:**
  
 | Offset | Field | Size | Mô tả |
 |---|---|---|---|
@@ -131,9 +131,9 @@ PC điều khiển tín hiệu DTR và RTS:
  
 | wValue Bit | Ý nghĩa |
 |---|---|
-| Bit 0 = 1 | DTR active — PC đã mở serial port |
-| Bit 0 = 0 | DTR inactive — PC đã đóng serial port |
-| Bit 1 = 1 | RTS active — PC sẵn sàng nhận data |
+| Bit 0 = 1 | DTR active - PC đã mở serial port |
+| Bit 0 = 0 | DTR inactive - PC đã đóng serial port |
+| Bit 1 = 1 | RTS active - PC sẵn sàng nhận data |
 | Bit 1 = 0 | RTS inactive |
  
 :::warning Detect PC open/close serial port
@@ -192,7 +192,7 @@ CDC-ACM cần một cấu trúc descriptor phức tạp hơn thông thường v�
 | Bit 3 | Hỗ trợ `NETWORK_CONNECTION` notification |
  
 :::tip Thông tin hữu ích
-Giá trị `bmCapabilities = 0x02` là phổ biến nhất trong embedded — chỉ cần hỗ trợ Line Coding và Control Line State là đủ cho Virtual COM Port.
+Giá trị `bmCapabilities = 0x02` là phổ biến nhất trong embedded - chỉ cần hỗ trợ Line Coding và Control Line State là đủ cho Virtual COM Port.
 :::
 
 #### 5.2.4. Union Functional Descriptor
@@ -231,7 +231,7 @@ Khi sử dụng IAD, Device Descriptor cần thay đổi:
 | `bDeviceProtocol` | `0x00` | `0x01` (IAD) |
  
 :::warning Chú ý
-Nếu device chỉ có đúng một CDC-ACM function và không có function nào khác, có thể bỏ IAD và dùng `bDeviceClass = 0x02`. Tuy nhiên, luôn dùng IAD là practice an toàn nhất — đảm bảo tương thích khi mở rộng thêm function sau.
+Nếu device chỉ có đúng một CDC-ACM function và không có function nào khác, có thể bỏ IAD và dùng `bDeviceClass = 0x02`. Tuy nhiên, luôn dùng IAD là practice an toàn nhất - đảm bảo tương thích khi mở rộng thêm function sau.
 :::
 
 ## 7. Luồng giao tiếp thực tế
@@ -319,7 +319,7 @@ Tốc độ thực tế phụ thuộc vào firmware processing speed, USB stack 
 
 ### 8.5. Multiple CDC-ACM trên cùng device
 
-Một MCU có thể expose nhiều Virtual COM Port bằng cách khai báo nhiều cặp interface (CCI + DCI). Mỗi cặp cần một IAD riêng. Ví dụ: ESP32-S3 có thể tạo 2 CDC-ACM — một cho debug log, một cho data transfer.
+Một MCU có thể expose nhiều Virtual COM Port bằng cách khai báo nhiều cặp interface (CCI + DCI). Mỗi cặp cần một IAD riêng. Ví dụ: ESP32-S3 có thể tạo 2 CDC-ACM - một cho debug log, một cho data transfer.
 
 ## Tham khảo
 

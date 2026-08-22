@@ -32,7 +32,7 @@ Client driver (ví dụ cảm biển DS1307) không bao giờ truy cập trực 
 
 ## 2. Các khái niệm cốt lõi
 
-### 2.1. `struct i2c_adapter` — đại diện cho một bus
+### 2.1. `struct i2c_adapter` - đại diện cho một bus
 
 Mỗi controller I2C của SoC = một `i2c_adapter` = một bus (thường xuất hiện dưới dạng `/dev/i2c-0`, `/dev/i2c-1`...).
 
@@ -48,7 +48,7 @@ struct i2c_adapter {
 };
 ```
 
-### 2.2. `struct i2c_algorithm` — cách nói chuyện với phần cứng
+### 2.2. `struct i2c_algorithm` - cách nói chuyện với phần cứng
 
 Đây là trái tim của adapter driver: nó định nghĩa cách thực hiện một giao dịch trên dây.
 
@@ -65,7 +65,7 @@ struct i2c_algorithm {
 
 Adapter driver chỉ cần hiện thực `master_xfer()` là core có thể chạy mọi thứ bên trên.
 
-### 2.3. `struct i2c_msg` — đơn vị giao dịch
+### 2.3. `struct i2c_msg` - đơn vị giao dịch
 
 Mọi trao đổi trên bus đều được biểu diễn bằng một mảng `i2c_msg`:
 
@@ -89,7 +89,7 @@ struct i2c_msg msgs[2] = {
 i2c_transfer(client->adapter, msgs, 2);
 ```
 
-### 2.4. `struct i2c_client` — đại diện cho một chip trên bus
+### 2.4. `struct i2c_client` - đại diện cho một chip trên bus
 
 Mỗi thiết bị slave = một `i2c_client`. Nó biết mình nằm trên adapter nào và có địa chỉ gì.
 
@@ -104,7 +104,7 @@ struct i2c_client {
 };
 ```
 
-### 2.5. `struct i2c_driver` — driver cho một họ chip
+### 2.5. `struct i2c_driver` - driver cho một họ chip
 
 ```c
 struct i2c_driver {
@@ -276,12 +276,12 @@ Thư mục một client, ví dụ `/sys/bus/i2c/devices/1-0068/`:
 | File | Kiểu | Ý nghĩa |
 | --- | --- | --- |
 | `name` | đọc | Tên chip mà client mang (do DT/`new_device`/`id_table` đặt). |
-| `driver` | symlink | Trỏ tới driver đang bind. **Không tồn tại nếu chưa bind** — đây là cách nhanh nhất để kiểm tra probe có thành công hay không. |
+| `driver` | symlink | Trỏ tới driver đang bind. **Không tồn tại nếu chưa bind** - đây là cách nhanh nhất để kiểm tra probe có thành công hay không. |
 | `modalias` | đọc | Chuỗi để udev/kernel chọn module, ví dụ `i2c:ds1307` hoặc `of:N...Tdallas,ds1307`. |
 | `uevent` | đọc/ghi | Đọc ra các biến môi trường (MODALIAS, OF_...); ghi `add`/`change` để phát lại uevent. |
 | `of_node` | symlink | Trỏ tới node DT của chip (nếu khai báo bằng DT). |
 | `power/` | thư mục | Điều khiển runtime PM của chip. |
-| (tùy driver) | — | Các attribute riêng do client driver tạo. Ví dụ hwmon xuất `temp1_input`; nhiều driver còn đăng ký lên subsystem khác nên chip hiện ra ở `/sys/class/rtc/`, `/sys/class/leds/`... thay vì ở đây. |
+| (tùy driver) | - | Các attribute riêng do client driver tạo. Ví dụ hwmon xuất `temp1_input`; nhiều driver còn đăng ký lên subsystem khác nên chip hiện ra ở `/sys/class/rtc/`, `/sys/class/leds/`... thay vì ở đây. |
 
 ### 5.4. Thuộc tính của driver
 
@@ -322,7 +322,7 @@ Sau khi `new_device` thì core sẽ tạo `i2c_client`, tìm driver phù hợp v
 Sysfs cho ta *quan sát và quản lý* cấu trúc bus, nhưng để **đọc/ghi dữ liệu thực sự** với một chip từ user space, ta dùng module `i2c-dev`. Khi nạp (`modprobe i2c-dev`), nó tạo một character device cho mỗi adapter: `/dev/i2c-0`, `/dev/i2c-1`... Đây là cách một chương trình user space "trở thành master" trên bus.
 
 :::tip Quan hệ giữa các thành phần
-`i2c-dev` là một **client driver đặc biệt** không gắn với chip cụ thể nào — nó chỉ mở cửa cho user space nói chuyện với **mọi** địa chỉ trên adapter. Còn `i2c-tools` (mục 8) chỉ là bộ chương trình dòng lệnh gọi vào chính giao diện `/dev/i2c-N` này.
+`i2c-dev` là một **client driver đặc biệt** không gắn với chip cụ thể nào - nó chỉ mở cửa cho user space nói chuyện với **mọi** địa chỉ trên adapter. Còn `i2c-tools` (mục 8) chỉ là bộ chương trình dòng lệnh gọi vào chính giao diện `/dev/i2c-N` này.
 :::
 
 ### 6.1. Ba cách giao tiếp qua `/dev/i2c-N`
@@ -332,8 +332,8 @@ Sau khi `open("/dev/i2c-1", O_RDWR)`, có 3 cách gửi giao dịch:
 | Cách | Cơ chế | Khi nào dùng |
 | --- | --- | --- |
 | `read()` / `write()` thường | Đọc/ghi thô một chiều tới địa chỉ đã chọn bằng `ioctl(I2C_SLAVE)` | Giao dịch đơn giản, một chiều |
-| `ioctl(I2C_RDWR)` | Gửi mảng `i2c_msg` — tương đương `i2c_transfer()` trong kernel | Cần repeated-START, đọc/ghi liền mạch |
-| `ioctl(I2C_SMBUS)` | Gọi một khuôn SMBus — tương đương `i2c_smbus_*()` | Chip theo mô hình thanh ghi |
+| `ioctl(I2C_RDWR)` | Gửi mảng `i2c_msg` - tương đương `i2c_transfer()` trong kernel | Cần repeated-START, đọc/ghi liền mạch |
+| `ioctl(I2C_SMBUS)` | Gọi một khuôn SMBus - tương đương `i2c_smbus_*()` | Chip theo mô hình thanh ghi |
 
 ### 6.2. Chọn địa chỉ slave rồi read/write thô
 
@@ -343,7 +343,7 @@ int fd = open("/dev/i2c-1", O_RDWR);
 /* Chọn địa chỉ chip (0x68). Dùng I2C_SLAVE_FORCE nếu địa chỉ đã bị kernel driver chiếm */
 ioctl(fd, I2C_SLAVE, 0x68);
 
-/* Ghi địa chỉ thanh ghi 0x00 rồi đọc 1 byte — LƯU Ý: đây là 2 giao dịch riêng,
+/* Ghi địa chỉ thanh ghi 0x00 rồi đọc 1 byte - LƯU Ý: đây là 2 giao dịch riêng,
    có STOP ở giữa, KHÔNG phải repeated-START */
 u8 reg = 0x00, val;
 write(fd, &reg, 1);
@@ -356,7 +356,7 @@ close(fd);
 Hai lời gọi tách rời sẽ tạo START–...–STOP rồi START–...–STOP. Nhiều chip yêu cầu **repeated-START** (không có STOP ở giữa) để giữ "con trỏ thanh ghi". Với các chip đó phải dùng `I2C_RDWR` bên dưới.
 :::
 
-### 6.3. `I2C_RDWR` — tương đương `i2c_transfer()`
+### 6.3. `I2C_RDWR` - tương đương `i2c_transfer()`
 
 Đây là cách đúng để "ghi reg rồi đọc" trong một giao dịch liền mạch:
 
@@ -371,7 +371,7 @@ struct i2c_rdwr_ioctl_data xfer = { .msgs = msgs, .nmsgs = 2 };
 ioctl(fd, I2C_RDWR, &xfer);   // core tự sinh repeated-START giữa 2 message
 ```
 
-### 6.4. `I2C_SMBUS` — tương đương `i2c_smbus_*()`
+### 6.4. `I2C_SMBUS` - tương đương `i2c_smbus_*()`
 
 Thay vì tự đóng gói `i2c_smbus_ioctl_data`, nên dùng các helper trong `<i2c/smbus.h>` (thư viện `libi2c`), mang đúng ngữ nghĩa và bẫy đã nói ở [mục 5.3](#53-api-smbus):
 
@@ -434,7 +434,7 @@ i2cget -y 1 0x68 0x00
 
 # Chỉ định kiểu đọc bằng tham số cuối (mode):
 i2cget -y 1 0x68 0x00 b   # byte data (mặc định)
-i2cget -y 1 0x68 0x00 w   # word data (2 byte, little-endian — xem bẫy ở mục 5.3)
+i2cget -y 1 0x68 0x00 w   # word data (2 byte, little-endian - xem bẫy ở mục 5.3)
 i2cget -y 1 0x68 0x00 c   # 'byte' không command: đọc 1 byte trần
 ```
 
@@ -454,7 +454,7 @@ i2cset -y 1 0x68 0x00 0x11 0x22 0x33 i
 ### 7.4. `i2cdump`
 
 ```bash
-# Dump 256 thanh ghi của chip 0x68 — dạng bảng hex + ASCII
+# Dump 256 thanh ghi của chip 0x68 - dạng bảng hex + ASCII
 i2cdump -y 1 0x68
 
 # Giới hạn phạm vi và chọn mode

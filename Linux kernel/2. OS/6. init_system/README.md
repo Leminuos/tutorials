@@ -4,20 +4,20 @@
 
 Init system là chương trình đầu tiên được kernel chạy sau khi kernel hoàn tất quá trình boot, luôn mang PID 1. Nó đóng vai trò là cha của mọi process trong hệ thống.
 
-Init system không bị kill bởi các signal thông thường, và mọi process chết mà không có parent thì kernel sẽ chuyển về cho init system xử lý. Nếu init system chết, hệ thống sẽ kernel panic — tức là sập hoàn toàn.
+Init system không bị kill bởi các signal thông thường, và mọi process chết mà không có parent thì kernel sẽ chuyển về cho init system xử lý. Nếu init system chết, hệ thống sẽ kernel panic - tức là sập hoàn toàn.
 
-Nói đơn giản, init system giống như một quản lý tòa nhà — nó mở cửa mọi thứ khi bắt đầu, đảm bảo mọi dịch vụ hoạt động, xử lý sự cố, và đóng cửa mọi thứ đúng trình tự khi kết thúc.
+Nói đơn giản, init system giống như một quản lý tòa nhà - nó mở cửa mọi thứ khi bắt đầu, đảm bảo mọi dịch vụ hoạt động, xử lý sự cố, và đóng cửa mọi thứ đúng trình tự khi kết thúc.
 
 Một số init system phổ biến: SysInit, systemd,...
 
 **Nhiệm vụ chính của init system:**
 
-Khởi tạo userspace — tức là đưa hệ thống từ trạng thái kernel vừa load xong sang trạng thái sẵn sàng sử dụng. Cụ thể:
+Khởi tạo userspace - tức là đưa hệ thống từ trạng thái kernel vừa load xong sang trạng thái sẵn sàng sử dụng. Cụ thể:
 - Mount các file system quan trọng: `/proc`, `/sys`, `/dev`,...
 - Thiết lập mạng
 - Khởi động các service cần thiết như network, sshd, udevd,...
-- Quản lý vòng đời process  — init system giám sát các service đang chạy, tự động restart nếu service bị crash.
-- Xử lý shutdown/reboot — khi ta tắt máy, init system chịu trách nhiệm dừng các service theo đúng thứ tự, unmount filesystem, và tắt hệ thống an toàn.
+- Quản lý vòng đời process  - init system giám sát các service đang chạy, tự động restart nếu service bị crash.
+- Xử lý shutdown/reboot - khi ta tắt máy, init system chịu trách nhiệm dừng các service theo đúng thứ tự, unmount filesystem, và tắt hệ thống an toàn.
 
 :::tip Orphan process
 Mọi process chết mà không có parent thì kernel sẽ chuyển về cho init system xử lý.
@@ -33,9 +33,9 @@ Daemon là một background process được tách khỏi terminal, thường ho
 
 **Đặc điểm của daemon:**
 
-Daemon không có terminal điều khiển. Khi ta mở terminal chạy một lệnh thông thường, lệnh đó gắn với terminal — đóng terminal thì lệnh chết. Daemon thì khác, nó tách hoàn toàn khỏi terminal nên cứ chạy mãi cho đến khi bị dừng hoặc hệ thống tắt.
+Daemon không có terminal điều khiển. Khi ta mở terminal chạy một lệnh thông thường, lệnh đó gắn với terminal - đóng terminal thì lệnh chết. Daemon thì khác, nó tách hoàn toàn khỏi terminal nên cứ chạy mãi cho đến khi bị dừng hoặc hệ thống tắt.
 
-Daemon thường chạy từ lúc boot đến lúc shutdown. Ví dụ quen thuộc là `sshd` (lắng nghe kết nối SSH), `nginx` hay `httpd` (phục vụ web),...Ta sẽ thấy hầu hết daemon có tên kết thúc bằng chữ "d" — đó là quy ước đặt tên trong Unix/Linux để nhận biết daemon.
+Daemon thường chạy từ lúc boot đến lúc shutdown. Ví dụ quen thuộc là `sshd` (lắng nghe kết nối SSH), `nginx` hay `httpd` (phục vụ web),...Ta sẽ thấy hầu hết daemon có tên kết thúc bằng chữ "d" - đó là quy ước đặt tên trong Unix/Linux để nhận biết daemon.
 
 Một số init system như systemd sẽ chịu trách nhiệm quản lý vòng đời của daemon.
 
@@ -53,7 +53,7 @@ Trong cách làm cổ điển trước thời systemd, một daemon được t�
 
 ### 3.1. Unit là gì?
 
-Unit là đơn vị quản lý cơ bản của systemd — mọi thứ systemd quản lý đều được trừu tượng hóa thành một unit.
+Unit là đơn vị quản lý cơ bản của systemd - mọi thứ systemd quản lý đều được trừu tượng hóa thành một unit.
 
 Mỗi unit được mô tả bằng một unit file (file văn bản kiểu `INI`).
 
@@ -125,11 +125,11 @@ WantedBy=multi-user.target
 | `Description` | Mô tả ngắn, hiển thị trong `systemctl status` |
 | `Documentation` | Trỏ tới man page hoặc URL docs |
 | `After`/`Before` | Quan hệ thứ tự, không bắt buộc service đó phải tồn tại.<br>- `After` : Khởi động sau unit nào<br>- `Before` : Khởi động trước unit nào |
-| `Requires` | Quan hệ phụ thuộc (cứng) — nếu unit kia chết thì unit này cũng chết. |
-| `Wants` | Quan hệ phụ thuộc (mềm) — nếu unit kia chết thì unit này vẫn chạy. |
-| `BindsTo` | Chặt hơn `Requires` — unit kia stop là stop ngay lập tức. |
+| `Requires` | Quan hệ phụ thuộc (cứng) - nếu unit kia chết thì unit này cũng chết. |
+| `Wants` | Quan hệ phụ thuộc (mềm) - nếu unit kia chết thì unit này vẫn chạy. |
+| `BindsTo` | Chặt hơn `Requires` - unit kia stop là stop ngay lập tức. |
 
-`[Service]` — Cấu hình riêng cho service (chỉ có ở unit `.service`)
+`[Service]` - Cấu hình riêng cho service (chỉ có ở unit `.service`)
 
 | Cấu hình | Ý nghĩa |
 | --- | --- |
@@ -139,7 +139,7 @@ WantedBy=multi-user.target
 | `ExecReload` | Lệnh gọi chương trình khi reload. |
 | `Restart` | Khi nào tự restart. |
 
-`[Install]` — Cấu hình khi enable/disable
+`[Install]` - Cấu hình khi enable/disable
 
 | Cấu hình | Ý nghĩa |
 | --- | --- |
@@ -174,7 +174,7 @@ After=basic.target rescue.service rescue.target
 AllowIsolate=yes
 ```
 
-Ta thấy target unit không có `[Service]`, không có `ExecStart` — chỉ có metadata và dependency.
+Ta thấy target unit không có `[Service]`, không có `ExecStart` - chỉ có metadata và dependency.
 
 Khi kernel bàn giao quyền điều khiển cho systemd, systemd nhìn vào default target (thường là `graphical.target`) rồi đi ngược lại chuỗi dependency để biết cần khởi động những gì. Systemd kích hoạt cả một chuỗi như sau:
 
@@ -210,9 +210,9 @@ Mỗi tầng giải quyết một nhóm nhiệm vụ:
 | 3 | `multi-user.target` | Tất cả service thông thường |
 | 4 | `graphical.target` | Display manager để có giao diện đồ hoạ |
 
-`nginx`, `postgresql`, `sshd`... không phụ thuộc nhau nên systemd khởi động tất cả cùng lúc sau khi `multi-user.target` được kích hoạt. Đây chính là lý do systemd boot nhanh hơn SysV — thay vì khởi động tuần tự từng cái, nó tận dụng song song hóa tối đa.
+`nginx`, `postgresql`, `sshd`... không phụ thuộc nhau nên systemd khởi động tất cả cùng lúc sau khi `multi-user.target` được kích hoạt. Đây chính là lý do systemd boot nhanh hơn SysV - thay vì khởi động tuần tự từng cái, nó tận dụng song song hóa tối đa.
 
-Ngoài ra, `display-manager` là nhánh riêng của `graphical.target` — chỉ được kéo vào ở tầng này, không phải `multi-user.target`. Nếu ta boot vào `multi-user.target` thì sẽ không có GUI, hoàn toàn hợp lệ với server.
+Ngoài ra, `display-manager` là nhánh riêng của `graphical.target` - chỉ được kéo vào ở tầng này, không phải `multi-user.target`. Nếu ta boot vào `multi-user.target` thì sẽ không có GUI, hoàn toàn hợp lệ với server.
 
 ### 3.4. Mount unit
 
@@ -379,7 +379,7 @@ Khi mount bị fail: `webapp.service` cũng fail (vì Requires)
 
 ### 3.5. Cơ chế dependency graph
 
-Khi systemd khởi động, nó đọc tất cả unit file, xây dựng một đồ thị có hướng (DAG — Directed Acyclic Graph) mô tả mối quan hệ giữa các unit, rồi dựa vào đồ thị đó để quyết định thứ tự khởi động và mức độ song song.
+Khi systemd khởi động, nó đọc tất cả unit file, xây dựng một đồ thị có hướng (DAG - Directed Acyclic Graph) mô tả mối quan hệ giữa các unit, rồi dựa vào đồ thị đó để quyết định thứ tự khởi động và mức độ song song.
 
 ```
          sysinit.target
@@ -409,7 +409,7 @@ systemd phân tích dependency:
 
 Dependency graph có hai chiều hoàn toàn độc lập:
 
-**Chiều 1 — Ordering**
+**Chiều 1 - Ordering**
 
 Dùng `After=` hoặc `Before=`:
 
@@ -421,7 +421,7 @@ After=network.target
 
 Ý nghĩa: nếu cả `nginx` và `network.target` đều cần khởi động thì network sẽ được khởi động trước. Nhưng nếu `network.target` không cần khởi động thì directive này không có ý nghĩa gì.
 
-**Chiều 2 — Requirement**
+**Chiều 2 - Requirement**
 
 Dùng `Wants=`, `Requires=`, `BindsTo=`:
 
@@ -431,7 +431,7 @@ Dùng `Wants=`, `Requires=`, `BindsTo=`:
 Requires=network.target
 ```
 
-Ý nghĩa: khi `nginx` khởi động, systemd kéo `network.target` vào. Nhưng hai unit này không có thứ tự —> có thể chạy đồng thời!
+Ý nghĩa: khi `nginx` khởi động, systemd kéo `network.target` vào. Nhưng hai unit này không có thứ tự -> có thể chạy đồng thời!
 
 Độ phụ thuộc của các loại requirement:
 
@@ -743,7 +743,7 @@ systemd-analyze verify /etc/systemd/system/myapp.service
 
 ### 5.1. journald là gì?
 
-`systemd-journald` là một daemon thu thập và lưu trữ log — nó là một phần của systemd, chạy như một service (`systemd-journald.service`).
+`systemd-journald` là một daemon thu thập và lưu trữ log - nó là một phần của systemd, chạy như một service (`systemd-journald.service`).
 
 Trước khi có journald, logging truyền thống lưu source log ở các folder khác nhau:
 - kernel      $\rightarrow$ /var/log/kern.log

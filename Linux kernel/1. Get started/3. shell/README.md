@@ -117,10 +117,10 @@ my_name="Nam"
 
 ```bash
 ./setvar.sh
-echo "$my_name"      # (rỗng) — biến chết cùng subshell
+echo "$my_name"      # (rỗng) - biến chết cùng subshell
 
 source setvar.sh
-echo "$my_name"      # Nam  — biến vẫn còn
+echo "$my_name"      # Nam  - biến vẫn còn
 ```
 
 Đây chính là lý do các file cấu hình như `~/.bashrc` được nạp bằng `source`.
@@ -136,7 +136,7 @@ Tên biến có thể chứa chữ, số và dấu gạch dưới, nhưng không
 my_var="ok"      # hợp lệ
 _hidden="ok"     # hợp lệ
 count2="ok"      # hợp lệ
-2var="loi"       # KHÔNG hợp lệ — bắt đầu bằng số
+2var="loi"       # KHÔNG hợp lệ - bắt đầu bằng số
 ```
 
 :::warning Không dùng ký tự đặc biệt để đặt tên
@@ -148,7 +148,7 @@ Không dùng các ký tự như `! * - @ $` trong tên biến, vì chúng đã m
 
 ```bash
 name="Nam"          # ĐÚNG
-name = "Nam"        # SAI — shell hiểu "name" là lệnh -> "name: command not found"
+name = "Nam"        # SAI - shell hiểu "name" là lệnh -> "name: command not found"
 name ="Nam"         # SAI
 name= "Nam"         # SAI
 ```
@@ -168,15 +168,15 @@ echo "${name}"         # Nam  (cách viết an toàn hơn)
 >
 >```bash
 >name="Nam"
->echo "Xin chao $nameoi"     # (rỗng phần tên) — shell tìm biến $nameoi (không tồn tại)
->echo "Xin chao ${name}oi"   # Xin chao Namoi — đúng ý muốn
+>echo "Xin chao $nameoi"     # (rỗng phần tên) - shell tìm biến $nameoi (không tồn tại)
+>echo "Xin chao ${name}oi"   # Xin chao Namoi - đúng ý muốn
 >```
 
 ### 2.3. Biến chỉ đọc và hủy biến
 
 ```bash
 readonly PI=3.14
-PI=3.14159            # lỗi: PI: readonly variable — không được sửa
+PI=3.14159            # lỗi: PI: readonly variable - không được sửa
 
 name="Nam"
 unset name            # xóa biến
@@ -358,7 +358,7 @@ os_name=$(uname -s)
 echo "Ngày hôm nay: $current_date"
 echo "Số file trong thư mục: $file_count"
  
-# Lồng nhau được — nhưng hạn chế dùng vì khó đọc
+# Lồng nhau được - nhưng hạn chế dùng vì khó đọc
 top_dir=$(ls $(pwd) | head -1)
 ```
 
@@ -384,7 +384,7 @@ echo "${name:?'Thiếu tên!'}" # in lỗi ra stderr và thoát script
 echo "${name:+Hello}"        # in "Hello" nếu $name không rỗng
 ```
 
-Ứng dụng thực tế — kiểm tra biến môi trường bắt buộc:
+Ứng dụng thực tế - kiểm tra biến môi trường bắt buộc:
  
 ```bash
 #!/bin/bash
@@ -471,7 +471,7 @@ Bash không tự nhận dạng phép tính trong chuỗi thông thường. Phả
 a=10
 b=3
 
-# Cách 1: $(( )) — khuyến nghị, nhanh và dễ đọc
+# Cách 1: $(( )) - khuyến nghị, nhanh và dễ đọc
 echo $((a + b))    # 13
 echo $((a - b))    # 7
 echo $((a * b))    # 30
@@ -486,7 +486,7 @@ result=$((a * b + 5))
 let "result = a * b"
 let "a++"           # tăng a lên 1
 
-# Cách 3: expr (cũ, ít dùng — lưu ý phải có khoảng trắng)
+# Cách 3: expr (cũ, ít dùng - lưu ý phải có khoảng trắng)
 result=$(expr $a + $b)
 result=$(expr $a \* $b)   # dấu * phải escape
 ```
@@ -603,7 +603,7 @@ fi
 ```
 
 :::tip Ưu tiên `[[ ]]` thay cho `[ ]`
-Trong `[ ]` kiểu cũ, AND/OR viết là `-a`/`-o`, ví dụ `[ $a -gt 5 -a $b -gt 15 ]`. Nhưng cú pháp này khó đọc và dễ lỗi với biến rỗng. Trong Bash, hãy dùng `[[ ]]` với `&&`, `||` — rõ ràng và an toàn hơn, đồng thời hỗ trợ so khớp mẫu và regex (`=~`).
+Trong `[ ]` kiểu cũ, AND/OR viết là `-a`/`-o`, ví dụ `[ $a -gt 5 -a $b -gt 15 ]`. Nhưng cú pháp này khó đọc và dễ lỗi với biến rỗng. Trong Bash, hãy dùng `[[ ]]` với `&&`, `||` - rõ ràng và an toàn hơn, đồng thời hỗ trợ so khớp mẫu và regex (`=~`).
 :::
 
 ### 3.5. File Test operators (Toán tử kiểm tra file)
@@ -774,7 +774,7 @@ fi
 
 ## 5. Vòng lặp
 
-Vòng lặp giúp lặp lại một khối lệnh nhiều lần — xử lý hàng loạt file, đọc từng dòng dữ liệu, thử lại một thao tác...
+Vòng lặp giúp lặp lại một khối lệnh nhiều lần - xử lý hàng loạt file, đọc từng dòng dữ liệu, thử lại một thao tác...
 
 ### 5.1. Vòng lặp for
 
@@ -875,7 +875,7 @@ done
 Nếu quên cập nhật biến điều kiện (`(( count++ ))` ở trên), vòng lặp sẽ chạy mãi mãi. Nhấn `Ctrl+C` để dừng khi lỡ gặp.
 :::
 
-**Ứng dụng quan trọng nhất — đọc file theo từng dòng:**
+**Ứng dụng quan trọng nhất - đọc file theo từng dòng:**
 
 ```bash
 while IFS= read -r line; do
@@ -993,13 +993,13 @@ Luôn dùng `local` cho biến trong hàm để tránh ảnh hưởng ra ngoài:
 count=100   # biến global
 
 increment() {
-    local count=0   # biến local — không ảnh hưởng global
+    local count=0   # biến local - không ảnh hưởng global
     ((count++))
     echo "Trong hàm: $count"    # 1
 }
 
 increment
-echo "Ngoài hàm: $count"        # 100 — không đổi
+echo "Ngoài hàm: $count"        # 100 - không đổi
 ```
 
 ### 6.4. Các pattern hữu ích
@@ -1098,10 +1098,10 @@ Mỗi lệnh khi kết thúc đều trả về một mã trạng thái (exit sta
 
 ```bash
 ls /thu_muc_khong_ton_tai
-echo "$?"        # in ra khác 0 (ví dụ: 2) — lệnh thất bại
+echo "$?"        # in ra khác 0 (ví dụ: 2) - lệnh thất bại
  
 ls /home
-echo "$?"        # 0 — lệnh thành công
+echo "$?"        # 0 - lệnh thành công
 ```
 
 Trong script, dùng `exit` để kết thúc sớm và trả mã cho lời gọi:
@@ -1131,7 +1131,7 @@ set -euo pipefail
 | `set -e` | Dừng script ngay khi có lệnh trả về exit code khác 0 |
 | `set -u` | Báo lỗi khi dùng biến chưa khai báo (thay vì coi là rỗng) |
 | `set -o pipefail` | Pipe trả về lỗi nếu bất kỳ lệnh nào trong pipe lỗi |
-| `set -x` | In mỗi lệnh trước khi thực thi — dùng để debug |
+| `set -x` | In mỗi lệnh trước khi thực thi - dùng để debug |
 
 ```bash
 set -e
@@ -1148,7 +1148,7 @@ Tắt tạm thời:
 
 ```bash
 set +e    # tắt tùy chọn -e
-command_có_thể_lỗi || true    # hoặc cách này — bắt lỗi thủ công
+command_có_thể_lỗi || true    # hoặc cách này - bắt lỗi thủ công
 set -e    # bật lại
 ```
  
@@ -1160,7 +1160,7 @@ set -e    # bật lại
 #!/bin/bash
 set -euo pipefail
 
-# Hàm dọn dẹp — luôn chạy khi script thoát
+# Hàm dọn dẹp - luôn chạy khi script thoát
 cleanup() {
     echo "Dọn dẹp..."
     rm -f /tmp/script_$$.tmp
@@ -1169,7 +1169,7 @@ trap cleanup EXIT           # gọi cleanup khi thoát (dù thành công hay l�
 
 # Xử lý Ctrl+C
 handle_interrupt() {
-    echo "Nhận Ctrl+C — đang dừng..."
+    echo "Nhận Ctrl+C - đang dừng..."
     exit 130
 }
 trap handle_interrupt INT
@@ -1242,7 +1242,7 @@ debug "Bắt đầu xử lý file: $1"
 # Gọi script với DEBUG=1 ./script.sh để xem log debug
 ```
 
-### 7.5. Xử lý lỗi thực tế — Ví dụ tổng hợp
+### 7.5. Xử lý lỗi thực tế - Ví dụ tổng hợp
 
 ```bash
 #!/bin/bash

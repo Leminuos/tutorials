@@ -76,7 +76,7 @@ void update_machine_state(float new_temp) {
 }
 ```
 
-`taskENTER_CRITICAL` trên ESP32 làm hai việc: disable interrupt trên core hiện tại và acquire spinlock để core kia không vào được. Đây là cơ chế bảo vệ mạnh nhất nhưng cũng có chi phí cao nhất nếu dùng sai — vì khi interrupt bị disable, hệ thống không phản hồi được bất kỳ event nào.
+`taskENTER_CRITICAL` trên ESP32 làm hai việc: disable interrupt trên core hiện tại và acquire spinlock để core kia không vào được. Đây là cơ chế bảo vệ mạnh nhất nhưng cũng có chi phí cao nhất nếu dùng sai - vì khi interrupt bị disable, hệ thống không phản hồi được bất kỳ event nào.
 
 **Khác biệt giữa spinlock và mutex**
 

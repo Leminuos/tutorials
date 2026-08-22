@@ -2,13 +2,13 @@
 
 ## Toolchain là gì?
 
-Khi build firmware/image cho một board nhúng (ví dụ BBB), máy tính của ta thường là x86_64. Ta không thể dùng gcc thông thường để compile code chạy trên ARM — ta cần một cross-compiler, ví dụ:
+Khi build firmware/image cho một board nhúng (ví dụ BBB), máy tính của ta thường là x86_64. Ta không thể dùng gcc thông thường để compile code chạy trên ARM - ta cần một cross-compiler, ví dụ:
 
 ```
 arm-poky-linux-gnueabi-gcc
 ```
 
-Đây chính là toolchain — bộ công cụ compile code trên máy host (x86) nhưng sinh ra binary chạy trên target (ARM).
+Đây chính là toolchain - bộ công cụ compile code trên máy host (x86) nhưng sinh ra binary chạy trên target (ARM).
 
 Yocto build ra 2 loại SDK:
 
@@ -26,21 +26,21 @@ Bao gồm:
 
 Dùng để: developer viết application cho target, compile bên ngoài Yocto.
 
-**Extensible SDK — eSDK (`populate_sdk_ext`)**
+**Extensible SDK - eSDK (`populate_sdk_ext`)**
 
 ```bash
 bitbake core-image-minimal -c populate_sdk_ext
 ```
 
 Ngoài những thứ của Standard SDK, còn có thêm:
-- `devtool` — cho phép modify recipe, build, deploy trực tiếp lên board
+- `devtool` - cho phép modify recipe, build, deploy trực tiếp lên board
 - Một bản rút gọn của BitBake bên trong SDK
 
 Dùng để: developer muốn làm việc gần với workflow Yocto hơn, iterate nhanh.
 
 ## Tại sao cần SDK?
 
-**Góc nhìn 1 — Tách biệt workflow**
+**Góc nhìn 1 - Tách biệt workflow**
 
 Build một image Yocto đầy đủ mất hàng giờ. Không thể yêu cầu mỗi developer phải setup toàn bộ Yocto chỉ để compile một ứng dụng. SDK cho phép:
 
@@ -49,7 +49,7 @@ BSP team  ->  build image + SDK     ->  phân phối SDK
 App team  ->  nhận SDK, compile app ->  không cần biết Yocto
 ```
 
-**Góc nhìn 2 — Đảm bảo tính nhất quán**
+**Góc nhìn 2 - Đảm bảo tính nhất quán**
 
 SDK được build từ chính image đó, nên:
 - Phiên bản thư viện trên SDK khớp với image trên board
@@ -77,10 +77,10 @@ $CC hello.c -o hello
 **Vấn đề cần giải quyết**
 
 Khi compiler build một chương trình, nó cần tìm:
-- Headers (`.h`) — để biết API, struct, kiểu dữ liệu
-- Libraries (`.so`, `.a`) — để link
+- Headers (`.h`) - để biết API, struct, kiểu dữ liệu
+- Libraries (`.so`, `.a`) - để link
 
-Trên máy x86 bình thường, mọi thứ nằm ở `/usr/include`, `/usr/lib` — không có vấn đề gì.
+Trên máy x86 bình thường, mọi thứ nằm ở `/usr/include`, `/usr/lib` - không có vấn đề gì.
 
 Nhưng khi cross-compile cho ARM, nếu compiler đi tìm ở `/usr/include`, `/usr/lib` trên máy host thì sẽ lấy headers/libs của x86, điều này là sai hoàn toàn!
 

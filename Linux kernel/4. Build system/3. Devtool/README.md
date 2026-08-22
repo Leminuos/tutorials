@@ -28,7 +28,7 @@ Workspace này tự động được thêm vào `bblayers.conf` với priority c
 
 ## 3. Các lệnh chính
 
-### 3.1. `devtool modify` — chỉnh sửa recipe có sẵn
+### 3.1. `devtool modify` - chỉnh sửa recipe có sẵn
 
 ```bash
 devtool modify myapp
@@ -46,7 +46,7 @@ cd build/workspace/sources/myapp/
 vim src/main.c
 ```
 
-### 3.2. `devtool build` — build sau khi sửa
+### 3.2. `devtool build` - build sau khi sửa
 
 ```bash
 devtool build myapp
@@ -54,7 +54,7 @@ devtool build myapp
 
 Chỉ rebuild những gì thay đổi, nhanh hơn bitbake nhiều.
 
-### 3.3. `devtool deploy-target` — đẩy lên board
+### 3.3. `devtool deploy-target` - đẩy lên board
 
 ```bash
 devtool deploy-target myapp root@192.168.1.100
@@ -72,7 +72,7 @@ ssh root@192.168.1.100
 Board phải có SSH server và được kết nối mạng với máy host. Phải thêm package `openssh` vào image.
 :::
 
-### 3.4. `devtool undeploy-target` — gỡ khỏi board
+### 3.4. `devtool undeploy-target` - gỡ khỏi board
 
 ```bash
 devtool undeploy-target myapp root@192.168.1.100
@@ -80,7 +80,7 @@ devtool undeploy-target myapp root@192.168.1.100
 
 Xóa những file đã deploy, trả board về trạng thái ban đầu.
 
-### 3.5. `devtool add` — tạo recipe mới từ source
+### 3.5. `devtool add` - tạo recipe mới từ source
 
 ```bash
 # Từ thư mục source local
@@ -95,7 +95,7 @@ devtool add myapp https://example.com/myapp-1.0.tar.gz
 
 `devtool` sẽ tự động detect build system (CMake, autotools, meson...) và sinh ra recipe tạm trong workspace. Rất hữu ích khi thêm package mới.
 
-### 3.6. `devtool finish` — đưa thay đổi về layer gốc
+### 3.6. `devtool finish` - đưa thay đổi về layer gốc
 
 ```bash
 devtool finish myapp meta-mylayer
@@ -113,7 +113,7 @@ workspace/sources/myapp/  -> meta-mylayer/recipes-myapp/myapp/
                                    └── fix-bug.patch   (patch mới)
 ```
 
-### 3.7. `devtool reset` — hủy bỏ, quay về trạng thái ban đầu
+### 3.7. `devtool reset` - hủy bỏ, quay về trạng thái ban đầu
 
 ```bash
 devtool reset myapp
@@ -121,7 +121,7 @@ devtool reset myapp
 
 Xóa recipe tạm trong workspace, trả lại quyền kiểm soát cho layer gốc. Source code trong `workspace/sources/myapp/` vẫn còn nếu muốn giữ lại.
 
-### 3.8. `devtool status` — xem đang modify recipe nào
+### 3.8. `devtool status` - xem đang modify recipe nào
 
 ```bash
 devtool status

@@ -40,7 +40,7 @@ Nó được thiết kế để:
 
 **Vấn đề:** Băng tần 2.4 GHz là băng tần không cần cấp phép. Rất nhiều thiết bị cùng sử dụng: Wi-Fi, ZigBee, lò vi sóng... Nếu phát trên một tần số cố định, rất dễ bị nhiễu gây mất kết nối.
 
-**Giải pháp:** Bluetooth thực hiện frequency hopping — nhảy tần liên tục qua 79 kênh (mỗi kênh rộng 1 MHz) với tốc độ 1600 lần/giây (mỗi 625 µs).
+**Giải pháp:** Bluetooth thực hiện frequency hopping - nhảy tần liên tục qua 79 kênh (mỗi kênh rộng 1 MHz) với tốc độ 1600 lần/giây (mỗi 625 µs).
 
 **Ví dụ channels:**
 - Channel 0 = 2402 MHz
@@ -54,7 +54,7 @@ Nó được thiết kế để:
 
 **Vấn đề:** Khi nhiều thiết bị chia sẻ cùng một piconet, cần có cơ chế quyết định ai được phát lúc nào. Nếu không, hai thiết bị phát đồng thời sẽ collision và cả hai đều mất gói.
 
-**Giải pháp:** Bluetooth dùng TDD (Time Division Duplex) — chia thời gian thành các slot luân phiên, mỗi slot chỉ một thiết bị được phát.
+**Giải pháp:** Bluetooth dùng TDD (Time Division Duplex) - chia thời gian thành các slot luân phiên, mỗi slot chỉ một thiết bị được phát.
 
 **Cấu trúc:**
 - Mỗi slot: 625 µs
@@ -66,7 +66,7 @@ Nó được thiết kế để:
 **Packet types:** Một packet có thể chiếm 1, 3, hoặc 5 slot liên tiếp tùy payload:
 - DH1: 1 slot (27 bytes)
 - DH3: 3 slots (183 bytes)
-- DH5: 5 slots (339 bytes) — dùng cho A2DP
+- DH5: 5 slots (339 bytes) - dùng cho A2DP
 
 ### 2.3. Piconet
 
@@ -111,7 +111,7 @@ Mỗi Bluetooth packet gồm ba phần chính:
 
 Một kết nối bluetooth classic luôn đi qua 4 giai đoạn chính:
 
-### 3.1. Discovery — Tìm kiếm thiết bị
+### 3.1. Discovery - Tìm kiếm thiết bị
 
 ![Inquiry](img/01-inquiry.png)
 
@@ -162,7 +162,7 @@ Tại giai đoạn này, sẽ có một số event được trigger là:
 | `ESP_BT_GAP_DISC_RES_EVT` | Khi tìm thấy thiết bị |
 | `ESP_BT_GAP_DISC_STATE_CHANGED_EVT` | Khi discovery bắt đầu/kết thúc |
 
-### 3.2. Pairing — Ghép đôi và bảo mật
+### 3.2. Pairing - Ghép đôi và bảo mật
 
 Pairing là quá trình thiết lập một mối quan hệ tin cậy giữa hai thiết bị Bluetooth (Source và Sink). Quá trình này bao gồm các bước:
 - IO Capability Exchange: Hai bên trao đổi khả năng hiển thị/nhập liệu (ví dụ: có màn hình không, có nút bấm không).
@@ -175,7 +175,7 @@ Pairing là quá trình thiết lập một mối quan hệ tin cậy giữa hai
 | ---- | --------- | ------- | -------------- |
 | Numeric Comparison | Cả source và sink có display + button | Cao | Hiển thị 6 chữ số, người dùng xác nhận |
 | Passkey Entry | Source có display, sink có keyboard | Cao | Nhập PIN hiển thị ở bên kia |
-| Just Works | Cả source và sink không có display/keyboard | Thấp | Tự động accept — dùng cho ESP32 |
+| Just Works | Cả source và sink không có display/keyboard | Thấp | Tự động accept - dùng cho ESP32 |
 | Out of Band (OOB) | Có kênh khác (NFC) | Rất cao | Trao đổi key qua NFC |
 
 > ESP32 A2DP thường dùng just works với `ESP_BT_IO_CAP_NONE`.
@@ -207,7 +207,7 @@ Tại giai đoạn này, sẽ có một số event được trigger là:
 | `ESP_BT_GAP_CFM_REQ_EVT` | Khi cần xác nhận passkey |
 | `ESP_BT_GAP_AUTH_CMPL_EVT` | Khi pairing hoàn thành |
 
-### 3.3. Connecting — Thiết lập kết nối
+### 3.3. Connecting - Thiết lập kết nối
 
 **Mục đích:** Thiết lập kết nối ACL (Asynchronous Connection Less) và thỏa thuận codec.
 
@@ -243,7 +243,7 @@ Tại giai đoạn này, sẽ có một số event được trigger là:
 | `ESP_A2D_AUDIO_CFG_EVT` | Khi sink thông báo codec config |
 | `ESP_A2D_MEDIA_CTRL_ACK_EVT` | Khi media control command được ACK |
 
-### 3.4. Data transfer — Truyền dữ liệu audio
+### 3.4. Data transfer - Truyền dữ liệu audio
 
 **Mục đích:** Stream audio data từ source đến sink.
 
@@ -304,7 +304,7 @@ Khi làm việc với esp32, ta thường sẽ quan tâm đến 3 nhóm tính n�
 
 ### SBC codec
 
-SBC là thuật toán nén audio, thiết kế đặc biệt cho bluetooth A2DP và là codec bắt buộc — mọi thiết bị A2DP đều phải hỗ trợ.
+SBC là thuật toán nén audio, thiết kế đặc biệt cho bluetooth A2DP và là codec bắt buộc - mọi thiết bị A2DP đều phải hỗ trợ.
 
 **Tại sao cần codec?**
 - PCM thô: 44100 Hz × 2ch × 16-bit = 1.41 Mbps
@@ -368,11 +368,11 @@ esp_bluedroid_enable();
 Cung cấp API cấp cao cho từng profile.
 
 **File headers:**
-- `esp_gap_bt_api.h` — GAP (discovery, pairing, security)
-- `esp_a2dp_api.h` — A2DP Source và Sink
-- `esp_avrc_api.h` — AVRCP (remote control)
-- `esp_hf_client_api.h`, `esp_hf_ag_api.h` — HFP
-- `esp_spp_api.h` — SPP (Serial Port Profile)
+- `esp_gap_bt_api.h` - GAP (discovery, pairing, security)
+- `esp_a2dp_api.h` - A2DP Source và Sink
+- `esp_avrc_api.h` - AVRCP (remote control)
+- `esp_hf_client_api.h`, `esp_hf_ag_api.h` - HFP
+- `esp_spp_api.h` - SPP (Serial Port Profile)
 
 ## 6. Thứ tự khởi tạo A2DP profile
 
@@ -548,7 +548,7 @@ static void bt_app_a2d_cb(esp_a2d_cb_event_t event,
 
 Đăng ký bằng `esp_bt_gap_register_callback(callback)`. Callback prototype: `void cb(esp_bt_gap_cb_event_t event, esp_bt_gap_cb_param_t *param)`.
 
-**1. `ESP_BT_GAP_DISC_RES_EVT` — Tìm thấy thiết bị**
+**1. `ESP_BT_GAP_DISC_RES_EVT` - Tìm thấy thiết bị**
 
 Kích hoạt mỗi lần scan thấy một thiết bị. Chỉ xảy ra ở source sau khi gọi `esp_bt_gap_start_discovery()`.
 
@@ -636,7 +636,7 @@ esp_bt_gap_read_remote_name(remote_bda);
 
 Sau đó, tên sẽ trả về trong một sự kiện khác là: `ESP_BT_GAP_READ_REMOTE_NAME_EVT`.
 
-**2. `ESP_BT_GAP_DISC_STATE_CHANGED_EVT` — Discovery state thay đổi**
+**2. `ESP_BT_GAP_DISC_STATE_CHANGED_EVT` - Discovery state thay đổi**
 
 Kích hoạt khi trạng thái discovery thay đổi (bắt đầu hoặc kết thúc scan).
 
@@ -662,7 +662,7 @@ case ESP_BT_GAP_DISC_STATE_CHANGED_EVT:
 ```
 
 
-**3. `ESP_BT_GAP_AUTH_CMPL_EVT` — Ghép đôi hoàn thành**
+**3. `ESP_BT_GAP_AUTH_CMPL_EVT` - Ghép đôi hoàn thành**
 
 Kích hoạt khi hoàn thành quá trình xác thực và ghép đôi thiết bị.
 
@@ -689,7 +689,7 @@ case ESP_BT_GAP_AUTH_CMPL_EVT:
     break;
 ```
 
-**4. `ESP_BT_GAP_CFM_REQ_EVT` — Yêu cầu confirm passkey**
+**4. `ESP_BT_GAP_CFM_REQ_EVT` - Yêu cầu confirm passkey**
 
 Kích hoạt khi thiết bị yêu cầu xác nhận passkey (Numeric Comparison SSP). Cần gọi `esp_bt_gap_ssp_confirm_reply()` để accept hoặc reject.
 
@@ -697,14 +697,14 @@ Ví dụ:
 
 ```c
 case ESP_BT_GAP_CFM_REQ_EVT:
-    ESP_LOGI(TAG, "Passkey: %06lu — Accept? (auto-accepting)",
+    ESP_LOGI(TAG, "Passkey: %06lu - Accept? (auto-accepting)",
              param->cfm_req.num_val);
     // true = accept, false = reject
     esp_bt_gap_ssp_confirm_reply(param->cfm_req.bda, true);
     break;
 ```
 
-**5. `ESP_BT_GAP_MODE_CHG_EVT` — Power mode thay đổi**
+**5. `ESP_BT_GAP_MODE_CHG_EVT` - Power mode thay đổi**
 
 Kích hoạt khi power mode của kết nối thay đổi (Active, Hold, Sniff, Park).
 
@@ -726,7 +726,7 @@ case ESP_BT_GAP_MODE_CHG_EVT:
 
 Đăng ký bằng `esp_a2d_register_callback(callback)`. Callback prototype: `void cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)`
 
-**1. `ESP_A2D_CONNECTION_STATE_EVT` — Trạng thái kết nối A2DP**
+**1. `ESP_A2D_CONNECTION_STATE_EVT` - Trạng thái kết nối A2DP**
 
 Kích hoạt khi trạng thái kết nối A2DP thay đổi. Xảy ra ở cả source và sink.
 
@@ -773,7 +773,7 @@ case ESP_A2D_CONNECTION_STATE_EVT: {
 }
 ```
 
-**2. `ESP_A2D_AUDIO_STATE_EVT` — Trạng thái audio stream**
+**2. `ESP_A2D_AUDIO_STATE_EVT` - Trạng thái audio stream**
 
 Kích hoạt khi trạng thái audio stream thay đổi. Đây là event quan trọng nhất để điều khiển việc đọc/ghi audio data.
 
@@ -810,7 +810,7 @@ case ESP_A2D_AUDIO_STATE_EVT:
 Chỉ bắt đầu cung cấp audio data sau khi nhận được STARTED. Cung cấp data trước sẽ gây buffer underrun vì sink chưa sẵn sàng nhận.
 :::
 
-**3. `ESP_A2D_AUDIO_CFG_EVT` — Codec được cấu hình**
+**3. `ESP_A2D_AUDIO_CFG_EVT` - Codec được cấu hình**
 
 Kích hoạt khi sink thông báo cho source về cấu hình codec đã chọn (sample rate, channels...). Chỉ xảy ra ở source side.
 
@@ -837,7 +837,7 @@ case ESP_A2D_AUDIO_CFG_EVT: {
 }
 ```
 
-**4. `ESP_A2D_MEDIA_CTRL_ACK_EVT` — ACK lệnh media control**
+**4. `ESP_A2D_MEDIA_CTRL_ACK_EVT` - ACK lệnh media control**
 
 Kích hoạt khi stack phản hồi sau khi gọi `esp_a2d_media_ctrl()`. Dùng để xác nhận lệnh đã được thực thi.
 
@@ -881,18 +881,18 @@ static int32_t my_data_cb(uint8_t *buf, int32_t len)
 ```
 
 Đặc điểm quan trọng của data callback:
-- Chạy trên BT stack task (Core 0) — block ở đây sẽ treo toàn bộ Bluetooth
+- Chạy trên BT stack task (Core 0) - block ở đây sẽ treo toàn bộ Bluetooth
 - Được gọi khoảng 345 lần/giây, mỗi lần yêu cầu 512 bytes
 - Tổng throughput: 512 × 345 ≈ 176,400 bytes/s = 44100 Hz × 2 ch × 16 bit
-- Phải trả về trong vài ms — chỉ nên memcpy, không được fread/malloc/lock mutex
+- Phải trả về trong vài ms - chỉ nên memcpy, không được fread/malloc/lock mutex
 - Nếu return 0 → BT stack hiểu "không có data" → có thể tự suspend stream
 
 ## 8.1. Khi nào data callback được gọi?
 
 Data callback không phải lúc nào cũng chạy. Sau khi đăng ký bằng `esp_a2d_source_register_data_callback`, nó vẫn im lặng hoàn toàn cho đến khi có đủ 2 điều kiện:
 
-1. A2DP connection đã thiết lập — ESP32 đã kết nối với sink (loa/tai nghe)
-2. Audio stream đã được **START** — BT stack nhận lệnh bắt đầu stream
+1. A2DP connection đã thiết lập - ESP32 đã kết nối với sink (loa/tai nghe)
+2. Audio stream đã được **START** - BT stack nhận lệnh bắt đầu stream
 
 Điều kiện (1) xảy ra tự động khi `esp_a2d_source_connect(bda)` thành công. Còn điều kiện (2) chính là vai trò của API `esp_a2d_media_ctrl`.
 
@@ -902,7 +902,7 @@ esp_err_t esp_a2d_media_ctrl(esp_a2d_media_ctrl_t ctrl);
 
 Hàm này là công tắc điều khiển khi nào BT stack bắt đầu và dừng gọi data callback. Nó gửi lệnh điều khiển media đến sink thông qua giao thức AVDTP.
 
-Hàm không đồng bộ (asynchronous) — gọi xong trả về ngay, kết quả thực tế sẽ bắn qua callback `ESP_A2D_MEDIA_CTRL_ACK_EVT`.
+Hàm không đồng bộ (asynchronous) - gọi xong trả về ngay, kết quả thực tế sẽ bắn qua callback `ESP_A2D_MEDIA_CTRL_ACK_EVT`.
 
 ### 8.2. Lệnh `ESP_A2D_MEDIA_CTRL_START`
 
@@ -922,7 +922,7 @@ Lệnh này ngược lại với lệnh START và có nhiệm vụ dừng stream
 
 **Quan trọng:**
 - `STOP` chỉ suspend stream, không ngắt kết nối A2DP
-- Connection vẫn giữ nguyên — có thể gọi `START` lại bất cứ lúc nào
+- Connection vẫn giữ nguyên - có thể gọi `START` lại bất cứ lúc nào
 - Sau `STOP`, sink thường hiển thị "paused" (không phải "disconnected")
 - Muốn ngắt kết nối hẳn → dùng `esp_a2d_source_disconnect(bda)`
 

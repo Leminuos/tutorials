@@ -1,6 +1,4 @@
 
-# Pin Muxing trong Linux Embedded
-
 ## 1. Tổng quan về Pin Muxing
 
 ### 1.1. Vấn đề
@@ -63,10 +61,10 @@ Control Module không chỉ quản lý pin muxing mà còn bao gồm nhiều nh�
 | 7 | EDMA & Misc | Crossbar sự kiện EDMA, và các thanh ghi cấu hình khác |
 
 :::warning Write protection
-Pad Control Registers được bảo vệ bởi phần cứng — chỉ CPU ở chế độ supervisor mới có quyền ghi.Trong Linux, việc cấu hình pin mux thường được thực hiện bởi kernel thông qua device tree lúc boot.
+Pad Control Registers được bảo vệ bởi phần cứng - chỉ CPU ở chế độ supervisor mới có quyền ghi.Trong Linux, việc cấu hình pin mux thường được thực hiện bởi kernel thông qua device tree lúc boot.
 :::
 
-Trong tài liệu này, chúng ta tập trung vào **nhóm 5 — Pad Control**, vì đây là nhóm thanh ghi quyết định trực tiếp việc pin muxing.
+Trong tài liệu này, chúng ta tập trung vào **nhóm 5 - Pad Control**, vì đây là nhóm thanh ghi quyết định trực tiếp việc pin muxing.
 
 ### 2.2. Cấu trúc Pad Control Register (AM335x)
 
@@ -126,13 +124,13 @@ Vì vậy khi ta thấy `0x184` trong device tree, nó tương ứng với thanh
 
 > Tại sao cần biết thêm nhóm Peripheral Control?
 
-Khi lập trình pin mux trên Linux, nhóm 5 (Pad Control) là đủ cho hầu hết trường hợp. Các nhóm còn lại đã được kernel driver tự xử lý. Tuy nhiên, có một số ngoại vi mà chỉ cấu hình pad mux thôi là chưa đủ — chúng cần thêm thanh ghi ở nhóm 4 (Peripheral Control) để hoạt động đúng.
+Khi lập trình pin mux trên Linux, nhóm 5 (Pad Control) là đủ cho hầu hết trường hợp. Các nhóm còn lại đã được kernel driver tự xử lý. Tuy nhiên, có một số ngoại vi mà chỉ cấu hình pad mux thôi là chưa đủ - chúng cần thêm thanh ghi ở nhóm 4 (Peripheral Control) để hoạt động đúng.
 
-**Ví dụ điển hình — Ethernet (CPSW):**
+**Ví dụ điển hình - Ethernet (CPSW):**
 
 AM335x có module Ethernet CPSW (Common Platform Switch) hỗ trợ 2 port, mỗi port có thể chạy ở chế độ MII, RMII, hoặc RGMII. Để Ethernet hoạt động, ta cần cấu hình hai tầng:
 
-**Tầng 1 — Pad Control (nhóm 5):** Mux các chân vật lý sang đúng mode cho Ethernet. Ví dụ với RMII1:
+**Tầng 1 - Pad Control (nhóm 5):** Mux các chân vật lý sang đúng mode cho Ethernet. Ví dụ với RMII1:
 
 ```dts
 cpsw_default: cpsw_default {
@@ -147,17 +145,17 @@ cpsw_default: cpsw_default {
 };
 ```
 
-**Tầng 2 — Peripheral Control (nhóm 4):** Cho SoC biết port đang chạy chế độ gì, qua thanh ghi `GMII_SEL`:
+**Tầng 2 - Peripheral Control (nhóm 4):** Cho SoC biết port đang chạy chế độ gì, qua thanh ghi `GMII_SEL`:
 
 ```
 GMII_SEL (offset 0x650 trong Control Module):
-  Bit 1:0 — Chọn chế độ cho port 1: 00 = GMII/MII, 01 = RMII, 10 = RGMII
-  Bit 3:2 — Chọn chế độ cho port 2
-  Bit 4   — RMII1 clock external (1) hay internal (0)
-  Bit 5   — RMII2 clock external (1) hay internal (0)
+  Bit 1:0 - Chọn chế độ cho port 1: 00 = GMII/MII, 01 = RMII, 10 = RGMII
+  Bit 3:2 - Chọn chế độ cho port 2
+  Bit 4   - RMII1 clock external (1) hay internal (0)
+  Bit 5   - RMII2 clock external (1) hay internal (0)
 ```
 
-$\rightarrow$ Nếu ta chỉ mux pin (tầng 1) mà không set `GMII_SEL` (tầng 2), SoC không biết Ethernet đang chạy RMII hay MII $\righarow$ Ethernet sẽ không hoạt động dù các chân đã đúng mode.
+$\rightarrow$ Nếu ta chỉ mux pin (tầng 1) mà không set `GMII_SEL` (tầng 2), SoC không biết Ethernet đang chạy RMII hay MII $\rightarrow$ Ethernet sẽ không hoạt động dù các chân đã đúng mode.
 
 Lý do cần thanh ghi `GMII_SEL` là vì mỗi chế độ Ethernet có đặc điểm khác nhau về tốc độ, số chân, và cách truyền dữ liệu:
 
@@ -167,7 +165,7 @@ Lý do cần thanh ghi `GMII_SEL` là vì mỗi chế độ Ethernet có đặc 
 | RMII   | `01`     | 100 Mbps       | 2 TX + 2 RX     | ~9 chân      | Giảm một nửa số chân so với MII, dùng clock 50 MHz |
 | RGMII  | `10`     | 1000 Mbps      | 4 TX + 4 RX (DDR) | ~12 chân   | Hỗ trợ Gigabit, dùng DDR để tăng tốc |
 
-$\righarow$ Cùng một bộ chân vật lý, việc SoC xử lý tín hiệu sẽ khác nhau hoàn toàn tùy vào chế độ. `GMII_SEL` chính là thanh ghi cho SoC biết cần xử lý tín hiệu theo cách nào.
+$\rightarrow$ Cùng một bộ chân vật lý, việc SoC xử lý tín hiệu sẽ khác nhau hoàn toàn tùy vào chế độ. `GMII_SEL` chính là thanh ghi cho SoC biết cần xử lý tín hiệu theo cách nào.
 
 Nói cách khác: **Pad Control** quyết định *chân nào nối với ngoại vi nào*, còn **Peripheral Control** quyết định *ngoại vi đó hoạt động ở chế độ nào*.
 
@@ -300,7 +298,7 @@ Xác định danh sách các trạng thái pin mà device có thể sử dụng.
 | `sleep`    | Cấu hình khi device vào chế độ suspend. Thường disable pin để tiết kiệm điện.  |
 | `idle`     | Cấu hình khi device tạm nghỉ (runtime idle).                                   |
 
-**Ví dụ — UART với 2 trạng thái:**
+**Ví dụ - UART với 2 trạng thái:**
 
 Khi hệ thống hoạt động bình thường, UART cần các chân TX/RX ở đúng mode. Khi suspend, ta muốn chuyển các chân sang GPIO pull-down để tránh rò điện:
 
@@ -337,7 +335,7 @@ $\rightarrow$ Kernel sẽ tự động chuyển pin giữa `default` và `sleep`
 
 ### 4.4. Thuộc tính `pinctrl-0`, `pinctrl-1`, ...
 
-`pinctrl`-0, `pinctrl`-1,... là các pinctrl state — mỗi số tương ứng một trạng thái hoạt động khác nhau của device, mỗi state định nghĩa cách các chân pin được cấu hình trong trạng thái đó.
+`pinctrl`-0, `pinctrl`-1,... là các pinctrl state - mỗi số tương ứng một trạng thái hoạt động khác nhau của device, mỗi state định nghĩa cách các chân pin được cấu hình trong trạng thái đó.
 
 `pinctrl-N` và `pinctrl-names` luôn đi cùng nhau:
 
@@ -347,7 +345,7 @@ pinctrl-0 = <&uart1_pins_default>;  /* state 0 = "default" */
 pinctrl-1 = <&uart1_pins_sleep>;    /* state 1 = "sleep" */
 ```
 
-Mapping rất đơn giản — theo thứ tự index:
+Mapping rất đơn giản - theo thứ tự index:
 
 ```
 pinctrl-names = "default",          "sleep"
@@ -355,7 +353,7 @@ pinctrl-names = "default",          "sleep"
                 pinctrl-0           pinctrl-1
 ```
 
-**Ví dụ — Device chỉ cần 1 trạng thái (trường hợp phổ biến nhất):**
+**Ví dụ - Device chỉ cần 1 trạng thái (trường hợp phổ biến nhất):**
 
 ```dts
 &spi0 {
@@ -365,7 +363,7 @@ pinctrl-names = "default",          "sleep"
 };
 ```
 
-**Ví dụ — Kết hợp nhiều nhóm pin trong 1 trạng thái:**
+**Ví dụ - Kết hợp nhiều nhóm pin trong 1 trạng thái:**
 
 Khi một device cần pin từ nhiều nhóm khác nhau (ví dụ SPI có thêm GPIO cho chip select phụ), ta có thể tham chiếu nhiều phandle:
 
@@ -379,7 +377,7 @@ Khi một device cần pin từ nhiều nhóm khác nhau (ví dụ SPI có thêm
 };
 ```
 
-$\rightarrow$ Khi kernel apply state "default", nó apply cả 2 group cùng lúc — tức là cấu hình tất cả các chân trong cả 2 group.
+$\rightarrow$ Khi kernel apply state "default", nó apply cả 2 group cùng lúc - tức là cấu hình tất cả các chân trong cả 2 group.
 
 :::warning Nhiều phandle
 Một `pinctrl-N` có thể tham chiếu nhiều phandle nếu cần cấu hình pin từ nhiều nhóm khác nhau. Kernel sẽ áp dụng tất cả các nhóm theo thứ tự.

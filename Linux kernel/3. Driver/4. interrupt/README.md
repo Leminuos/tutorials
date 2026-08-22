@@ -88,7 +88,7 @@ Mô tả:
 
 ## Top half và Bottom half
 
-Khi một IRQ xảy ra, kernel gọi ISR mà ta đăng ký qua `request_irq`. ISR này là top half — phải thực hiện thật nhanh.
+Khi một IRQ xảy ra, kernel gọi ISR mà ta đăng ký qua `request_irq`. ISR này là top half - phải thực hiện thật nhanh.
 
 ```css
 ISR (Top Half)

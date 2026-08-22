@@ -286,7 +286,7 @@ static const struct init_entry __init___device_dts_ord_47
 };
 ```
 
-Trong đó `90` là giá trị của `CONFIG_SENSOR_INIT_PRIORITY`, còn `47` là *ordinal* — một số nguyên do build system gán cho node, không liên quan gì tới số instance. Chi tiết về nó xem bài **Device tree**.
+Trong đó `90` là giá trị của `CONFIG_SENSOR_INIT_PRIORITY`, còn `47` là *ordinal* - một số nguyên do build system gán cho node, không liên quan gì tới số instance. Chi tiết về nó xem bài **Device tree**.
 
 Điểm cần chú ý ở đây là hàm init không được gọi trực tiếp mà đi qua hai section khác nhau:
 
@@ -871,7 +871,7 @@ pm_device_action_run(in, PM_DEVICE_ACTION_SUSPEND);
 
 Việc chặn ở tầng PM như trên có nghĩa driver không phải tự theo dõi trạng thái của mình: `bme280_pm_action` chỉ cần biết cách thực hiện một bước chuyển, còn "có được phép chuyển hay không" đã có `pm_base` lo.
 
-Trong thực tế ta hiếm khi gọi `pm_device_action_run` trực tiếp mà dùng runtime PM — cơ chế đếm tham chiếu để thiết bị tự ngủ khi không ai dùng:
+Trong thực tế ta hiếm khi gọi `pm_device_action_run` trực tiếp mà dùng runtime PM - cơ chế đếm tham chiếu để thiết bị tự ngủ khi không ai dùng:
 
 ```c
 pm_device_runtime_enable(in);       /* thường gọi trong bme280_init */
@@ -917,7 +917,7 @@ static const device_handle_t __devicedeps_dts_ord_47[] = { 12, 8, DEVICE_HANDLE_
 static const device_handle_t __devicedeps_dts_ord_52[] = { 15, DEVICE_HANDLE_ENDS };
 ```
 
-Quan hệ này được dùng theo cả hai chiều. Chiều xuôi là tôi cần những ai (`device_required_handles_get`), chiều ngược là những ai cần tôi (`device_supported_foreach`) — kernel dựng được chiều ngược bằng cách quét toàn bộ bảng `deps`.
+Quan hệ này được dùng theo cả hai chiều. Chiều xuôi là tôi cần những ai (`device_required_handles_get`), chiều ngược là những ai cần tôi (`device_supported_foreach`) - kernel dựng được chiều ngược bằng cách quét toàn bộ bảng `deps`.
 
 Nhờ vậy subsystem PM biết không được suspend `i2c1` khi `bme280_in` còn active và power domain biết phải bật `i2c1` với `gpioa` trước rồi mới resume được cảm biến. Nếu không có thông tin này, thứ tự tắt/bật phải hard-code trong application.
 
@@ -953,7 +953,7 @@ device_get_by_dt_nodelabel("bme280_in");   /* cùng kết quả */
 device_get_by_dt_nodelabel("sensor0");
 ```
 
-Mặc định `CONFIG_DEVICE_DT_METADATA` tắt vì phải nhét mọi chuỗi nodelabel vào flash. Chỉ bật khi thật sự cần tra cứu động — chủ yếu là lệnh shell và script test, nơi tên thiết bị được gõ vào lúc chạy. Code bình thường luôn dùng `DEVICE_DT_GET(DT_NODELABEL(bme280_in))` để có kiểm tra lúc biên dịch và không tốn gì lúc chạy.
+Mặc định `CONFIG_DEVICE_DT_METADATA` tắt vì phải nhét mọi chuỗi nodelabel vào flash. Chỉ bật khi thật sự cần tra cứu động - chủ yếu là lệnh shell và script test, nơi tên thiết bị được gõ vào lúc chạy. Code bình thường luôn dùng `DEVICE_DT_GET(DT_NODELABEL(bme280_in))` để có kiểm tra lúc biên dịch và không tốn gì lúc chạy.
 
 ### 6.11. Tóm tắt
 
@@ -974,8 +974,8 @@ Mặc định `CONFIG_DEVICE_DT_METADATA` tắt vì phải nhét mọi chuỗi n
 
 Quay lại hai tham số đã tạm gác ở [mục 4](#4-đăng-ký-device-với-device_dt_inst_define). Chúng quyết định hàm init của device chạy vào lúc nào trong quá trình boot, và đặt sai là nguyên nhân của nhiều lỗi chỉ xuất hiện lúc chạy.
 
-- [7.1. Init level](#71-init-level) — chạy ở giai đoạn nào của boot
-- [7.2. Độ ưu tiên](#72-độ-ưu-tiên) — thứ tự bên trong một giai đoạn
+- [7.1. Init level](#71-init-level) - chạy ở giai đoạn nào của boot
+- [7.2. Độ ưu tiên](#72-độ-ưu-tiên) - thứ tự bên trong một giai đoạn
 - [7.3. Tổng kết hai tham số](#73-tổng-kết-hai-tham-số)
 
 ### 7.1. Init level
@@ -1020,13 +1020,13 @@ Ba level đầu chạy khi kernel chưa sống: chưa có scheduler, chưa có t
 - Dùng system workqueue (`k_work_submit()`).
 - Dùng nhiều stack, vì interrupt stack thường nhỏ.
 
-Muốn chờ một khoảng thời gian thì phải busy-wait bằng `k_busy_wait(usec)` — hàm này quay vòng đếm chứ không nhường CPU nên dùng được ở mọi ngữ cảnh.
+Muốn chờ một khoảng thời gian thì phải busy-wait bằng `k_busy_wait(usec)` - hàm này quay vòng đếm chứ không nhường CPU nên dùng được ở mọi ngữ cảnh.
 
 Từ `POST_KERNEL` trở đi thì mọi API kernel đều dùng được bình thường.
 
 **Vì sao BME280 phải là `POST_KERNEL`**
 
-Hàm `bme280_init()` gọi `i2c_burst_read_dt()` để đọc hệ số calib. Driver I2C bên dưới dùng ngắt báo truyền xong rồi `k_sem_take()` để chờ. Nếu đặt cảm biến ở `PRE_KERNEL_1`, lời gọi `k_sem_take()` đó xảy ra khi chưa có scheduler — hệ thống treo hoặc assert ngay lúc boot, và log thường chưa kịp in ra gì.
+Hàm `bme280_init()` gọi `i2c_burst_read_dt()` để đọc hệ số calib. Driver I2C bên dưới dùng ngắt báo truyền xong rồi `k_sem_take()` để chờ. Nếu đặt cảm biến ở `PRE_KERNEL_1`, lời gọi `k_sem_take()` đó xảy ra khi chưa có scheduler - hệ thống treo hoặc assert ngay lúc boot, và log thường chưa kịp in ra gì.
 
 **Vì sao UART console lại là `PRE_KERNEL_1`**
 
@@ -1123,7 +1123,7 @@ CONFIG_SENSOR_INIT_PRIORITY=95
 
 **Devicetree không tự sắp thứ tự init**
 
-Đây là điểm hay bị hiểu nhầm. Ở [mục 6.9](#69-trường-deps) ta thấy trường `deps` ghi lại quan hệ phụ thuộc suy ra từ devicetree — cảm biến phụ thuộc bus I2C. Nhưng Zephyr **không** dùng thông tin đó để tự sắp xếp thứ tự init lúc boot. `deps` chỉ phục vụ power management và power domain.
+Đây là điểm hay bị hiểu nhầm. Ở [mục 6.9](#69-trường-deps) ta thấy trường `deps` ghi lại quan hệ phụ thuộc suy ra từ devicetree - cảm biến phụ thuộc bus I2C. Nhưng Zephyr **không** dùng thông tin đó để tự sắp xếp thứ tự init lúc boot. `deps` chỉ phục vụ power management và power domain.
 
 Nói cách khác, việc "bus phải lên trước cảm biến" hoàn toàn do người viết driver đặt đúng cặp (level, priority). Đặt sai thì build vẫn qua, devicetree vẫn hợp lệ, và lỗi chỉ xuất hiện lúc chạy.
 

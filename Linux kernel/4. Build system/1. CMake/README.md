@@ -128,7 +128,7 @@ Các loại target trong CMake:
 
 ## 3. Properties của target
 
-Hãy nghĩ target như một object trong lập trình hướng đối tượng — nó có các properties mô tả mọi thứ về cách nó được build.
+Hãy nghĩ target như một object trong lập trình hướng đối tượng - nó có các properties mô tả mọi thứ về cách nó được build.
 
 Hãy hình dung đơn giản như sau:
 
@@ -151,7 +151,7 @@ g++ -Wall -O2 -DVERSION="1.0" -Iinclude/ foo.cpp bar.cpp -lpthread -lfmt
 
 ### 3.1. Cách set properties
 
-**Cách 1 — Dùng lệnh chuyên dụng (khuyến khích)**
+**Cách 1 - Dùng lệnh chuyên dụng (khuyến khích)**
 
 ```cmake
 target_include_directories(mylib PUBLIC include/)
@@ -162,7 +162,7 @@ target_link_libraries(mylib PRIVATE pthread)
 
 Mỗi lệnh này thực chất là đang ghi vào property của target.
 
-**Cách 2 — Dùng set_target_properties trực tiếp**
+**Cách 2 - Dùng set_target_properties trực tiếp**
 
 ```cmake
 set_target_properties(mylib PROPERTIES
@@ -172,7 +172,7 @@ set_target_properties(mylib PROPERTIES
 )
 ```
 
-**Cách 3 — Đọc property bằng get_target_property**
+**Cách 3 - Đọc property bằng get_target_property**
 
 ```cmake
 get_target_property(my_sources mylib SOURCES)
@@ -182,7 +182,7 @@ message("Sources: ${my_sources}")
 
 ### 3.2. Hai loại properties
 
-**Build properties — ảnh hưởng đến cách compile/link**
+**Build properties - ảnh hưởng đến cách compile/link**
 
 | Property | Lệnh tương ứng | Ý nghĩa |
 | --- | --- | --- |
@@ -192,7 +192,7 @@ message("Sources: ${my_sources}")
 | `LINK_LIBRARIES` | `target_link_libraries()` | Khai báo target phải link với thư viện nào. |
 | `SOURCES`      | `target_sources()` | Thêm danh sách source cho target. |
 
-**Metadata properties — thông tin về target**
+**Metadata properties - thông tin về target**
 
 | Property | Ý nghĩa |
 | --- | --- |
@@ -221,8 +221,8 @@ engine
 ```
 
 Trong đó:
-- `INCLUDE_DIRECTORIES` — dùng khi build chính target đó
-- `INTERFACE_INCLUDE_DIRECTORIES` — dùng khi target khác link vào
+- `INCLUDE_DIRECTORIES` - dùng khi build chính target đó
+- `INTERFACE_INCLUDE_DIRECTORIES` - dùng khi target khác link vào
 
 Ví dụ:
 
@@ -266,9 +266,9 @@ target_link_libraries(myapp PRIVATE mathlib)
 
 CMake cung cấp hệ thống tìm kiếm dependence mạnh mẽ.
 
-CMake không tìm ngẫu nhiên — nó đi qua 6 bước cố định theo thứ tự, mỗi bước tìm trong một tập đường dẫn khác nhau. Tìm thấy ở bước nào thì dừng lại luôn:
+CMake không tìm ngẫu nhiên - nó đi qua 6 bước cố định theo thứ tự, mỗi bước tìm trong một tập đường dẫn khác nhau. Tìm thấy ở bước nào thì dừng lại luôn:
 
-**Bước 1 — Kiểm tra Cache trước tiên**
+**Bước 1 - Kiểm tra Cache trước tiên**
 
 ```cmake
 find_library(SSL_LIB ssl)
@@ -291,7 +291,7 @@ rm -rf build/CMakeCache.txt
 cmake -DSSL_LIB=/new/path/libssl.so ..
 ```
 
-**Bước 2 — Tìm trong HINTS**
+**Bước 2 - Tìm trong HINTS**
 
 `HINTS` là đường dẫn ta tự cung cấp, được tìm trước đường dẫn hệ thống. Thường dùng để trỏ đến SDK hoặc thư viện tự cài:
 
@@ -301,9 +301,9 @@ find_program(PY_LIB python3 HINTS ~/custom/bin)
 
 -> CMake sẽ tìm ở `~/custom/bin`.
 
-**Bước 3 — Tìm trong biến CMAKE_PREFIX_PATH**
+**Bước 3 - Tìm trong biến CMAKE_PREFIX_PATH**
 
-Biến này chứa danh sách các "prefix" — CMake sẽ tự thêm các suffix phù hợp:
+Biến này chứa danh sách các "prefix" - CMake sẽ tự thêm các suffix phù hợp:
 
 ```cmake
 set(CMAKE_PREFIX_PATH "/opt/mylibs" "/usr/local")
@@ -332,9 +332,9 @@ CMake tự mở rộng thành:
 /usr/local/bin/
 ```
 
-Đây là lý do `CMAKE_PREFIX_PATH` mạnh — một đường dẫn duy nhất nhưng phục vụ cả find_library, find_path, find_program.
+Đây là lý do `CMAKE_PREFIX_PATH` mạnh - một đường dẫn duy nhất nhưng phục vụ cả find_library, find_path, find_program.
 
-**Bước 4 — Tìm trong biến môi trường hệ thống**
+**Bước 4 - Tìm trong biến môi trường hệ thống**
 
 CMake đọc các biến môi trường từ shell:
 
@@ -350,7 +350,7 @@ find_library(SSL_LIB ssl)
 # Tìm trong $ENV{CMAKE_PREFIX_PATH}/lib/
 ```
 
-**Bước 5 — Đường dẫn mặc định của hệ thống**
+**Bước 5 - Đường dẫn mặc định của hệ thống**
 
 Đây là danh sách đường dẫn CMake hardcode sẵn theo từng hệ điều hành:
 
@@ -385,9 +385,9 @@ C:/Program Files (x86)/
 ...
 ```
 
-**Bước 6 — PATHS**
+**Bước 6 - PATHS**
 
-`PATHS` là đường dẫn bổ sung, tìm sau hệ thống — thường dùng như fallback:
+`PATHS` là đường dẫn bổ sung, tìm sau hệ thống - thường dùng như fallback:
 
 ```cmake
 find_library(SSL_LIB ssl
@@ -396,7 +396,7 @@ find_library(SSL_LIB ssl
 )
 ```
 
-### 4.1. find_program — tìm executable
+### 4.1. find_program - tìm executable
 
 Tìm chương trình thực thi trong hệ thống, ví dụ như:
 - Tìm toolchain GCC ARM
@@ -424,7 +424,7 @@ add_custom_command(
 )
 ```
 
-### 4.2. find_library — tìm file thư viện
+### 4.2. find_library - tìm file thư viện
 
 Dùng để tìm thư viện trong hệ thống hoặc thư viện có sẵn. Ví dụ như: `.a`, `.so`, `.dll`
 
@@ -453,7 +453,7 @@ target_link_libraries(app PRIVATE ${SSL_LIB} ${CRYPTO_LIB})
 
 `find_package` tìm và load một package cmake hoàn chỉnh, chứa: include directories, libraries, imported targets,...
 
-`find_package` thực ra là lệnh cấp cao — bên trong nó thường gọi các lệnh cấp thấp hơn:
+`find_package` thực ra là lệnh cấp cao - bên trong nó thường gọi các lệnh cấp thấp hơn:
 
 ```
 find_package(OpenSSL)
@@ -478,7 +478,7 @@ find_package(Foo)
 
 CMake thử Module Mode trước, nếu không tìm thấy thì thử Config Mode.
 
-**Module Mode — tìm FindFoo.cmake**
+**Module Mode - tìm FindFoo.cmake**
 
 CMake chạy một script có sẵn để tìm thư viện. Script này biết cách tìm từng thư viện cụ thể trên từng hệ điều hành.
 
@@ -499,9 +499,9 @@ find_package(OpenGL REQUIRED)
 # hay libGL.so trên Linux
 ```
 
-**Config Mode — tìm FooConfig.cmake**
+**Config Mode - tìm FooConfig.cmake**
 
-Đây là cách hiện đại hơn. Thư viện tự đi kèm file config mô tả chính nó — không cần CMake phải đoán cách tìm.
+Đây là cách hiện đại hơn. Thư viện tự đi kèm file config mô tả chính nó - không cần CMake phải đoán cách tìm.
 
 Thứ tự tìm kiếm trên Linux/macOS:
 

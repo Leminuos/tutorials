@@ -3,7 +3,7 @@
 - [1. Endpoint là gì?](#1-endpoint-là-gì)
 - [2. Tính đơn hướng của endpoint](#2-tính-đơn-hướng-của-endpoint)
 - [3. Endpoint number và cách định danh](#3-endpoint-number-và-cách-định-danh)
-- [4. Endpoint zero (EP0) — Control endpoint](#4-endpoint-zero-ep0-control-endpoint)
+- [4. Endpoint zero (EP0) - Control endpoint](#4-endpoint-zero-ep0-control-endpoint)
 - [5. Giới hạn số lượng endpoint](#5-giới-hạn-số-lượng-endpoint)
 - [6. Cơ chế truyền dữ liệu qua Endpoint](#6-cơ-chế-truyền-dữ-liệu-qua-endpoint)
     - [6.1. Host ghi dữ liệu xuống Device (OUT Transaction)](#61-host-ghi-dữ-liệu-xuống-device-out-transaction)
@@ -59,7 +59,7 @@ Endpoint address được biểu diễn bằng 1 byte trong USB descriptor:
 
 Ví dụ: `0x81` = endpoint number 1, hướng IN. `0x02` = endpoint number 2, hướng OUT.
 
-## 4. Endpoint zero (EP0) — Control endpoint
+## 4. Endpoint zero (EP0) - Control endpoint
 
 EP0 là endpoint đặc biệt và bắt buộc phải có trên mọi USB device. EP0 bao gồm cả hai hướng: **EP0 IN** và **EP0 OUT**, tạo thành một cặp endpoint hai chiều dùng cho **Control Transfer**.
 
@@ -75,7 +75,7 @@ EP0 được sử dụng cho:
 - **Điều khiển runtime**: Bất kỳ Standard/Class/Vendor Request nào trong suốt vòng đời thiết bị.
 
 :::warning Lưu ý
-EP0 là endpoint duy nhất hỗ trợ Control Transfer — một loại transfer đặc biệt gồm 3 giai đoạn (Setup $\rightarrow$ Data $\rightarrow$ Status). Các endpoint khác (EP1–EP15) chỉ hỗ trợ Bulk, Interrupt, hoặc Isochronous Transfer. Chi tiết về các loại transfer sẽ được trình bày trong bài USB Protocol.
+EP0 là endpoint duy nhất hỗ trợ Control Transfer - một loại transfer đặc biệt gồm 3 giai đoạn (Setup $\rightarrow$ Data $\rightarrow$ Status). Các endpoint khác (EP1–EP15) chỉ hỗ trợ Bulk, Interrupt, hoặc Isochronous Transfer. Chi tiết về các loại transfer sẽ được trình bày trong bài USB Protocol.
 :::
 
 ## 5. Giới hạn số lượng endpoint
@@ -106,7 +106,7 @@ sequenceDiagram
     participant EP as EP OUT (Device)
     participant FW as ⚙️ Device Firmware
 
-    H->>EP: OUT Transaction — Ghi data vào EP OUT buffer
+    H->>EP: OUT Transaction - Ghi data vào EP OUT buffer
     Note over EP: Data nằm trong buffer,<br/>chờ firmware đọc
     FW->>EP: Firmware đọc data từ EP OUT buffer
     Note over FW: Xử lý data nhận được
@@ -126,7 +126,7 @@ sequenceDiagram
 
     FW->>EP: Firmware ghi data vào EP IN buffer
     Note over EP: Data nằm trong buffer,<br/>chờ host đọc
-    H->>EP: IN Transaction — Host yêu cầu đọc data
+    H->>EP: IN Transaction - Host yêu cầu đọc data
     EP->>H: Data được gửi từ EP IN buffer đến host
 ```
 
@@ -157,7 +157,7 @@ sequenceDiagram
     participant FW as ⚙️ Firmware
 
     par Xung đột truy cập
-        H->>EP: OUT Transaction — Ghi data mới
+        H->>EP: OUT Transaction - Ghi data mới
         FW->>EP: Firmware đang đọc data cũ
     end
     Note over EP: ⚠️ DATA CORRUPTION!<br/>Firmware đọc được data<br/>nửa cũ nửa mới
@@ -174,5 +174,5 @@ USB hardware và firmware sử dụng một số cơ chế để tránh xung đ�
 | **Interrupt/Flag** | Hardware phát interrupt hoặc set flag khi transaction hoàn thành, firmware chỉ truy cập buffer sau khi nhận interrupt/flag. |
 
 :::warning NAK không phải lỗi
-NAK là phản hồi hoàn toàn bình thường trong USB, cho biết "endpoint chưa sẵn sàng, hãy thử lại sau". Host sẽ tự động retry. Đây khác với STALL — báo hiệu lỗi nghiêm trọng, yêu cầu host can thiệp (thường qua control request để clear STALL).
+NAK là phản hồi hoàn toàn bình thường trong USB, cho biết "endpoint chưa sẵn sàng, hãy thử lại sau". Host sẽ tự động retry. Đây khác với STALL - báo hiệu lỗi nghiêm trọng, yêu cầu host can thiệp (thường qua control request để clear STALL).
 :::

@@ -148,12 +148,12 @@ dd if=<nguồn> of=<đích> [tùy_chọn]
 | --- | --- |
 | `if=` | Input file - Nguồn dữ liệu (file, thiết bị, /dev/...). Nếu không chỉ định, `dd` đọc từ `stdin`. |
 | `of=` | Output file - Đích ghi dữ liệu. Nếu không chỉ định, `dd` đọc từ `stdout`. |
-| `bs=` | Block size — kích thước mỗi block đọc/ghi (vd: 512, 4K, 1M). Ví dụ `bs=4M` nghĩa là mỗi lần đọc/ghi 4MB. |
+| `bs=` | Block size - kích thước mỗi block đọc/ghi (vd: 512, 4K, 1M). Ví dụ `bs=4M` nghĩa là mỗi lần đọc/ghi 4MB. |
 | `count=` | Số block cần sao chép. Ví dụ `count=100` với `bs=1M` thì sẽ sao chép đúng 100 MB. |
 | `skip=` | Bỏ qua N block ở đầu vào trước khi bắt đầu đọc |
 | `seek=` | Bỏ qua N block ở đầu ra trước khi bắt đầu ghi |
 | `conv=` | Chuyển đổi dữ liệu |
-| `status=` | Điều khiển thông tin hiển thị:<br>`status=progress` — hiển thị tiến trình theo thời gian thực<br>`status=none` — không hiển thị gì |
+| `status=` | Điều khiển thông tin hiển thị:<br>`status=progress` - hiển thị tiến trình theo thời gian thực<br>`status=none` - không hiển thị gì |
 
 Các ví dụ thực tế:
 
@@ -166,10 +166,10 @@ sync
 ```
 
 Giải thích từng phần:
-- `if=MLO` — file MLO đã biên dịch
-- `of=/dev/sdc` — ghi vào SD card (toàn bộ card, không phải phân vùng `/dev/sdc1`)
-- `bs=512` — block size 512 byte
-- `seek=256` — nhảy qua 256 block đầu tiên (= 128 KB) trước khi ghi, đây chính là offset của MLO
+- `if=MLO` - file MLO đã biên dịch
+- `of=/dev/sdc` - ghi vào SD card (toàn bộ card, không phải phân vùng `/dev/sdc1`)
+- `bs=512` - block size 512 byte
+- `seek=256` - nhảy qua 256 block đầu tiên (= 128 KB) trước khi ghi, đây chính là offset của MLO
 
 **Đọc MLO từ sdcard ra file**
 
@@ -199,7 +199,7 @@ sudo dd if=/dev/zero of=/dev/sdc bs=512 seek=256 count=200
 sync
 ```
 
-Đọc từ `/dev/zero` (toàn byte 0) ghi đè lên vùng MLO — hiệu quả tương đương xóa.
+Đọc từ `/dev/zero` (toàn byte 0) ghi đè lên vùng MLO - hiệu quả tương đương xóa.
 
 ## 8. Lệnh apt
 
@@ -236,7 +236,7 @@ Phần này giới thiệu các device file đặc biệt khi ta làm việc v�
 
 ### 9.1. /dev/null
 
-Mọi dữ liệu ghi vào file này đều biến mất, không lưu ở đâu cả. Đọc từ file thì lập tức nhận EOF (end-of-life), tức không có gì để đọc. Ta có thể hình dung `/dev/null` như một thùng rác vô đáy — bỏ gì vào cũng mất, nhìn vào thì trống rỗng.
+Mọi dữ liệu ghi vào file này đều biến mất, không lưu ở đâu cả. Đọc từ file thì lập tức nhận EOF (end-of-life), tức không có gì để đọc. Ta có thể hình dung `/dev/null` như một thùng rác vô đáy - bỏ gì vào cũng mất, nhìn vào thì trống rỗng.
  
 **Ví dụ thực tế: Ta muốn chạy một lệnh nhưng không muốn thấy thông báo lỗi trên terminal**
 
@@ -244,10 +244,10 @@ Mọi dữ liệu ghi vào file này đều biến mất, không lưu ở đâu 
 find / -name "*.log" 2>/dev/null
 ```
 
-Ở đây `2>` chuyển hướng `stderr` vào `/dev/null`. Khi `find` quét vào các thư mục không có quyền đọc, nó sẽ phát sinh hàng loạt lỗi "Permission denied" — nhưng tất cả đều bị nuốt bởi `/dev/null`, nên terminal chỉ hiện ra những kết quả tìm thấy hợp lệ.
+Ở đây `2>` chuyển hướng `stderr` vào `/dev/null`. Khi `find` quét vào các thư mục không có quyền đọc, nó sẽ phát sinh hàng loạt lỗi "Permission denied" - nhưng tất cả đều bị nuốt bởi `/dev/null`, nên terminal chỉ hiện ra những kết quả tìm thấy hợp lệ.
 
 :::tip Mẹo hay
-Ta có thể dùng `/dev/null` để xóa nội dung một file mà không xóa chính file đó: `cat /dev/null > logfile.txt`. File vẫn tồn tại nhưng nội dung bên trong bị xóa sạch — rất hữu ích khi muốn làm trống file log mà không ảnh hưởng đến các chương trình đang ghi vào nó.
+Ta có thể dùng `/dev/null` để xóa nội dung một file mà không xóa chính file đó: `cat /dev/null > logfile.txt`. File vẫn tồn tại nhưng nội dung bên trong bị xóa sạch - rất hữu ích khi muốn làm trống file log mà không ảnh hưởng đến các chương trình đang ghi vào nó.
 :::
 
 ### 9.2. /dev/zero
@@ -298,15 +298,15 @@ Chữ "u" trong urandom nghĩa là "unlimited" (không giới hạn) hoặc "unb
 head -c 15 /dev/urandom | base64
 ```
 
-Đọc 15 byte ngẫu nhiên rồi mã hóa base64, cho ra chuỗi khoảng 20 ký tự gồm chữ hoa, chữ thường, số và +/=. Dùng `/dev/urandom` thay vì `/dev/random` vì ta không muốn lệnh phải treo chờ entropy — với việc sinh password, mức ngẫu nhiên của `urandom` là quá đủ.
+Đọc 15 byte ngẫu nhiên rồi mã hóa base64, cho ra chuỗi khoảng 20 ký tự gồm chữ hoa, chữ thường, số và +/=. Dùng `/dev/urandom` thay vì `/dev/random` vì ta không muốn lệnh phải treo chờ entropy - với việc sinh password, mức ngẫu nhiên của `urandom` là quá đủ.
 
-:::warning random vs urandom — chọn cái nào?
+:::warning random vs urandom - chọn cái nào?
 Trên Linux hiện đại (phiên bản kernel 5.6 trở lên), cả hai gần như giống nhau về chất lượng ngẫu nhiên sau khi hệ thống đã khởi động xong. Sự khác biệt chỉ thực sự quan trọng trên kernel cũ hoặc trong giai đoạn hệ thống mới bật lên (early boot) khi entropy pool chưa có đủ dữ liệu.
 :::
  
 ### 9.5. /dev/full
 
-Đọc từ nó thì giống `/dev/zero` (trả về null byte). Nhưng khi ghi vào nó, luôn trả về lỗi `ENOSPC` (No space left on device) — giả lập tình trạng ổ đĩa hết dung lượng.
+Đọc từ nó thì giống `/dev/zero` (trả về null byte). Nhưng khi ghi vào nó, luôn trả về lỗi `ENOSPC` (No space left on device) - giả lập tình trạng ổ đĩa hết dung lượng.
 
 **Ví dụ thực tế: Kiểm tra xem script của ta có xử lý đúng khi ghi file thất bại không:**
 
@@ -352,7 +352,7 @@ Dù `stdin` đã bị chiếm bởi pipe, `/dev/tty` vẫn kết nối trực ti
  
 ### 9.7. Kết luận
 
-Các device file trong `/dev` là một phần thiết kế cốt lõi của Linux — triết lý **"mọi thứ đều là file"**. Nhờ có chúng, ta có thể dùng các công cụ dòng lệnh quen thuộc (`cat`, `echo`, `dd`, `head`...) để tương tác với phần cứng và các tính năng đặc biệt của kernel mà không cần viết chương trình phức tạp.
+Các device file trong `/dev` là một phần thiết kế cốt lõi của Linux - triết lý **"mọi thứ đều là file"**. Nhờ có chúng, ta có thể dùng các công cụ dòng lệnh quen thuộc (`cat`, `echo`, `dd`, `head`...) để tương tác với phần cứng và các tính năng đặc biệt của kernel mà không cần viết chương trình phức tạp.
  
 Hiểu rõ các device file này sẽ giúp ta viết script hiệu quả hơn, xử lý lỗi tốt hơn, và hiểu sâu hơn cách Linux vận hành ở phía sau.
 

@@ -36,7 +36,7 @@ Có hai mô hình virtual display buffer:
 
 ### Khái niệm
 
-Trong LVGL, screen là một `lv_obj_t` đặc biệt — nó là root của một object tree. Mỗi display có thể tạo nhiều screen, nhưng tại một thời điểm chỉ có một screen được hiển thị (gọi là active screen). Các screen khác vẫn tồn tại trong RAM, sẵn sàng để chuyển đổi.
+Trong LVGL, screen là một `lv_obj_t` đặc biệt - nó là root của một object tree. Mỗi display có thể tạo nhiều screen, nhưng tại một thời điểm chỉ có một screen được hiển thị (gọi là active screen). Các screen khác vẫn tồn tại trong RAM, sẵn sàng để chuyển đổi.
 
 ### Tạo screen
 
@@ -52,10 +52,10 @@ Khi truyền `NULL`, LVGL hiểu đây là một screen object, không gắn và
 So sánh với việc tạo widget thông thường:
 
 ```c
-// Tạo screen — parent là NULL
+// Tạo screen - parent là NULL
 lv_obj_t *screen = lv_obj_create(NULL);
 
-// Tạo widget — parent là screen hoặc widget khác
+// Tạo widget - parent là screen hoặc widget khác
 lv_obj_t *button = lv_btn_create(screen);
 ```
 
@@ -208,7 +208,7 @@ Dữ liệu mà `user_data` trỏ tới phải tồn tại trong suốt vòng đ
 | `LV_EVENT_GESTURE` | Phát hiện gesture (swipe left/right/up/down) |
 | `LV_EVENT_SCREEN_LOADED` | Screen đã hiển thị xong sau animation |
 | `LV_EVENT_SCREEN_UNLOADED` | Screen đã bị thay thế bởi screen khác |
-| `LV_EVENT_DELETE` | Widget sắp bị xóa — dùng để giải phóng tài nguyên liên quan |
+| `LV_EVENT_DELETE` | Widget sắp bị xóa - dùng để giải phóng tài nguyên liên quan |
 | `LV_EVENT_ALL` | Bắt tất cả event (chỉ nên dùng cho debug) |
 
 ## Style
@@ -242,7 +242,7 @@ LVGL tự động chuyển state của widget khi người dùng tương tác. K
 // Style bình thường
 lv_obj_add_style(btn, &style_normal, LV_STATE_DEFAULT);
 
-// Style khi nhấn — LVGL tự chuyển khi ngón tay chạm vào
+// Style khi nhấn - LVGL tự chuyển khi ngón tay chạm vào
 lv_obj_add_style(btn, &style_pressed, LV_STATE_PRESSED);
 ```
 
@@ -261,9 +261,9 @@ Các state thường dùng:
 Một số widget phức tạp có nhiều phần (part), mỗi phần có thể có style riêng. Ví dụ, slider gồm 3 phần:
 
 ```c
-// LV_PART_MAIN        — track nền (thanh nằm ngang)
-// LV_PART_INDICATOR   — phần đã fill (từ min đến giá trị hiện tại)
-// LV_PART_KNOB        — nút kéo tròn
+// LV_PART_MAIN        - track nền (thanh nằm ngang)
+// LV_PART_INDICATOR   - phần đã fill (từ min đến giá trị hiện tại)
+// LV_PART_KNOB        - nút kéo tròn
 
 lv_obj_add_style(slider, &style_track, LV_PART_MAIN);
 lv_obj_add_style(slider, &style_fill, LV_PART_INDICATOR);
@@ -274,7 +274,7 @@ lv_obj_add_style(slider, &style_knob, LV_PART_KNOB);
 
 Có hai cách đặt style cho widget:
 
-**Inline style** — đặt trực tiếp trên widget bằng `lv_obj_set_style_*`:
+**Inline style** - đặt trực tiếp trên widget bằng `lv_obj_set_style_*`:
 
 ```c
 lv_obj_set_style_bg_color(btn, lv_color_hex(0xFF0000), 0);
@@ -283,7 +283,7 @@ lv_obj_set_style_border_width(btn, 2, 0);
 
 Mỗi lần gọi sẽ lưu một bản copy thuộc tính bên trong widget. Nếu có 50 widget giống nhau, sẽ tốn 50 bản copy.
 
-**Shared style** — tạo style một lần, nhiều widget dùng chung:
+**Shared style** - tạo style một lần, nhiều widget dùng chung:
 
 ```c
 static lv_style_t style_item;
@@ -312,7 +312,7 @@ Khi export, SquareLine tạo ra các file theo cấu trúc sau:
 ```
 ui/
 ├── ui.h                    // Header chính, khai báo biến global cho tất cả widget
-├── ui.c                    // Hàm ui_init() — entry point khởi tạo toàn bộ UI
+├── ui.c                    // Hàm ui_init() - entry point khởi tạo toàn bộ UI
 ├── ui_helpers.h            // Khai báo hàm helper (animation, action)
 ├── ui_helpers.c            // Implement các helper
 ├── ui_events.h             // Khai báo prototype cho các event callback
@@ -326,7 +326,7 @@ ui/
 
 ### Vai trò từng file
 
-**`ui.h` / `ui.c`** — Entry point. File `ui.h` khai báo biến `extern` cho mọi widget mà ta đặt tên trong SquareLine:
+**`ui.h` / `ui.c`** - Entry point. File `ui.h` khai báo biến `extern` cho mọi widget mà ta đặt tên trong SquareLine:
 
 ```c
 // Ví dụ nội dung ui.h sau khi export
@@ -337,11 +337,11 @@ extern lv_obj_t *ui_sliderProgress;
 extern lv_obj_t *ui_lblSongName;
 ```
 
-File `ui.c` chứa hàm `ui_init()` — gọi hàm khởi tạo từng screen, sau đó load screen đầu tiên. Ta gọi `ui_init()` một lần duy nhất sau khi đã init LVGL.
+File `ui.c` chứa hàm `ui_init()` - gọi hàm khởi tạo từng screen, sau đó load screen đầu tiên. Ta gọi `ui_init()` một lần duy nhất sau khi đã init LVGL.
 
-**`screens/ui_ScreenXxx.c`** — Mỗi file tương ứng với một screen, chứa code tạo widget, đặt vị trí, gán style, và đăng ký event callback theo thiết kế trong SquareLine.
+**`screens/ui_ScreenXxx.c`** - Mỗi file tương ứng với một screen, chứa code tạo widget, đặt vị trí, gán style, và đăng ký event callback theo thiết kế trong SquareLine.
 
-**`ui_events.c`** — Đây là file quan trọng nhất cho dev. SquareLine tạo skeleton (hàm rỗng) cho mỗi event callback đã gán trong GUI. Dev viết logic xử lý vào đây:
+**`ui_events.c`** - Đây là file quan trọng nhất cho dev. SquareLine tạo skeleton (hàm rỗng) cho mỗi event callback đã gán trong GUI. Dev viết logic xử lý vào đây:
 
 ```c
 void ui_event_btnPlay(lv_event_t *e) {
@@ -352,7 +352,7 @@ void ui_event_btnPlay(lv_event_t *e) {
 }
 ```
 
-**`ui_helpers.h` / `ui_helpers.c`** — Chứa các hàm tiện ích mà SquareLine sử dụng nội bộ cho action/animation được gán trong GUI (ví dụ action "Change Screen" sẽ dùng hàm `_ui_screen_change`).
+**`ui_helpers.h` / `ui_helpers.c`** - Chứa các hàm tiện ích mà SquareLine sử dụng nội bộ cho action/animation được gán trong GUI (ví dụ action "Change Screen" sẽ dùng hàm `_ui_screen_change`).
 
 ### Quy tắc chỉnh sửa file
 
@@ -388,13 +388,13 @@ for (int i = 0; i < file_count; i++) {
 ### Biểu hiện thường gặp
 
 Khi gọi LVGL API từ một task khác mà không có bảo vệ, các triệu chứng có thể gặp:
-- Watchdog Timer (WDT) timeout — task bị kẹt do deadlock bên trong LVGL.
+- Watchdog Timer (WDT) timeout - task bị kẹt do deadlock bên trong LVGL.
 - Crash tại các hàm liên quan đến memory allocation (`lv_label_set_text`, `lv_label_set_text_fmt`,...).
 - Hiển thị bị lỗi, widget vẽ sai vị trí.
 
 Không phải mọi hàm LVGL đều có cùng mức độ nguy hiểm khi bị gọi đồng thời. Các hàm thao tác memory allocation (như `lv_label_set_text_fmt`) có xác suất crash cao hơn nhiều so với các hàm chỉ ghi một giá trị đơn giản (như `lv_slider_set_value`). Tuy nhiên, tất cả đều không an toàn nếu không có mutex.
 
-Lý do: `lv_label_set_text_fmt` bên trong thực hiện `lv_mem_realloc` để cấp phát bộ nhớ cho chuỗi mới. LVGL memory allocator quản lý bằng linked list — nếu hai task cùng thao tác linked list này, dữ liệu sẽ bị corrupt, dẫn đến infinite loop hoặc crash, kéo theo WDT timeout.
+Lý do: `lv_label_set_text_fmt` bên trong thực hiện `lv_mem_realloc` để cấp phát bộ nhớ cho chuỗi mới. LVGL memory allocator quản lý bằng linked list - nếu hai task cùng thao tác linked list này, dữ liệu sẽ bị corrupt, dẫn đến infinite loop hoặc crash, kéo theo WDT timeout.
 
 ### Giải pháp: mutex
 

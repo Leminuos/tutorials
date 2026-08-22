@@ -286,7 +286,7 @@ Mỗi bước là một lần tra cứu tên tới inode. Nếu lần nào cũng
 Mỗi dentry sau khi resolve xong sẽ được cache lại trong một hash table toàn cục, key là (dentry cha, tên). Lần sau cần tra `nginx` trong `etc`, kernel tra thẳng trong RAM, không đụng tới filesystem thật bên dưới. Đây là lý do lần mở file thứ hai luôn nhanh hơn lần đầu rõ rệt.
 
 Vài điểm hay của dcache:
-- Negative dentry: kernel còn cache cả những lần tra cứu thất bại — file không tồn tại. Nhờ vậy `stat()` liên tục lên một file chưa tạo, rất phổ biến khi compiler tìm header hay shell tìm binary trong `$PATH`.
+- Negative dentry: kernel còn cache cả những lần tra cứu thất bại - file không tồn tại. Nhờ vậy `stat()` liên tục lên một file chưa tạo, rất phổ biến khi compiler tìm header hay shell tìm binary trong `$PATH`.
 - LRU + shrinker: dcache không giữ mọi thứ mãi mãi. Khi RAM sắp tràn, kernel có cơ chế shrink dcache dựa trên LRU, ưu tiên giữ lại những gì đang dùng.
 - RCU-walk: từ Linux 2.6.38, path lookup có chế độ đi qua dcache mà gần như không cần lock (dùng RCU), chỉ fallback về "ref-walk" có lock khi gặp trường hợp phức tạp (symlink, mount point...). Đây là một trong những tối ưu quan trọng nhất giúp lookup scale tốt trên máy nhiều core.
 

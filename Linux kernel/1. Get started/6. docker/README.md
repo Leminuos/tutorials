@@ -7,9 +7,9 @@ Ví dụ cụ thể: ta đang phát triển một website dùng Python 3.11 + Po
 ## 2. Tại sao cần Docker?
 
 Có nhiều lý do thực tế:
-- Nhất quán môi trường: Đây là lý do lớn nhất. Khi ta làm việc nhóm, mỗi người có máy khác nhau — người dùng Windows, người dùng Mac, người dùng Linux. Phiên bản phần mềm cũng khác nhau. Docker giải quyết triệt để: mọi người cùng chạy một container giống hệt nhau, không còn chuyện "máy tôi chạy được mà máy bạn không chạy."
+- Nhất quán môi trường: Đây là lý do lớn nhất. Khi ta làm việc nhóm, mỗi người có máy khác nhau - người dùng Windows, người dùng Mac, người dùng Linux. Phiên bản phần mềm cũng khác nhau. Docker giải quyết triệt để: mọi người cùng chạy một container giống hệt nhau, không còn chuyện "máy tôi chạy được mà máy bạn không chạy."
 - Cô lập ứng dụng: Giả sử ta có 2 dự án: dự án A cần Node.js 16, dự án B cần Node.js 20. Cài cả hai phiên bản trên cùng máy rất dễ xung đột. Với Docker, mỗi dự án chạy trong container riêng, mỗi container có phiên bản Node.js riêng, hoàn toàn không ảnh hưởng lẫn nhau.
-- Triển khai dễ dàng: Khi ứng dụng chạy tốt trong container trên máy, ta chỉ cần đưa nguyên container đó lên server. Không cần lo cấu hình server, cài đặt thư viện — container đã chứa sẵn mọi thứ.
+- Triển khai dễ dàng: Khi ứng dụng chạy tốt trong container trên máy, ta chỉ cần đưa nguyên container đó lên server. Không cần lo cấu hình server, cài đặt thư viện - container đã chứa sẵn mọi thứ.
 - Khởi động nhanh, nhẹ tài nguyên: Một container khởi động trong 1–2 giây, trong khi máy ảo cần vài phút. Container cũng chỉ tốn vài chục MB RAM thay vì hàng GB như máy ảo.
 - Dễ dọn dẹp: Muốn thử một công nghệ mới ví dụ Redis, MongoDB, Elasticsearch,...? Chỉ cần chạy container của nó, dùng thử, rồi xóa. Máy ta hoàn toàn sạch, không bị xả rá" bởi những thứ cài rồi gỡ không hết.
 
@@ -305,7 +305,7 @@ FROM python:3.11-slim
 # Đặt thư mục làm việc
 WORKDIR /app
 
-# Copy file requirements trước (để tận dụng cache — giải thích bên dưới)
+# Copy file requirements trước (để tận dụng cache - giải thích bên dưới)
 COPY requirements.txt .
 
 # Cài thư viện
@@ -535,7 +535,7 @@ web:
 ```yaml
 web:
   ports:
-    - "8080:8000"      # máy_chủ:container — truy cập được từ bên ngoài
+    - "8080:8000"      # máy_chủ:container - truy cập được từ bên ngoài
     - "443:443"
 
 backend:
@@ -551,10 +551,10 @@ Dùng `ports` cho service cần truy cập từ trình duyệt (Nginx, frontend)
 services:
   db:
     volumes:
-      # Named volume — Docker quản lý, dữ liệu tồn tại khi xóa container
+      # Named volume - Docker quản lý, dữ liệu tồn tại khi xóa container
       - db-data:/var/lib/postgresql/data
 
-      # Bind mount — gắn thư mục từ máy chủ vào container
+      # Bind mount - gắn thư mục từ máy chủ vào container
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
       # Bind mount read-only

@@ -32,7 +32,7 @@ Dữ liệu trên bus USB được tổ chức theo ba lớp logic từ thấp �
 | **Transaction** | Đơn vị truyền dữ liệu cơ bản (gồm token, data, handshake) | Chuỗi các packet thực hiện một hành động hoàn chỉnh |
 | **Transfer** | Mục đích truyền dữ liệu | Chuỗi nhiều transaction, hoàn thành một tác vụ cụ thể |
 
-Các lớp này được tổ chức trong **frame** — đơn vị thời gian mà host dùng để lập lịch:
+Các lớp này được tổ chức trong **frame** - đơn vị thời gian mà host dùng để lập lịch:
 
 ```mermaid
 flowchart TD
@@ -172,7 +172,7 @@ Trường này được sử dụng để verify tất cả các trường ngoà
 | Data Packet | CRC16 | 16 bit | Data field |
 
 :::warning Lưu ý
-CRC không bảo vệ PID field — PID đã có cơ chế check riêng (4 bit complement). CRC chỉ bảo vệ các trường khác trong packet.
+CRC không bảo vệ PID field - PID đã có cơ chế check riêng (4 bit complement). CRC chỉ bảo vệ các trường khác trong packet.
 :::
 
 ### 3.7. EOP (End of Packet)
@@ -200,7 +200,7 @@ Token: IN, Address=5, Endpoint=1
 => Nghĩa là: "Device số 5, hãy gửi dữ liệu từ endpoint 1 của bạn cho tôi"
 ```
 
-**SOF Packet** (đặc biệt — không theo format token thông thường):
+**SOF Packet** (đặc biệt - không theo format token thông thường):
 
 ![SOF packet](img/03-sof-packet.png)
 
@@ -220,7 +220,7 @@ USB sử dụng data toggle (DATA0/DATA1) để phát hiện packet bị mất h
 - Sau mỗi lần truyền thành công (nhận ACK), **cả host và device đều đảo toggle bit** (0$\rightarrow$1 hoặc 1$\rightarrow$0).
 - Nếu host hoặc device nhận packet có toggle bit không khớp mong đợi $\rightarrow$ **packet bị coi là trùng lặp** $\rightarrow$ ignore data nhưng vẫn gửi ACK.
 
-**Ví dụ — OUT transfer bình thường:**
+**Ví dụ - OUT transfer bình thường:**
 
 ```mermaid
 sequenceDiagram
@@ -246,7 +246,7 @@ sequenceDiagram
     Note over D: expect --> 1
 ```
 
-**Ví dụ — ACK bị mất, host retry:**
+**Ví dụ - ACK bị mất, host retry:**
 
 ```mermaid
 sequenceDiagram
@@ -460,7 +460,7 @@ sequenceDiagram
 | Low Speed | **Không hỗ trợ** bulk transfer |
 
 :::warning Short Packet và Zero-Length Packet (ZLP)
-Bulk transfer kết thúc khi host/device gửi một short packet (nhỏ hơn max packet size). Nếu tổng data vừa đúng bội số của max packet size, cần gửi thêm một zero-length packet (ZLP) để báo hiệu kết thúc transfer. Đây là lỗi phổ biến khi viết firmware USB — quên gửi ZLP khiến host chờ mãi vì nghĩ transfer chưa xong.
+Bulk transfer kết thúc khi host/device gửi một short packet (nhỏ hơn max packet size). Nếu tổng data vừa đúng bội số của max packet size, cần gửi thêm một zero-length packet (ZLP) để báo hiệu kết thúc transfer. Đây là lỗi phổ biến khi viết firmware USB - quên gửi ZLP khiến host chờ mãi vì nghĩ transfer chưa xong.
 :::
 
 ### 5.4. Isochronous transfer

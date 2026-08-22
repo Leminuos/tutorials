@@ -1,4 +1,4 @@
-// misc_driver.c — SSD1306 via I2C using a misc device
+// misc_driver.c - SSD1306 via I2C using a misc device
 // Build: kernel module
 // Device file: /dev/ssd1306_misc
 //

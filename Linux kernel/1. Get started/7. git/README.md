@@ -90,13 +90,13 @@ HEAD ---> main ---> commit D
 
 Nhờ cơ chế gián tiếp này, khi ta commit thì branch tiến lên còn HEAD vẫn bám theo branch.
 
-Khi checkout thẳng một commit hoặc tag (`git checkout 2cece91`), HEAD trỏ trực tiếp đến commit — trạng thái **detached HEAD**:
+Khi checkout thẳng một commit hoặc tag (`git checkout 2cece91`), HEAD trỏ trực tiếp đến commit - trạng thái **detached HEAD**:
 
 ```
 HEAD ---> commit C        (không qua branch nào)
 ```
 
-Lúc này vẫn xem code, build, thậm chí commit được, nhưng commit mới tạo không thuộc branch nào — chuyển đi nơi khác là chúng thành orphan và sẽ bị dọn rác sau này. Muốn giữ lại thì tạo branch ngay tại đó: `git switch -c <tên-branch>`.
+Lúc này vẫn xem code, build, thậm chí commit được, nhưng commit mới tạo không thuộc branch nào - chuyển đi nơi khác là chúng thành orphan và sẽ bị dọn rác sau này. Muốn giữ lại thì tạo branch ngay tại đó: `git switch -c <tên-branch>`.
 
 ### Stash
 
@@ -147,7 +147,7 @@ Git không bao giờ sửa hay xoá commit đã tạo. Commit là bất biến, 
 
 ```
 Trước amend:              Sau amend:
-                                    C   (commit cũ — vẫn tồn tại, nhưng không branch nào trỏ tới)
+                                    C   (commit cũ - vẫn tồn tại, nhưng không branch nào trỏ tới)
 A --- B --- C             A --- B <
             |                       C'  (commit mới)
            main                     |
@@ -208,7 +208,7 @@ git config --global alias.lg "log --oneline --graph --all"
 | `git clone <url>` | Tải repo về máy |
 | `git clone <url> <folder>` | Clone vào thư mục chỉ định |
 | `git clone -b <branch> <url>` | Clone và checkout branch cụ thể |
-| `git clone --depth 1 <url>` | Shallow clone — chỉ lấy commit mới nhất (nhanh, nhẹ, hữu ích với repo lớn như linux kernel) |
+| `git clone --depth 1 <url>` | Shallow clone - chỉ lấy commit mới nhất (nhanh, nhẹ, hữu ích với repo lớn như linux kernel) |
 
 ## 4. Theo dõi thay đổi (status, add, diff)
 
@@ -290,7 +290,7 @@ perf(query): add index on users.email column
 feat!: drop support for Node 14
 ```
 
-Dấu `!` sau type/scope (như `feat!:`) báo hiệu đây là breaking change — thay đổi không tương thích ngược.
+Dấu `!` sau type/scope (như `feat!:`) báo hiệu đây là breaking change - thay đổi không tương thích ngược.
 
 Body và footer dùng khi cần giải thích thêm:
 
@@ -463,7 +463,7 @@ Chọn lệnh theo tình huống:
 | Bỏ commit local, xoá sạch thay đổi | `git reset --hard HEAD~1` |
 | Hoàn tác commit đã push | `git revert <commit>` |
 
-### git reset — 3 chế độ
+### git reset - 3 chế độ
 
 `git reset <commit>` kéo branch hiện tại về commit chỉ định. Ba chế độ khác nhau ở chỗ giữ lại gì:
 
@@ -481,12 +481,12 @@ git reset --hard origin/main  # đưa local về đúng trạng thái remote
 ```
 
 :::warning Lưu ý
-`git reset --hard` xoá vĩnh viễn các thay đổi chưa commit — không lấy lại được. Với commit đã mất do reset, còn cứu được qua `git reflog` (xem [mục 15](#15-tìm-kiếm-và-gỡ-lỗi-grep-bisect-reflog)).
+`git reset --hard` xoá vĩnh viễn các thay đổi chưa commit - không lấy lại được. Với commit đã mất do reset, còn cứu được qua `git reflog` (xem [mục 15](#15-tìm-kiếm-và-gỡ-lỗi-grep-bisect-reflog)).
 :::
 
-### git revert — hoàn tác an toàn
+### git revert - hoàn tác an toàn
 
-Tạo một commit mới đảo ngược thay đổi của commit cũ, không viết lại lịch sử — an toàn cho branch đã push chung:
+Tạo một commit mới đảo ngược thay đổi của commit cũ, không viết lại lịch sử - an toàn cho branch đã push chung:
 
 ```bash
 git revert <commit>           # revert một commit
@@ -513,7 +513,7 @@ git clean -f
 ```
 
 :::warning Lưu ý
-Các file trong `.gitignore` sẽ không bị xóa khi dùng `git clean -f` (muốn xoá cả chúng phải thêm `-x`). File bị `git clean` xoá không nằm trong lịch sử Git nên không khôi phục được — luôn chạy `git clean -n` trước để xem danh sách.
+Các file trong `.gitignore` sẽ không bị xóa khi dùng `git clean -f` (muốn xoá cả chúng phải thêm `-x`). File bị `git clean` xoá không nằm trong lịch sử Git nên không khôi phục được - luôn chạy `git clean -n` trước để xem danh sách.
 :::
 
 Hoặc xoá cả các folder untracked:
@@ -542,7 +542,7 @@ git clean -fd -e uploads/
 
 ## 14. Tag
 
-Tag đánh dấu một commit cụ thể, thường dùng cho release (`v1.0.0`). Có 2 loại: **lightweight** (chỉ là con trỏ) và **annotated** (có tác giả, ngày, message — nên dùng cho release).
+Tag đánh dấu một commit cụ thể, thường dùng cho release (`v1.0.0`). Có 2 loại: **lightweight** (chỉ là con trỏ) và **annotated** (có tác giả, ngày, message - nên dùng cho release).
 
 | Lệnh | Ý nghĩa |
 |---|---|
@@ -560,7 +560,7 @@ Tag đánh dấu một commit cụ thể, thường dùng cho release (`v1.0.0`)
 
 ## 15. Tìm kiếm và gỡ lỗi (grep, bisect, reflog)
 
-### git grep — tìm trong code
+### git grep - tìm trong code
 
 | Lệnh | Ý nghĩa |
 |---|---|
@@ -568,7 +568,7 @@ Tag đánh dấu một commit cụ thể, thường dùng cho release (`v1.0.0`)
 | `git grep -n "pattern"` | Kèm số dòng |
 | `git grep "pattern" <commit>` | Tìm trong một commit/tag cũ |
 
-### git bisect — tìm commit gây bug
+### git bisect - tìm commit gây bug
 
 Tìm kiếm nhị phân qua lịch sử để xác định commit đầu tiên gây lỗi:
 
@@ -576,7 +576,7 @@ Tìm kiếm nhị phân qua lịch sử để xác định commit đầu tiên g
 git bisect start
 git bisect bad                # commit hiện tại bị lỗi
 git bisect good v1.0.0        # bản v1.0.0 còn chạy tốt
-# Git checkout commit ở giữa — ta test rồi trả lời:
+# Git checkout commit ở giữa - ta test rồi trả lời:
 git bisect good               # hoặc: git bisect bad
 # ... lặp lại đến khi Git chỉ ra commit gây lỗi
 git bisect reset              # quay về trạng thái ban đầu
@@ -584,7 +584,7 @@ git bisect reset              # quay về trạng thái ban đầu
 
 Nếu có script test tự động (exit 0 = tốt): `git bisect run ./test.sh`
 
-### git reflog — cứu hộ
+### git reflog - cứu hộ
 
 `reflog` ghi lại mọi lần HEAD di chuyển (commit, reset, rebase, checkout...) trong local. Đây là phao cứu sinh khi lỡ tay `reset --hard` hay xoá branch:
 
@@ -608,7 +608,7 @@ File `.gitignore` liệt kê các pattern mà Git bỏ qua (không track):
 build/              # cả thư mục build
 /config.json        # chỉ file ở gốc repo (có / đầu)
 doc/**/*.pdf        # mọi file .pdf trong doc/ ở mọi cấp
-!keep.o             # ngoại lệ — vẫn track file này
+!keep.o             # ngoại lệ - vẫn track file này
 ```
 
 :::warning Lưu ý

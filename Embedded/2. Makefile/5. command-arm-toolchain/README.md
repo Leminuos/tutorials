@@ -67,7 +67,7 @@ $(BUILD_DIR)/%.o: %.c
 - `-lm`: Link thư viện math, cần khi dùng `sin()`, `sqrt()`, `pow()`,...
 - `-lnosys`:  Stub cho các syscall chưa định nghĩa để tránh lỗi link khi không có `syscalls.c.`. `-lnosys` thường dùng khi không có OS, nó sẽ link tới `libnosys.a`, trong đó các syscall như `_write`, `_read`,...là hàm rỗng.
 - `-L$(LIBDIR)`: Chỉ định thư mục chứa các thư viện .a, nếu ta cần link các thư viện tự tạo.
-- `-T$(LDSCRIPT)`: Chỉ định linker script (`.ld` file) — là file định nghĩa cách sắp xếp vùng nhớ (FLASH, RAM, v.v.)
+- `-T$(LDSCRIPT)`: Chỉ định linker script (`.ld` file) - là file định nghĩa cách sắp xếp vùng nhớ (FLASH, RAM, v.v.)
 - `-Map=[path_to_file.map]`: Tạo file .map chứa thông tin symbol.
 
 Ví dụ:

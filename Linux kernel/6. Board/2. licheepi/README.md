@@ -142,7 +142,7 @@ Một số driver chưa được mainline hỗ trợ như Display Engine, TCON/L
 - Lichee-Pi Linux fork: [Lichee-Pi/linux](https://github.com/Lichee-Pi/linux)
 - Buildroot dùng mainline: [goediy/licheepi-nano-mainline](https://github.com/goediy/licheepi-nano-mainline/tree/main)
 
-Định hướng của ta là build image cho board bằng Yocto (release Scarthgap), mà Scarthgap dùng kernel 6.6 LTS, nên ta chọn luôn version 6.6 để bring-up thủ công — sau này chuyển sang Yocto sẽ không phải đổi kernel.
+Định hướng của ta là build image cho board bằng Yocto (release Scarthgap), mà Scarthgap dùng kernel 6.6 LTS, nên ta chọn luôn version 6.6 để bring-up thủ công - sau này chuyển sang Yocto sẽ không phải đổi kernel.
 
 ## 4. Chuẩn bị toolchain
 
@@ -169,9 +169,9 @@ arm-linux-gnueabi-gcc --version
 
 Các lựa chọn khác khi cần version cụ thể hoặc kiểm soát chặt hơn:
 
-- [Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) — bản chính thức từ Arm, prebuilt.
-- [Bootlin toolchains](https://toolchains.bootlin.com/) — prebuilt cho từng cặp architecture/libc, có sẵn `armv5-eabi`.
-- Yocto SDK — về sau khi đã có meta layer, Yocto tự build toolchain khớp tuyệt đối với rootfs; đây mới là toolchain "chuẩn" của sản phẩm.
+- [Arm GNU Toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads) - bản chính thức từ Arm, prebuilt.
+- [Bootlin toolchains](https://toolchains.bootlin.com/) - prebuilt cho từng cặp architecture/libc, có sẵn `armv5-eabi`.
+- Yocto SDK - về sau khi đã có meta layer, Yocto tự build toolchain khớp tuyệt đối với rootfs; đây mới là toolchain "chuẩn" của sản phẩm.
 
 Từ đây trở đi, mọi lệnh build đều truyền hai biến `ARCH=arm CROSS_COMPILE=arm-linux-gnueabi-` để hệ thống build dùng đúng toolchain này.
 
@@ -189,7 +189,7 @@ make ARCH=arm CROSS_COMPILE=arm-linux-gnueabi- licheepi_nano_defconfig
 make ARCH=arm CROSS_COMPILE=arm-linux-gnueabi- -j$(nproc)
 ```
 
-Build thành công sẽ tạo ra file `u-boot-sunxi-with-spl.bin` — một binary duy nhất chứa cả SPL lẫn U-Boot proper, đã được đặt đúng layout mà Boot ROM yêu cầu:
+Build thành công sẽ tạo ra file `u-boot-sunxi-with-spl.bin` - một binary duy nhất chứa cả SPL lẫn U-Boot proper, đã được đặt đúng layout mà Boot ROM yêu cầu:
 
 ```
 u-boot-sunxi-with-spl.bin
@@ -217,7 +217,7 @@ Cần xác định đúng `/dev/sdX`. Nếu chọn nhầm, lệnh `dd` sẽ ghi 
    sudo dd if=/dev/zero of=${card} bs=1M count=1
    ```
 
-3. Ghi binary vào offset 8 KB — đúng vị trí BROM của F1C100s tìm SPL:
+3. Ghi binary vào offset 8 KB - đúng vị trí BROM của F1C100s tìm SPL:
 
    ```bash
    sudo dd if=u-boot-sunxi-with-spl.bin \
@@ -278,11 +278,11 @@ Các dòng lỗi `No partition table`, `Config file not found` là bình thườ
 
 ## 6. Build Linux kernel
 
-Mục tiêu: Kernel boot đến panic "unable to mount root fs" — tức CPU, memory, interrupt, UART đều OK.
+Mục tiêu: Kernel boot đến panic "unable to mount root fs" - tức CPU, memory, interrupt, UART đều OK.
 
 ### 6.1. Lấy source
 
-Clone branch stable `linux-6.6.y` — branch này liên tục nhận các bản patch ổn định của dòng 6.6:
+Clone branch stable `linux-6.6.y` - branch này liên tục nhận các bản patch ổn định của dòng 6.6:
 
 ```bash
 git clone --depth 1 --single-branch --branch linux-6.6.y \
@@ -305,7 +305,7 @@ mkdir -p build
 make O=build ARCH=arm CROSS_COMPILE=arm-linux-gnueabi- mrproper
 ```
 
-Dùng `multi_v5_defconfig` — defconfig chung cho các SoC ARMv5 multiplatform, đã bao gồm họ suniv:
+Dùng `multi_v5_defconfig` - defconfig chung cho các SoC ARMv5 multiplatform, đã bao gồm họ suniv:
 
 ```bash
 make O=build ARCH=arm CROSS_COMPILE=arm-linux-gnueabi- multi_v5_defconfig
@@ -351,13 +351,13 @@ Layout SD card nhìn theo trục offset từ đầu thẻ:
 ```
 Offset
 0        ┌─────────────────────────────────┐
-         │ MBR — bảng phân vùng            │
+         │ MBR - bảng phân vùng            │
 8 KB     ├─────────────────────────────────┤
          │ u-boot-sunxi-with-spl.bin       │  SPL + U-Boot
 1 MiB    ├─────────────────────────────────┤
-         │ /dev/sdX1 — BOOT (FAT32)        │  zImage, DTB, boot.scr
+         │ /dev/sdX1 - BOOT (FAT32)        │  zImage, DTB, boot.scr
 65 MiB   ├─────────────────────────────────┤
-         │ /dev/sdX2 — rootfs (ext4)       │  ext4 rootfs partition
+         │ /dev/sdX2 - rootfs (ext4)       │  ext4 rootfs partition
          └─────────────────────────────────┘
 ```
 
@@ -458,9 +458,9 @@ Load kernel và DTB vào RAM (DRAM của F1C100s bắt đầu tại `0x80000000`
 
 Trong đó:
 
-- `console=ttyS0,115200` — kernel in log ra UART0.
-- `earlycon` — bật console sớm ngay từ đầu quá trình boot, trước khi driver serial chính thức được load; rất quan trọng khi debug.
-- `root=/dev/mmcblk0p2 rootwait` — rootfs nằm ở partition 2 của SD card, chờ device sẵn sàng rồi mới mount.
+- `console=ttyS0,115200` - kernel in log ra UART0.
+- `earlycon` - bật console sớm ngay từ đầu quá trình boot, trước khi driver serial chính thức được load; rất quan trọng khi debug.
+- `root=/dev/mmcblk0p2 rootwait` - rootfs nằm ở partition 2 của SD card, chờ device sẵn sàng rồi mới mount.
 
 Boot (dấu `-` ở giữa nghĩa là không dùng initrd):
 
@@ -475,7 +475,7 @@ VFS: Unable to mount root fs
 Kernel panic
 ```
 
-Đây là kết quả **mong đợi**: nó chứng tỏ kernel + DTB hoạt động đúng, chỉ còn thiếu rootfs — tương ứng mức hỗ trợ "kernel chạy và in log qua UART" trong bảng ở mục 3.2.
+Đây là kết quả **mong đợi**: nó chứng tỏ kernel + DTB hoạt động đúng, chỉ còn thiếu rootfs - tương ứng mức hỗ trợ "kernel chạy và in log qua UART" trong bảng ở mục 3.2.
 
 ### 8.2. Tự động hoá bằng boot script
 
@@ -508,7 +508,7 @@ sync
 sudo umount /media/lichee
 ```
 
-Từ giờ mỗi lần cấp nguồn, U-Boot sẽ tự tìm thấy `boot.scr` trên partition FAT và chạy chuỗi lệnh trong đó — không cần gõ tay nữa.
+Từ giờ mỗi lần cấp nguồn, U-Boot sẽ tự tìm thấy `boot.scr` trên partition FAT và chạy chuỗi lệnh trong đó - không cần gõ tay nữa.
 
 ## 9. Hướng tới Yocto
 

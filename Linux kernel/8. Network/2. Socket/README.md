@@ -18,12 +18,12 @@ Ba dải port quan trọng:
 
 Ta sẽ nhìn socket từ nhiều góc độ:
 - Ở góc nhìn đơn giản nhất: socket là một đầu nối mà ứng dụng dùng để gửi/nhận dữ liệu qua mạng. Giống như ổ cắm điện là điểm tiếp xúc giữa thiết bị và mạng lưới điện thì socket là điểm tiếp xúc giữa ứng dụng và mạng lưới internet.
-- Ở góc nhìn developer: socket là một file descriptor — một con số nguyên mà kernel cấp cho ứng dụng. Trong Linux mọi thứ đều được đại diện bởi file và socket cũng vậy. Ta có thể dùng `read()`/`write()` trên socket giống hệt như đọc/ghi file. Sự khác biệt là dữ liệu không đi vào ổ cứng mà đi ra mạng.
+- Ở góc nhìn developer: socket là một file descriptor - một con số nguyên mà kernel cấp cho ứng dụng. Trong Linux mọi thứ đều được đại diện bởi file và socket cũng vậy. Ta có thể dùng `read()`/`write()` trên socket giống hệt như đọc/ghi file. Sự khác biệt là dữ liệu không đi vào ổ cứng mà đi ra mạng.
 - Ở góc nhìn kernel: socket là một cấu trúc dữ liệu lớn trong kernel (`struct socket` chứa `struct sock`), bao gồm toàn bộ thông tin cần thiết để quản lý một kết nối: địa chỉ hai đầu (IP + port), trạng thái TCP, send buffer, receive buffer,...
 
 **Định danh một socket**
 
-Một socket được xác định duy nhất bởi bộ 5 thông tin hay 5 tuple: protocol (TCP/UDP), source IP, source port, destination IP, destination port. Đây là lý do một server chạy trên port 80 có thể phục vụ hàng nghìn client cùng lúc — mỗi kết nối có bộ 5 thông tin khác nhau (vì client IP hoặc client port khác nhau), nên kernel phân biệt được chúng.
+Một socket được xác định duy nhất bởi bộ 5 thông tin hay 5 tuple: protocol (TCP/UDP), source IP, source port, destination IP, destination port. Đây là lý do một server chạy trên port 80 có thể phục vụ hàng nghìn client cùng lúc - mỗi kết nối có bộ 5 thông tin khác nhau (vì client IP hoặc client port khác nhau), nên kernel phân biệt được chúng.
 
 **Các loại socket**
 
@@ -41,7 +41,7 @@ Ta sẽ đi qua luồng client-server, vì đây là mô hình phổ biến nh�
 - `listen()`: chuyển socket sang trạng thái `LISTEN`, sẵn sàng nhận kết nối. Lúc này kernel tạo hai hàng đợi:
   - SYN queue (chứa kết nối đang handshake)
   - accept queue (chứa kết nối đã hoàn thành handshake, chờ ứng dụng lấy ra).
-- `accept()`: lấy một kết nối đã hoàn thành từ accept queue. Hàm này trả về một socket mới dành riêng cho kết nối đó. Socket gốc vẫn tiếp tục listen. Đây là điểm quan trọng: server có một socket để listen, và nhiều socket con — mỗi cái cho một client.
+- `accept()`: lấy một kết nối đã hoàn thành từ accept queue. Hàm này trả về một socket mới dành riêng cho kết nối đó. Socket gốc vẫn tiếp tục listen. Đây là điểm quan trọng: server có một socket để listen, và nhiều socket con - mỗi cái cho một client.
 - `recv()` / `send()`: đọc và ghi dữ liệu trên socket con.
 - `close()`: đóng kết nối.
 
@@ -135,13 +135,13 @@ sequenceDiagram
 - `send()` chỉ copy dữ liệu vào kernel send buffer rồi return. Kernel sẽ tự lo phần còn lại. Điều này nghĩa là `send()` return thành công không đảm bảo bên kia đã nhận.
 - `recv()` là một blocking API. Nó sẽ chờ cho đến khi có dữ liệu trong receive buffer. Khi `recv()` trả về 0, nghĩa là bên kia đã gọi `close()` (nhận được `FIN`).
 - TCP là **byte stream**, không phải message stream. Nếu client gọi `send()` hai lần gửi "Hello" rồi "World", bên server gọi `recv()` một lần có thể nhận được "HelloWorld" gộp lại, hoặc chỉ "Hel" rồi lần sau nhận "loWorld". Nếu ứng dụng cần biết đâu là một "message" hoàn chỉnh, ta phải tự thiết kế protocol ở tầng application (ví dụ thêm length header hoặc dùng delimiter như `\n`).
-- File descriptor là tài nguyên hữu hạn — mỗi process có giới hạn số fd mở cùng lúc (mặc định 1024, xem bằng `ulimit -n`). Server phục vụ nhiều client cần tăng giới hạn này.
+- File descriptor là tài nguyên hữu hạn - mỗi process có giới hạn số fd mở cùng lúc (mặc định 1024, xem bằng `ulimit -n`). Server phục vụ nhiều client cần tăng giới hạn này.
 :::
 
 :::warning Network byte order
 Các máy tính dùng kiến trúc CPU khác nhau có thể lưu trữ dữ liệu theo thứ tự byte khác nhau (little endian hoặc big endian). Để đảm bảo mọi máy đều hiểu đúng giá trị, network quy ước một chuẩn chung là big endian (network byte order). Khi lập trình socket, ta dùng các hàm chuyển đổi:
-- `htons()` / `htonl()`: host to network (short/long) — dùng khi gửi.
-- `ntohs()` / `ntohl()`: network to host — dùng khi nhận.
+- `htons()` / `htonl()`: host to network (short/long) - dùng khi gửi.
+- `ntohs()` / `ntohl()`: network to host - dùng khi nhận.
 
 Ví dụ: `addr.sin_port = htons(8080)` chuyển port 8080 từ host byte order sang network byte order trước khi gán vào socket address.
 :::
@@ -155,7 +155,7 @@ Bên dưới sẽ cho biết giải thích chi tiết xem kernel làm gì bên d
   Khi gọi `socket()`, kernel thực hiện:
 
   1. Cấp phát `struct socket` chứa toàn bộ metadata
-  2. Cấp phát `struct sock` (goi la sk) — lõi của TCP stack
+  2. Cấp phát `struct sock` (goi la sk) - lõi của TCP stack
   3. Khởi tạo send buffer va receive buffer (mặc định ~128KB mỗi buffer)
   4. Gán một file descriptor (`fd`)
   5. Trả `fd` về cho ứng dụng
@@ -244,7 +244,7 @@ Bên dưới sẽ cho biết giải thích chi tiết xem kernel làm gì bên d
   ::: tab [accept]
   Hàm `accept()` là bước tiếp khách phía server:
 
-  1. Kiểm tra accept queue — xem có kết nối nào đã hoàn thành quá trình bắt tay không?
+  1. Kiểm tra accept queue - xem có kết nối nào đã hoàn thành quá trình bắt tay không?
   2. Nếu có: Tạo một struct socket mới, sao chép thông tin kết nối vào đó và trả về một file descriptor (fd) mới.
   3. Nếu trống: block tiến trình cho đến khi có kết nối mới (hoặc trả về lỗi `EAGAIN` nếu đang ở chế độ non-blocking).
 
@@ -304,7 +304,7 @@ Bên dưới sẽ cho biết giải thích chi tiết xem kernel làm gì bên d
 
   **Các giá trị trả về đặc biệt:**
   - **> 0:** Số byte thực tế đã đọc được.
-  - **= 0:** Bên kia đã gọi hàm `close()` (đã nhận gói `FIN`) — **kết nối đã đóng**.
+  - **= 0:** Bên kia đã gọi hàm `close()` (đã nhận gói `FIN`) - **kết nối đã đóng**.
   - **= -1:** Đã xảy ra lỗi (cần kiểm tra biến `errno`).
 
   **Lưu ý:**
@@ -335,8 +335,8 @@ Bên dưới sẽ cho biết giải thích chi tiết xem kernel làm gì bên d
   1. Nếu bộ đệm send buffer còn dữ liệu, kernel sẽ cố gắng gửi nốt số dữ liệu đó trước khi đóng.
   2. Gửi gói tin `FIN` cho phía đối phương.
   3. Chờ gói `ACK` (và gói `FIN` từ phía bên kia nếu chưa nhận được) để hoàn tất quy trình ngắt kết nối 4 bước.
-  4. Giải phóng fd — lúc này `fd` có thể được hệ điều hành tái sử dụng cho các file hoặc socket khác.
-  5. Tuy nhiên, cấu trúc `socket/sock` bên dưới không bị giải phóng ngay lập tức — nó vẫn tồn tại trong trạng thái `TIME_WAIT` (thường khoảng 60 giây).
+  4. Giải phóng fd - lúc này `fd` có thể được hệ điều hành tái sử dụng cho các file hoặc socket khác.
+  5. Tuy nhiên, cấu trúc `socket/sock` bên dưới không bị giải phóng ngay lập tức - nó vẫn tồn tại trong trạng thái `TIME_WAIT` (thường khoảng 60 giây).
 
   **Tại sao cần trạng thái `TIME_WAIT`?**
   - **Đảm bảo độ tin cậy:** Đảm bảo gói `ACK` cuối cùng đến được phía bên kia. Nếu gói này bị thất lạc, bên kia sẽ gửi lại `FIN` và kernel vẫn còn socket ở `TIME_WAIT` để gửi lại `ACK`.
@@ -393,7 +393,7 @@ Bây giờ hành vi của các syscall thay đổi hoàn toàn:
 - `accept()`: nếu không có kết nối đang chờ, return -1 với `EAGAIN`.
 - `connect()`: return ngay, không đợi handshake xong. Ta phải kiểm tra sau bằng `select()`/`epoll` xem kết nối đã thành công chưa.
 
-Điều này giải quyết được vấn đề blocking, nhưng tạo ra vấn đề mới là ta phải liên tục kiểm tra mỗi socket xem có dữ liệu chưa — gọi là busy polling:
+Điều này giải quyết được vấn đề blocking, nhưng tạo ra vấn đề mới là ta phải liên tục kiểm tra mỗi socket xem có dữ liệu chưa - gọi là busy polling:
 
 ```c
 while (1) {
@@ -426,8 +426,8 @@ Thay vì tự hỏi từng socket "có dữ liệu chưa?", ta đưa danh sách 
 
 **Ba syscall của epoll:**
 - `epoll_create1(0)`: tạo một epoll instance. Kernel cấp phát cấu trúc dữ liệu nội bộ gồm: một red-black tree để lưu danh sách socket đang theo dõi, và một ready list để chứa các socket có sự kiện. Hàm trả về một fd đại diện cho epoll instance này.
-- `epoll_ctl(epfd, op, fd, event`: thêm (`EPOLL_CTL_ADD`), sửa (`EPOLL_CTL_MOD`), hoặc xoá (`EPOLL_CTL_DEL`) socket khỏi danh sách theo dõi. Khi thêm một socket, kernel đăng ký một callback function vào socket đó. Khi dữ liệu đến socket, callback tự động đưa socket vào ready list. Đây là điểm mấu chốt — kernel không cần duyệt toàn bộ danh sách, mà socket "tự báo" khi có sự kiện.
-- `epoll_wait(epfd, events, maxevents, timeout)`: chờ cho đến khi có sự kiện. Nếu ready list trống, process sleep. Khi có ít nhất 1 socket sẵn sàng, kernel đánh thức process và trả về chỉ những socket có sự kiện. Nếu 10000 socket đang theo dõi mà chỉ 3 cái có dữ liệu, `epoll_wait()` chỉ trả về 3 cái đó. Độ phức tạp O(1) cho việc thêm/sửa/xoá socket, O(k) khi trả về sự kiện — với k là số sự kiện thực tế, không phụ thuộc tổng số socket.
+- `epoll_ctl(epfd, op, fd, event`: thêm (`EPOLL_CTL_ADD`), sửa (`EPOLL_CTL_MOD`), hoặc xoá (`EPOLL_CTL_DEL`) socket khỏi danh sách theo dõi. Khi thêm một socket, kernel đăng ký một callback function vào socket đó. Khi dữ liệu đến socket, callback tự động đưa socket vào ready list. Đây là điểm mấu chốt - kernel không cần duyệt toàn bộ danh sách, mà socket "tự báo" khi có sự kiện.
+- `epoll_wait(epfd, events, maxevents, timeout)`: chờ cho đến khi có sự kiện. Nếu ready list trống, process sleep. Khi có ít nhất 1 socket sẵn sàng, kernel đánh thức process và trả về chỉ những socket có sự kiện. Nếu 10000 socket đang theo dõi mà chỉ 3 cái có dữ liệu, `epoll_wait()` chỉ trả về 3 cái đó. Độ phức tạp O(1) cho việc thêm/sửa/xoá socket, O(k) khi trả về sự kiện - với k là số sự kiện thực tế, không phụ thuộc tổng số socket.
 
 **Luồng hoạt động của epoll:**
 
@@ -480,7 +480,7 @@ while (1) {
 Toàn bộ server chỉ có 1 thread, 1 vòng lặp, nhưng có khả năng phục vụ được hàng chục client đồng thời.
 
 :::tip Tại sao epoll nhanh?
-Điểm khác biệt cốt lõi so với `select()`/`poll()`: khi ta thêm socket vào epoll qua `epoll_ctl()`, kernel gắn một callback function vào socket đó. Khi network card nhận gói tin và đưa dữ liệu vào receive buffer, callback này tự động chạy và đẩy socket vào ready list. Quá trình này xảy ra ở interrupt context, không cần ứng dụng hỏi. Vì vậy `epoll_wait()` chỉ việc kiểm tra ready list — nếu có thì trả về, nếu không thì sleep. Không cần duyệt qua hàng nghìn socket.
+Điểm khác biệt cốt lõi so với `select()`/`poll()`: khi ta thêm socket vào epoll qua `epoll_ctl()`, kernel gắn một callback function vào socket đó. Khi network card nhận gói tin và đưa dữ liệu vào receive buffer, callback này tự động chạy và đẩy socket vào ready list. Quá trình này xảy ra ở interrupt context, không cần ứng dụng hỏi. Vì vậy `epoll_wait()` chỉ việc kiểm tra ready list - nếu có thì trả về, nếu không thì sleep. Không cần duyệt qua hàng nghìn socket.
 :::
 
 ### Level-triggered vs Edge-triggered
@@ -506,7 +506,7 @@ while (1) {
 }
 ```
 
-Nếu dùng ET mà không đọc hết, dữ liệu sẽ bị "kẹt" trong buffer — `epoll_wait()` sẽ không báo lại, gây ra bug rất khó tìm.
+Nếu dùng ET mà không đọc hết, dữ liệu sẽ bị "kẹt" trong buffer - `epoll_wait()` sẽ không báo lại, gây ra bug rất khó tìm.
 
 **Khi nào dùng LT, khi nào dùng ET?**
 - **LT**: an toàn, dễ code. Phù hợp cho hầu hết ứng dụng. Nếu chưa chắc chắn, dùng LT.

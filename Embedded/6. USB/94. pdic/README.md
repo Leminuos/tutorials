@@ -33,7 +33,7 @@
     - [Fixed Supply PDO](#fixed-supply-pdo-phổ-biến-nhất)
     - [Battery Supply PDO](#battery-supply-pdo)
     - [Variable Supply PDO](#variable-supply-pdo)
-    - [Augmented PDO (APDO) — Programmable Power Supply (PPS)](#augmented-pdo-apdo-programmable-power-supply-pps)
+    - [Augmented PDO (APDO) - Programmable Power Supply (PPS)](#augmented-pdo-apdo-programmable-power-supply-pps)
 - [8. Request Data Object (RDO)](#8-request-data-object-rdo)
     - [RDO là gì?](#rdo-là-gì)
     - [Cấu trúc RDO cho Fixed/Variable Supply](#cấu-trúc-rdo-cho-fixedvariable-supply)
@@ -65,7 +65,7 @@ Theo thời gian, người tiêu dùng bắt đầu đòi hỏi nhiều hơn t�
 | **USB PD 3.1 EPR** | 2021 | 5V–48V | 5A | **240W** | Extended Power Range |
 
 :::warning Battery Charging
-USB BC 1.2 là tiêu chuẩn sạc pin trước thời đại Type-C. Nó sử dụng D+/D− để detect loại charger (SDP, CDP, DCP) — hoàn toàn khác cơ chế CC pin của Type-C. BC 1.2 vẫn còn tồn tại trên các cổng Type-A nhưng không áp dụng cho Type-C.
+USB BC 1.2 là tiêu chuẩn sạc pin trước thời đại Type-C. Nó sử dụng D+/D− để detect loại charger (SDP, CDP, DCP) - hoàn toàn khác cơ chế CC pin của Type-C. BC 1.2 vẫn còn tồn tại trên các cổng Type-A nhưng không áp dụng cho Type-C.
 :::
 
 ## 2. Contract
@@ -93,7 +93,7 @@ Contract này được enter khi hoàn tất quá trình thương lượng power
 
 **Re-negotiation trong Explicit Contract**
  
-Explicit Contract không phải là cố định — cả Source và Sink đều có thể khởi tạo thương lượng lại:
+Explicit Contract không phải là cố định - cả Source và Sink đều có thể khởi tạo thương lượng lại:
  
 | Ai khởi tạo | Cách thực hiện | Ví dụ thực tế |
 |---|---|---|
@@ -199,7 +199,7 @@ Source gửi **Discover Identity** qua `SOP'` đến eMarker IC trong cable đ�
 Dựa trên kết quả, Source giới hạn `Source_Capabilities` cho phù hợp với cable. Ví dụ: nếu cable chỉ chịu 3A, Source sẽ không quảng bá PDO 20V/5A dù Source hardware hỗ trợ.
 
 :::warning Chú ý
-Nếu cable không có eMarker (passive cable không phản hồi SOP'), Source mặc định giới hạn ở **3A** — đây là khả năng tối thiểu mà mọi cable Type-C phải hỗ trợ.
+Nếu cable không có eMarker (passive cable không phản hồi SOP'), Source mặc định giới hạn ở **3A** - đây là khả năng tối thiểu mà mọi cable Type-C phải hỗ trợ.
 :::
 
 **b) Quảng bá `Source_Capabilities` định kỳ:**
@@ -266,7 +266,7 @@ Sink phân tích danh sách PDO trong `Source_Capabilities`, chọn PDO phù h�
 
 ### Giai đoạn 4–5: Explicit Contract
 
-Tương tự Source — sau `Accept` + `PS_RDY`, Sink nhận nguồn theo contract.
+Tương tự Source - sau `Accept` + `PS_RDY`, Sink nhận nguồn theo contract.
 
 ## 5. Protocol Layer
 
@@ -328,11 +328,11 @@ Mọi PD message đều bắt đầu bằng **16-bit Header**, theo sau là data
 | 15 | **Extended** | ✅ | ✅ | `0` = Control/Data, `1` = Extended message |
 | 14:12 | **Number of Data Objects** | ✅ | ✅ | Số lượng 32-bit Data Object sau header (`0` = Control Message) |
 | 11:9 | **MessageID** | ✅ | ✅ | Bộ đếm 3-bit (0–7), tăng sau mỗi message thành công. Dùng detect duplicate |
-| 8 | **Port Power Role** | ✅ | — | `0` = Sink, `1` = Source |
-| 8 | **Cable Plug** | — | ✅ | `0` = message từ DFP/UFP, `1` = từ Cable Plug |
+| 8 | **Port Power Role** | ✅ | - | `0` = Sink, `1` = Source |
+| 8 | **Cable Plug** | - | ✅ | `0` = message từ DFP/UFP, `1` = từ Cable Plug |
 | 7:6 | **Specification Revision** | ✅ | ✅ | `01` = PD 2.0, `10` = PD 3.0 |
-| 5 | **Port Data Role** | ✅ | — | `0` = UFP, `1` = DFP |
-| 5 | **Reserved** | — | ✅ | |
+| 5 | **Port Data Role** | ✅ | - | `0` = UFP, `1` = DFP |
+| 5 | **Reserved** | - | ✅ | |
 | 4:0 | **Message Type** | ✅ | ✅ | Xác định loại message cụ thể |
 
 **Giải thích SOP, SOP', SOP'':**
@@ -360,13 +360,13 @@ Type của control message sẽ được xác định trong trường **Message 
 | 0x03 | **Accept** | Source / Sink / Cable | Chấp nhận request hoặc swap |
 | 0x04 | **Reject** | Source / Sink / Cable | Từ chối request hoặc swap |
 | 0x05 | **Ping** | Source only | Kiểm tra Sink còn kết nối (chỉ dùng trong PPS mode) |
-| 0x06 | **PS_RDY** | Source / Sink | Power Supply Ready — VBUS đã ổn định ở mức mới |
+| 0x06 | **PS_RDY** | Source / Sink | Power Supply Ready - VBUS đã ổn định ở mức mới |
 | 0x07 | **Get_Source_Cap** | Sink / DRP | Yêu cầu Source gửi lại Source_Capabilities |
 | 0x08 | **Get_Sink_Cap** | Source / DRP | Yêu cầu Sink gửi Sink_Capabilities |
 | 0x09 | **DR_Swap** | Source / Sink | Yêu cầu đổi Data Role (DFP ↔ UFP) |
 | 0x0A | **PR_Swap** | Source / Sink | Yêu cầu đổi Power Role (Source ↔ Sink) |
 | 0x0B | **VCONN_Swap** | Source / Sink | Yêu cầu đổi bên cấp VCONN |
-| 0x0C | **Wait** | Source / Sink | Yêu cầu chờ — đang bận, sẽ initiate lại sau |
+| 0x0C | **Wait** | Source / Sink | Yêu cầu chờ - đang bận, sẽ initiate lại sau |
 | 0x0D | **Soft_Reset** | Source / Sink | Reset protocol layer (giữ nguyên contract) |
 | 0x0E | **Data_Reset** | Source / Sink | Reset data path (giữ nguyên power) |
 | 0x0F | **Data_Reset_Complete** | Source / Sink | Xác nhận Data Reset hoàn tất |
@@ -407,7 +407,7 @@ sequenceDiagram
     participant SNK as Sink
 
     Note over SRC: Giai đoạn 1: Detect cable
-    SRC->>EM: SOP' — Discover Identity
+    SRC->>EM: SOP' - Discover Identity
     EM->>SRC: Cable Info: 5A capable, USB 3.2 Gen 2
     Note over SRC: Cable chịu 5A → Giữ PDO 20V/5A
 
@@ -441,14 +441,14 @@ sequenceDiagram
 Khi nhận `Source_Capabilities`, Sink thực hiện:
 1. Duyệt danh sách PDO từ Source.
 2. So sánh với nhu cầu nguồn của mình.
-3. Chọn PDO phù hợp nhất — thường là PDO có điện áp và dòng đáp ứng nhu cầu mà không quá dư thừa.
+3. Chọn PDO phù hợp nhất - thường là PDO có điện áp và dòng đáp ứng nhu cầu mà không quá dư thừa.
 4. Gửi Request message chứa Request Data Object (RDO) với:
    - Object Position: Chỉ số PDO được chọn (1-indexed, PDO1 = position 1).
    - Operating Current: Dòng Sink cần ở mức hoạt động bình thường.
    - Max Operating Current: Dòng tối đa Sink có thể yêu cầu.
 
 :::warning Chú ý
-Nếu nhu cầu nguồn của Sink vượt quá mọi PDO mà Source quảng bá, Sink vẫn phải chọn PDO gần nhất có thể và thương lượng lại nếu cần. Sink không được từ chối mọi PDO — luôn phải gửi Request.
+Nếu nhu cầu nguồn của Sink vượt quá mọi PDO mà Source quảng bá, Sink vẫn phải chọn PDO gần nhất có thể và thương lượng lại nếu cần. Sink không được từ chối mọi PDO - luôn phải gửi Request.
 :::
 
 ## 7. Power Data Object (PDO)
@@ -471,7 +471,7 @@ PDO là đơn vị 32-bit mô tả một mức nguồn cụ thể mà Source có
 | 6 | Programmable Power Supply (PPS) | Theo Maximum Voltage từ thấp đến cao |
 
 Quy tắc quan trọng:
-- PDO đầu tiên bắt buộc là 5V (vSafe5V) — đảm bảo Sink luôn có thể fall back về mức an toàn.
+- PDO đầu tiên bắt buộc là 5V (vSafe5V) - đảm bảo Sink luôn có thể fall back về mức an toàn.
 - Không được có hai PDO cùng type và cùng điện áp trong cùng một `Capabilities` message.
 - Số lượng tối đa 7 PDO trong SPR. EPR cho phép thêm PDO.
 
@@ -479,10 +479,10 @@ Quy tắc quan trọng:
 
 | Bit 31:30 | Supply Type | Mô tả |
 |---|---|---|
-| `00` | Fixed Supply | Điện áp cố định — phổ biến nhất |
+| `00` | Fixed Supply | Điện áp cố định - phổ biến nhất |
 | `01` | Battery | Dải điện áp, tham số là công suất |
 | `10` | Variable Supply | Dải điện áp, tham số là dòng |
-| `11` | Augmented (APDO) | PPS hoặc EPR AVS — điều chỉnh liên tục |
+| `11` | Augmented (APDO) | PPS hoặc EPR AVS - điều chỉnh liên tục |
 
 ### Fixed Supply PDO (phổ biến nhất)
 
@@ -557,7 +557,7 @@ Battery PDO dùng công suất (Watt) thay vì dòng điện, vì khi điện á
 
 ### Variable Supply PDO
 
-Tương tự Battery PDO nhưng không phải battery — ví dụ: nguồn DC-DC có output thay đổi.
+Tương tự Battery PDO nhưng không phải battery - ví dụ: nguồn DC-DC có output thay đổi.
 
 **Cấu trúc bit**
 
@@ -570,9 +570,9 @@ Tương tự Battery PDO nhưng không phải battery — ví dụ: nguồn DC-D
 
 Điểm khác biệt với Battery: Variable dùng dòng điện (mA) thay vì công suất (mW).
 
-### Augmented PDO (APDO) — Programmable Power Supply (PPS)
+### Augmented PDO (APDO) - Programmable Power Supply (PPS)
 
-PPS cho phép Sink điều chỉnh liên tục điện áp và dòng điện trong dải cho phép, với bước nhỏ (20mV, 50mA). Đây là tính năng quan trọng cho sạc pin thông minh — Sink (phone/laptop) có thể kiểm soát chính xác điện áp sạc tùy theo trạng thái pin.
+PPS cho phép Sink điều chỉnh liên tục điện áp và dòng điện trong dải cho phép, với bước nhỏ (20mV, 50mA). Đây là tính năng quan trọng cho sạc pin thông minh - Sink (phone/laptop) có thể kiểm soát chính xác điện áp sạc tùy theo trạng thái pin.
 
 **Cấu trúc bit**
 
@@ -589,7 +589,7 @@ PPS cho phép Sink điều chỉnh liên tục điện áp và dòng điện tro
 - Voltage: **100mV** (không phải 50mV)
 - Current: **50mA** (không phải 10mA)
 
-Cần cẩn thận khi decode — nhầm đơn vị sẽ tính sai gấp đôi.
+Cần cẩn thận khi decode - nhầm đơn vị sẽ tính sai gấp đôi.
 :::
 
 **Ví dụ PPS PDO**
@@ -645,14 +645,14 @@ PPS cho phép điện áp cao với dòng lớn (ví dụ: 21V/3A = 63W). Nếu 
 :::
 
 :::warning Chú ý
-Khi Sink ở chế độ PPS mà không cần thay đổi mức nguồn, Sink vẫn phải gửi cùng Request (cùng voltage, cùng current) trước khi timeout 10s — đây thuần túy là tín hiệu "tôi vẫn sống".
+Khi Sink ở chế độ PPS mà không cần thay đổi mức nguồn, Sink vẫn phải gửi cùng Request (cùng voltage, cùng current) trước khi timeout 10s - đây thuần túy là tín hiệu "tôi vẫn sống".
 :::
 
 ## 8. Request Data Object (RDO)
 
 ### RDO là gì?
 
-Sau khi nhận `Source_Capabilities`, Sink gửi lại Request message chứa một RDO (32-bit) — mô tả mức nguồn Sink muốn nhận. RDO tham chiếu đến một PDO cụ thể trong `Source_Capabilities` qua **Object Position**.
+Sau khi nhận `Source_Capabilities`, Sink gửi lại Request message chứa một RDO (32-bit) - mô tả mức nguồn Sink muốn nhận. RDO tham chiếu đến một PDO cụ thể trong `Source_Capabilities` qua **Object Position**.
 
 ### Cấu trúc RDO cho Fixed/Variable Supply
 
@@ -685,7 +685,7 @@ Sau khi nhận `Source_Capabilities`, Sink gửi lại Request message chứa m�
 | 6:0 | Operating Current | Đơn vị 50mA. Ví dụ: 2A = 40 |
 
 :::warning Chú ý
-RDO cho PPS cho phép Sink chỉ định chính xác voltage và current mong muốn (trong dải của PPS PDO). Khác với Fixed Supply RDO chỉ chọn position — voltage đã cố định bởi PDO.
+RDO cho PPS cho phép Sink chỉ định chính xác voltage và current mong muốn (trong dải của PPS PDO). Khác với Fixed Supply RDO chỉ chọn position - voltage đã cố định bởi PDO.
 :::
 
 ### Ví dụ thương lượng hoàn chỉnh với RDO
@@ -787,7 +787,7 @@ sequenceDiagram
 Nếu Source hoặc Sink mất liên lạc (không nhận phản hồi định kỳ):
 1. Hard Reset được thực hiện tự động.
 2. VBUS được kéo về 5V (vSafe5V).
-3. Hệ thống quay lại SPR mode — phải thương lượng lại từ đầu nếu muốn EPR.
+3. Hệ thống quay lại SPR mode - phải thương lượng lại từ đầu nếu muốn EPR.
 
 :::warning Chú ý
 EPR yêu cầu giám sát liên tục vì điện áp 28V–48V nguy hiểm hơn nhiều so với 5V–20V. Mất kiểm soát ở 48V/5A có thể gây hỏng thiết bị hoặc nguy hiểm.
@@ -805,7 +805,7 @@ USB PD có hai cấp độ xử lý lỗi:
 | **Thực hiện** | Gửi `Soft_Reset` control message |
 | **Tác dụng** | Reset MessageID counter, timer, protocol state |
 | **Giữ nguyên** | Negotiated Voltage, Negotiated Current, Power Role, Data Role, VCONN Source |
-| **Không ảnh hưởng** | Explicit Contract vẫn còn hiệu lực — VBUS không thay đổi |
+| **Không ảnh hưởng** | Explicit Contract vẫn còn hiệu lực - VBUS không thay đổi |
 
 ### Hard Reset
 
@@ -830,5 +830,5 @@ flowchart TD
 ```
 
 :::warning Chú ý
-Hard Reset là phương án cuối cùng — nó gây gián đoạn nguồn (VBUS về 5V hoặc 0V tạm thời), có thể khiến thiết bị đang hoạt động bị mất điện. Vì vậy, PD stack luôn thử Soft Reset trước.
+Hard Reset là phương án cuối cùng - nó gây gián đoạn nguồn (VBUS về 5V hoặc 0V tạm thời), có thể khiến thiết bị đang hoạt động bị mất điện. Vì vậy, PD stack luôn thử Soft Reset trước.
 :::

@@ -15,7 +15,7 @@ Giả sử ta có một hệ thống phát audio từ SDCard qua I2S. Hệ thố
 - **Producer (SD Reader):** đọc dữ liệu từ SDCard, mỗi lần đọc **4KB** để tận dụng tốc độ đọc tuần tự của SDCard.
 - **Consumer (Audio Player):** lấy dữ liệu và gửi sang I2S DMA, mỗi lần cần **512 byte** vì DMA buffer có kích thước cố định 512 byte.
 
-Đây là tình huống rất phổ biến trong embedded: producer và consumer xử lý dữ liệu với kích thước hoàn toàn khác nhau. Và đặc điểm cốt lõi của queue là **item size phải được cố định ngay từ lúc tạo** — mọi lần gửi và nhận đều phải tuân theo đúng kích thước này. Vậy chọn item size bằng bao nhiêu khi producer cần gửi 4KB còn consumer chỉ cần nhận 512 byte?
+Đây là tình huống rất phổ biến trong embedded: producer và consumer xử lý dữ liệu với kích thước hoàn toàn khác nhau. Và đặc điểm cốt lõi của queue là **item size phải được cố định ngay từ lúc tạo** - mọi lần gửi và nhận đều phải tuân theo đúng kích thước này. Vậy chọn item size bằng bao nhiêu khi producer cần gửi 4KB còn consumer chỉ cần nhận 512 byte?
 
 **Nếu chọn item size = 512 byte (theo consumer):**
 
@@ -23,7 +23,7 @@ Giả sử ta có một hệ thống phát audio từ SDCard qua I2S. Hệ thố
 QueueHandle_t audio_queue = xQueueCreate(8, 512);
 ```
 
-Consumer lấy dữ liệu rất thuận tiện — mỗi lần `xQueueReceive` nhận đúng 512 byte, gửi thẳng sang DMA. Nhưng phía producer thì phải tự chia 4KB thành 8 item 512 byte rồi gọi `xQueueSend` 8 lần liên tiếp. Code producer trở nên phức tạp hơn vì phải quản lý vòng lặp chia nhỏ dữ liệu. Và nếu lần đọc SDCard cuối file chỉ còn 2000 byte (không chia hết cho 512), producer phải xử lý riêng phần dư 464 byte — hoặc padding thêm 48 byte rác, hoặc viết logic gửi item cuối không đầy đủ rồi consumer phải biết cách bỏ phần thừa.
+Consumer lấy dữ liệu rất thuận tiện - mỗi lần `xQueueReceive` nhận đúng 512 byte, gửi thẳng sang DMA. Nhưng phía producer thì phải tự chia 4KB thành 8 item 512 byte rồi gọi `xQueueSend` 8 lần liên tiếp. Code producer trở nên phức tạp hơn vì phải quản lý vòng lặp chia nhỏ dữ liệu. Và nếu lần đọc SDCard cuối file chỉ còn 2000 byte (không chia hết cho 512), producer phải xử lý riêng phần dư 464 byte - hoặc padding thêm 48 byte rác, hoặc viết logic gửi item cuối không đầy đủ rồi consumer phải biết cách bỏ phần thừa.
 
 **Nếu chọn item size = 4096 byte (theo producer):**
 
@@ -31,15 +31,15 @@ Consumer lấy dữ liệu rất thuận tiện — mỗi lần `xQueueReceive` 
 QueueHandle_t audio_queue = xQueueCreate(2, 4096);
 ```
 
-Producer gửi rất gọn — mỗi lần `xQueueSend` đẩy cả 4KB vào queue một phát. Nhưng bây giờ consumer gặp vấn đề: nó chỉ cần 512 byte cho mỗi lần DMA transfer, nhưng `xQueueReceive` bắt buộc phải nhận 4096 byte. Consumer phải cấp phát buffer 4KB để nhận, rồi tự chia nhỏ thành 8 phần 512 byte, tự quản lý offset đọc đến đâu rồi. Thay vì code đơn giản "nhận dữ liệu → gửi DMA", consumer giờ phải có thêm logic quản lý buffer nội bộ.
+Producer gửi rất gọn - mỗi lần `xQueueSend` đẩy cả 4KB vào queue một phát. Nhưng bây giờ consumer gặp vấn đề: nó chỉ cần 512 byte cho mỗi lần DMA transfer, nhưng `xQueueReceive` bắt buộc phải nhận 4096 byte. Consumer phải cấp phát buffer 4KB để nhận, rồi tự chia nhỏ thành 8 phần 512 byte, tự quản lý offset đọc đến đâu rồi. Thay vì code đơn giản "nhận dữ liệu → gửi DMA", consumer giờ phải có thêm logic quản lý buffer nội bộ.
 
 Ngoài ra, mỗi lần `xQueueSend` kernel copy toàn bộ 4096 byte vào vùng nhớ nội bộ của queue, rồi `xQueueReceive` lại copy 4096 byte ra. Tổng cộng 8KB bị copy cho mỗi block, rất tốn CPU. Queue 2 item × 4096 byte cũng ngốn 8KB RAM chỉ riêng cho vùng nhớ nội bộ.
 
 **Chọn size nào cũng sai:**
 
-Đây chính là thế khó xử cốt lõi. Chọn theo producer thì consumer phải tự chia nhỏ. Chọn theo consumer thì producer phải tự chia nhỏ. Chọn size trung gian thì cả hai đều phải xử lý. Bất kể chọn thế nào, một hoặc cả hai phía đều phải viết thêm logic chia nhỏ/ghép lại dữ liệu — logic mà đáng ra không nên tồn tại.
+Đây chính là thế khó xử cốt lõi. Chọn theo producer thì consumer phải tự chia nhỏ. Chọn theo consumer thì producer phải tự chia nhỏ. Chọn size trung gian thì cả hai đều phải xử lý. Bất kể chọn thế nào, một hoặc cả hai phía đều phải viết thêm logic chia nhỏ/ghép lại dữ liệu - logic mà đáng ra không nên tồn tại.
 
-Vấn đề gốc rễ không nằm ở việc chọn item size bao nhiêu, mà nằm ở chỗ **queue bắt buộc producer và consumer phải thống nhất một kích thước item chung** — điều không thể đáp ứng khi hai bên có nhu cầu kích thước khác nhau.
+Vấn đề gốc rễ không nằm ở việc chọn item size bao nhiêu, mà nằm ở chỗ **queue bắt buộc producer và consumer phải thống nhất một kích thước item chung** - điều không thể đáp ứng khi hai bên có nhu cầu kích thước khác nhau.
 
 Chính vì vậy FreeRTOS cung cấp một cơ chế chuyên biệt cho các trường hợp truyền dữ liệu dạng stream, đó là **stream buffer**.
 
@@ -47,7 +47,7 @@ Chính vì vậy FreeRTOS cung cấp một cơ chế chuyên biệt cho các tr�
 
 Stream buffer là một vùng nhớ FIFO dạng circular buffer được kernel quản lý, dùng để truyền stream byte liên tục từ task này sang task khác hoặc giữa interrupt và task.
 
-Khác với queue, stream buffer không làm việc theo data item mà làm việc trực tiếp trên byte stream. Producer có thể ghi 4KB trong một lần gọi, consumer có thể đọc 512 byte trong một lần gọi — mỗi bên làm việc với kích thước phù hợp nhất với mình mà không cần quan tâm bên kia đang dùng bao nhiêu. Không còn phải chia nhỏ, ghép lại, hay padding.
+Khác với queue, stream buffer không làm việc theo data item mà làm việc trực tiếp trên byte stream. Producer có thể ghi 4KB trong một lần gọi, consumer có thể đọc 512 byte trong một lần gọi - mỗi bên làm việc với kích thước phù hợp nhất với mình mà không cần quan tâm bên kia đang dùng bao nhiêu. Không còn phải chia nhỏ, ghép lại, hay padding.
 
 Một số đặc điểm quan trọng:
 - Dữ liệu được truyền theo dạng byte liên tục.
@@ -119,7 +119,7 @@ Trigger level nên được đặt dựa trên đơn vị xử lý nhỏ nhất 
 :::warning Lưu ý
 Trigger level chỉ có tác dụng khi task đọc **đang bị blocked** (tức là task gọi `xStreamBufferReceive()` lúc buffer rỗng và đang nằm chờ). Khi đó, kernel sẽ không đánh thức task cho đến khi buffer tích lũy đủ số byte ≥ trigger level.
 
-Nhưng nếu task gọi `xStreamBufferReceive()` vào thời điểm buffer **đã có sẵn dữ liệu** thì trigger level không có ý nghĩa gì — hàm trả về ngay lập tức với bao nhiêu byte đang có, kể cả khi số byte đó ít hơn trigger level. Ví dụ: trigger level = 512, buffer đang chứa 100 byte, task gọi `xStreamBufferReceive()` → hàm trả về ngay 100 byte, không block.
+Nhưng nếu task gọi `xStreamBufferReceive()` vào thời điểm buffer **đã có sẵn dữ liệu** thì trigger level không có ý nghĩa gì - hàm trả về ngay lập tức với bao nhiêu byte đang có, kể cả khi số byte đó ít hơn trigger level. Ví dụ: trigger level = 512, buffer đang chứa 100 byte, task gọi `xStreamBufferReceive()` → hàm trả về ngay 100 byte, không block.
 
 Nói cách khác, trigger level là điều kiện để **đánh thức**, không phải điều kiện để **đọc**.
 :::
@@ -271,7 +271,7 @@ void app_main(void) {
 
 Luồng hoạt động của hệ thống:
 
-- `sd_reader_task` đọc 4KB từ SDCard mỗi lần rồi ghi vào stream buffer. Số byte đọc được từ SDCard không nhất thiết phải là bội số nào cả — stream buffer chấp nhận bất kỳ kích thước nào. Vòng `while (offset < bytes_read)` đảm bảo ghi hết dữ liệu ngay cả khi buffer đang gần đầy và chỉ ghi được một phần.
+- `sd_reader_task` đọc 4KB từ SDCard mỗi lần rồi ghi vào stream buffer. Số byte đọc được từ SDCard không nhất thiết phải là bội số nào cả - stream buffer chấp nhận bất kỳ kích thước nào. Vòng `while (offset < bytes_read)` đảm bảo ghi hết dữ liệu ngay cả khi buffer đang gần đầy và chỉ ghi được một phần.
 
 - `audio_player_task` đọc 512 byte từ stream buffer rồi gửi sang I2S DMA. Vì trigger level = 512, task này chỉ được đánh thức khi buffer có đủ 512 byte, tránh wakeup thừa.
 
@@ -302,7 +302,7 @@ Trong nhiều hệ thống, việc giữ nguyên ranh giới giữa các message
 - Truyền frame dữ liệu từ sensor: mỗi frame là một đơn vị hoàn chỉnh.
 - Truyền command giữa các task: mỗi command cần được đọc trọn vẹn.
 
-Để giải quyết vấn đề này, FreeRTOS cung cấp **message buffer** — một biến thể của stream buffer có thêm cơ chế quản lý ranh giới message.
+Để giải quyết vấn đề này, FreeRTOS cung cấp **message buffer** - một biến thể của stream buffer có thêm cơ chế quản lý ranh giới message.
 
 ### Nguyên lý hoạt động của message buffer
 
@@ -381,7 +381,7 @@ size_t xMessageBufferReceive(
 
 Hàm đọc một message hoàn chỉnh từ buffer.
 
-Reader phải cung cấp buffer đủ lớn để chứa message. Nếu buffer nhỏ hơn message tiếp theo trong hàng đợi, hàm sẽ trả về 0 và message **không bị mất** — nó vẫn nằm trong buffer để đọc lại với buffer lớn hơn.
+Reader phải cung cấp buffer đủ lớn để chứa message. Nếu buffer nhỏ hơn message tiếp theo trong hàng đợi, hàm sẽ trả về 0 và message **không bị mất** - nó vẫn nằm trong buffer để đọc lại với buffer lớn hơn.
 
 ### Ví dụ thực tế: Truyền command giữa các task
 
@@ -438,7 +438,7 @@ void controller_task(void *param) {
 
 Hai struct `motor_cmd_t` (4 byte) và `config_cmd_t` (25 byte) có kích thước khác nhau, nhưng message buffer xử lý tự động. Task `ui_task` gửi command với kích thước tùy ý, task `controller_task` luôn nhận được trọn vẹn một command mỗi lần đọc mà không bao giờ bị thiếu byte hay trộn lẫn.
 
-Nếu dùng stream buffer cho bài toán này, ta sẽ phải tự thêm header chứa kích thước trước mỗi command và tự parse ở consumer — dễ lỗi và phức tạp. Message buffer xử lý tất cả điều đó tự động.
+Nếu dùng stream buffer cho bài toán này, ta sẽ phải tự thêm header chứa kích thước trước mỗi command và tự parse ở consumer - dễ lỗi và phức tạp. Message buffer xử lý tất cả điều đó tự động.
 
 ### Khi nào nên sử dụng Message Buffer?
 

@@ -20,8 +20,8 @@ Khi mount, ta có thể chỉ định các option ảnh hưởng đến cách fi
 
 | Option | Ý nghĩa |
 | --- | --- |
-| `ro` — read-only | Không cho phép ghi. Đây chính là option cốt lõi khi nói đến read-only rootfs. Kernel mount rootfs với option này thì mọi lệnh ghi vào rootfs đều bị từ chối. |
-| `rw` — read-write | Cho phép đọc/ghi bình thường. |
+| `ro` - read-only | Không cho phép ghi. Đây chính là option cốt lõi khi nói đến read-only rootfs. Kernel mount rootfs với option này thì mọi lệnh ghi vào rootfs đều bị từ chối. |
+| `rw` - read-write | Cho phép đọc/ghi bình thường. |
 | `noatime` | Không cập nhật access time mỗi khi file được đọc. Trên embedded system, option này quan trọng vì giảm đáng kể số lần ghi vào storage, kéo dài tuổi thọ eMMC/SD card. |
 | `nosuid` | Bỏ qua SUID/SGID bit trên filesystem đó, tăng bảo mật. |
 | `nodev` | Không cho phép tạo device file, tăng bảo mật. |
@@ -68,7 +68,7 @@ tmpfs              /var/run       tmpfs    defaults,size=5m       0      0
 
 #### 1.1.4. Bind mount
 
-Bind mount là một kỹ thuật đặc biệt — mount một thư mục (hoặc file) đã tồn tại lên một vị trí khác. Không phải mount device hay filesystem mới, mà là tạo một cửa sổ thứ hai cùng nhìn vào cùng nội dung.
+Bind mount là một kỹ thuật đặc biệt - mount một thư mục (hoặc file) đã tồn tại lên một vị trí khác. Không phải mount device hay filesystem mới, mà là tạo một cửa sổ thứ hai cùng nhìn vào cùng nội dung.
 
 ```bash
 mount --bind /data/etc/resolv.conf /etc/resolv.conf
@@ -88,20 +88,20 @@ Trong fstab, bind mount được khai báo như sau:
 /data/etc/resolv.conf  /etc/resolv.conf  none  bind  0  0
 ```
 
-Bind mount là một kiểu mount đặc biệt rất quan trọng ở phần sau. Bình thường mount là gắn cả một vùng lưu trữ. Bind mount thì khác: nó làm một thư mục đã có sẵn hiện ra thêm ở một chỗ khác, như tạo một shortcut — nhưng cả hai chỗ là cùng một dữ liệu thật. Ghi ở chỗ này thì chỗ kia cũng thấy. Ta sẽ dùng cách này để lừa hệ thống ghi vào nơi cho phép (xem mục 5.2).
+Bind mount là một kiểu mount đặc biệt rất quan trọng ở phần sau. Bình thường mount là gắn cả một vùng lưu trữ. Bind mount thì khác: nó làm một thư mục đã có sẵn hiện ra thêm ở một chỗ khác, như tạo một shortcut - nhưng cả hai chỗ là cùng một dữ liệu thật. Ghi ở chỗ này thì chỗ kia cũng thấy. Ta sẽ dùng cách này để lừa hệ thống ghi vào nơi cho phép (xem mục 5.2).
 
 ### 1.2. Các loại filesystem
 
-**Nhóm 1 — Filesystem trên ổ đĩa/thẻ nhớ** (còn nguyên khi tắt nguồn):
+**Nhóm 1 - Filesystem trên ổ đĩa/thẻ nhớ** (còn nguyên khi tắt nguồn):
 
 - **ext4**: loại phổ biến nhất, ghi-đọc bình thường, có "nhật ký" (journal) giúp chống hỏng khi mất điện. Dự án dùng ext4 cho cả 3 phân vùng rootA / rootB / data.
 - **squashfs**: loại **nén lại và chỉ cho đọc**. Ưu điểm: nhỏ hơn 50–70%. Vì chỉ đọc nên muốn ghi thì luôn phải ghép thêm một vùng ghi khác.
 
-**Nhóm 2 — Filesystem trong RAM** (mất sạch khi tắt/khởi động lại):
+**Nhóm 2 - Filesystem trong RAM** (mất sạch khi tắt/khởi động lại):
 
 - **tmpfs**: một ổ đĩa ảo nằm trong bộ nhớ RAM. Ghi rất nhanh, nhưng cúp điện hay reboot là sạch trơn. Đây là chỗ lý tưởng để chứa file tạm.
 
-**Nhóm 3 — Virtual filesystem** (pseudo filesystem):
+**Nhóm 3 - Virtual filesystem** (pseudo filesystem):
 
 - **procfs** (`/proc`), **sysfs** (`/sys`), **devtmpfs** (`/dev`): không tốn dung lượng ổ đĩa nào cả, chỉ là cách nhân Linux export thông tin ra cho ta xem dưới dạng file.
 
@@ -109,7 +109,7 @@ Bind mount là một kiểu mount đặc biệt rất quan trọng ở phần sa
 
 ### 2.1. Rootfs là gì?
 
-Rootfs hay root filesystem là filesystem được mount tại `/` — root của toàn bộ cây thư mục. Nó là filesystem đầu tiên mà kernel mount khi boot, và mọi filesystem khác đều được mount vào một thư mục con bên trong nó.
+Rootfs hay root filesystem là filesystem được mount tại `/` - root của toàn bộ cây thư mục. Nó là filesystem đầu tiên mà kernel mount khi boot, và mọi filesystem khác đều được mount vào một thư mục con bên trong nó.
 
 Trên BBB, rootfs thường nằm trên một partition của eMMC hoặc SD card. U-Boot truyền cho kernel biết rootfs ở đâu thông qua kernel command line:
 
@@ -119,11 +119,11 @@ root=/dev/mmcblk1p2 rootfstype=ext4
 
 Kernel đọc tham số này, mount partition mmcblk1p2 vào `/` và bắt đầu chạy init.
 
-Một điểm quan trọng cần hiểu: rootfs chứa gần như toàn bộ hệ điều hành — binary, library, config, script. Nó khác với boot partition (chỉ chứa kernel image, device tree, bootloader) và khác với data partition (chứa dữ liệu người dùng). Rootfs là "bộ xương" của hệ thống.
+Một điểm quan trọng cần hiểu: rootfs chứa gần như toàn bộ hệ điều hành - binary, library, config, script. Nó khác với boot partition (chỉ chứa kernel image, device tree, bootloader) và khác với data partition (chứa dữ liệu người dùng). Rootfs là "bộ xương" của hệ thống.
 
 ### 2.2. Read only rootfs là gì?
 
-Read only rootfs đơn giản là rootfs được mount với option `ro` — kernel từ chối mọi thao tác ghi lên partition đó. Bất kỳ process nào cố tạo file, sửa file, hay xóa file trên rootfs đều nhận lỗi EROFS (Error Read-Only File System).
+Read only rootfs đơn giản là rootfs được mount với option `ro` - kernel từ chối mọi thao tác ghi lên partition đó. Bất kỳ process nào cố tạo file, sửa file, hay xóa file trên rootfs đều nhận lỗi EROFS (Error Read-Only File System).
 
 Điều này được thiết lập ở hai nơi:
 
@@ -143,7 +143,7 @@ Tham số `ro` ở đây khiến kernel mount rootfs ở chế độ read-only n
 
 Điều này đảm bảo rằng nếu hệ thống cố remount rootfs, nó vẫn giữ chế độ read-only.
 
-Khi rootfs là read-only, nội dung trên partition đó trở thành bất biến (immutable) — giống hệt lúc build image. Mỗi lần boot, hệ thống luôn nhìn thấy cùng một tập file, cùng nội dung, không có gì bị thay đổi.
+Khi rootfs là read-only, nội dung trên partition đó trở thành bất biến (immutable) - giống hệt lúc build image. Mỗi lần boot, hệ thống luôn nhìn thấy cùng một tập file, cùng nội dung, không có gì bị thay đổi.
 
 ### 2.3. Tại sao cần read only rootfs?
 
@@ -187,18 +187,18 @@ Ta có thể hình dung đơn giản: **tmpfs biến một phần RAM thành ổ
 :::warning Chú ý
 Các thư mục `/tmp`, `/run`, `/var/run` được mount tmpfs. Các thư mục này tồn tại trên hầu hết mọi hệ thống Linux bình thường, không liên quan gì đến read only rootfs.
 
-Đây là hành vi mặc định của linux và systemd. systemd luôn mount `/run` là tmpfs vì PID file, socket, lock file là dữ liệu runtime thuần túy. `/tmp` cũng tương tự — systemd có sẵn `tmp.mount` unit mount tmpfs lên `/tmp`.
+Đây là hành vi mặc định của linux và systemd. systemd luôn mount `/run` là tmpfs vì PID file, socket, lock file là dữ liệu runtime thuần túy. `/tmp` cũng tương tự - systemd có sẵn `tmp.mount` unit mount tmpfs lên `/tmp`.
 :::
 
 #### 3.1.1. Cách hoạt động bên trong
 
-Linux kernel quản lý tmpfs thông qua cơ chế page cache — cùng cơ chế mà kernel dùng để cache file từ ổ đĩa thật. Điểm khác biệt là với file trên ổ đĩa, page cache là bản sao (mất cache thì đọc lại từ ổ đĩa), còn với temfs thì page cache chính là bản gốc duy nhất.
+Linux kernel quản lý tmpfs thông qua cơ chế page cache - cùng cơ chế mà kernel dùng để cache file từ ổ đĩa thật. Điểm khác biệt là với file trên ổ đĩa, page cache là bản sao (mất cache thì đọc lại từ ổ đĩa), còn với temfs thì page cache chính là bản gốc duy nhất.
 
 Cụ thể hơn:
 - Khi ta ghi file vào tmpfs, kernel cấp các memory page (thường 4KB mỗi page) để chứa nội dung.
 - Khi file bị xóa, page được giải phóng trả lại cho hệ thống.
 - Các page này nằm trong RAM, được quản lý bởi Virtual Memory subsystem.
-- Khi hệ thống chịu áp lực bộ nh, kernel có thể swap các page của tmpfs ra đĩa — đây là điểm khác so với ramfs (ramfs không bao giờ bị swap).
+- Khi hệ thống chịu áp lực bộ nh, kernel có thể swap các page của tmpfs ra đĩa - đây là điểm khác so với ramfs (ramfs không bao giờ bị swap).
 - tmpfs chỉ dùng RAM đúng bằng lượng dữ liệu thực sự được ghi vào, không phải toàn bộ size được cấp. Mount 100MB tmpfs nhưng chỉ ghi 2MB thì chỉ tốn 2MB RAM.
 
 #### 3.1.2. Cú pháp mount và các option
@@ -225,9 +225,9 @@ Các option quan trọng:
 | --- | --- |
 | `size=` | Giới hạn dung lượng tối đa. Mặc định là 50% RAM nếu không chỉ định. |
 | `mode=` | Permission khi mount.<br>- 1777 = sticky bit: ai cũng ghi được nhưng chỉ xóa được file của mình, giống `/tmp` chuẩn.<br>- 0755 cho thư mục chỉ root ghi được.
-| `nosuid` | Không cho phép SUID bit — tăng bảo mật |
-| `nodev` | Không cho phép device file — tăng bảo mật |
-| `noexec` | Không cho phép execute binary — tăng bảo mật |
+| `nosuid` | Không cho phép SUID bit - tăng bảo mật |
+| `nodev` | Không cho phép device file - tăng bảo mật |
+| `noexec` | Không cho phép execute binary - tăng bảo mật |
 | `nr_inodes=` | Giới hạn số file/thư mục tối đa. Hữu ích để ngăn process nào đó tạo hàng triệu file nhỏ làm cạn kiệt inode. |
 
 #### 3.1.3. Cân nhắc trên BBB
@@ -238,9 +238,9 @@ Một phân bổ hợp lý cho home gateway:
 
 ```
 /tmp        → 32MB   (file tạm của application)
-/var/run    → 5MB    (PID files, socket — rất nhỏ)
-/var/lock   → 2MB    (lock files — rất nhỏ)
-/var/log    → 16MB   (log — nếu chọn lưu log trên RAM)
+/var/run    → 5MB    (PID files, socket - rất nhỏ)
+/var/lock   → 2MB    (lock files - rất nhỏ)
+/var/log    → 16MB   (log - nếu chọn lưu log trên RAM)
 /var/tmp    → 16MB   (file tạm persist trong session)
 ```
 
@@ -254,7 +254,7 @@ Nếu /var/log cần persistent (giữ log qua reboot để debug), đừng dùn
 
 #### 3.1.4. Điều gì xảy ra khi tmpfs đầy
 
-Khi dữ liệu trong tmpfs chạm size limit, mọi thao tác ghi tiếp theo nhận lỗi ENOSPC (No space left on device) — giống hệt khi ổ đĩa thật đầy. Process ghi sẽ fail nhưng hệ thống không crash. Đây là lý do cần chọn size hợp lý và monitor dung lượng, đặc biệt với `/var/log` — nếu log quá nhiều có thể đầy tmpfs.
+Khi dữ liệu trong tmpfs chạm size limit, mọi thao tác ghi tiếp theo nhận lỗi ENOSPC (No space left on device) - giống hệt khi ổ đĩa thật đầy. Process ghi sẽ fail nhưng hệ thống không crash. Đây là lý do cần chọn size hợp lý và monitor dung lượng, đặc biệt với `/var/log` - nếu log quá nhiều có thể đầy tmpfs.
 
 ### 3.2. Bind mount
 
@@ -262,7 +262,7 @@ Như đã giới thiệu ở mục 1.1, bind mount làm một thư mục hiện 
 
 Bind mount là một cơ chế của Linux kernel cho phép ta lấy một thư mục hoặc file đã tồn tại ở vị trí A, rồi làm cho nó xuất hiện thêm ở vị trí B. Sau khi bind mount, cả hai đường dẫn A và B đều trỏ đến cùng một dữ liệu thật.
 
-Khác với symlink - chỉ là con trỏ ở mức filesystem, bind mount hoạt động ở mức VFS trong kernel — nghĩa là nó transparent hoàn toàn, mọi process nhìn vào B đều thấy nội dung thật của A mà không biết đây là bind mount.
+Khác với symlink - chỉ là con trỏ ở mức filesystem, bind mount hoạt động ở mức VFS trong kernel - nghĩa là nó transparent hoàn toàn, mọi process nhìn vào B đều thấy nội dung thật của A mà không biết đây là bind mount.
 
 #### 3.2.1. Cách hoạt động cơ bản
 
@@ -302,7 +302,7 @@ Nghĩa là khi process mở `/var/log/syslog`, kernel thấy symlink, tự độ
 
 Điểm quan trọng: symlink là một file nằm trên rootfs. Nó phải được tạo sẵn lúc build và nằm trong image. Trên hệ thống read only, ta không thể tạo thêm symlink lúc runtime.
 
-Vì `/var/log` là symlink nên bản thân thư mục `/var/log` không thực sự tồn tại trên rootfs — nó chỉ là một con trỏ. Toàn bộ nội dung bên trong nằm trên tmpfs.
+Vì `/var/log` là symlink nên bản thân thư mục `/var/log` không thực sự tồn tại trên rootfs - nó chỉ là một con trỏ. Toàn bộ nội dung bên trong nằm trên tmpfs.
 
 **Bind mount**
 
@@ -320,13 +320,13 @@ Thư mục `/var/lib` vẫn tồn tại trên rootfs read only với nội dung 
 
 Symlink đơn giản hơn nhưng có giới hạn: Yocto phải quyết định lúc build rằng `/var/log` sẽ là symlink. Điều này nghĩa là trên rootfs không còn thư mục `/var/log` thật nữa, chỉ còn symlink. Yocto làm được điều này cho `/var/log`, `/var/run`, `/var/tmp` vì chúng là các đường dẫn chuẩn, biết trước, và không package nào cần thư mục thật ở đó.
 
-Nhưng với `/var/lib` thì khác. Rất nhiều package lúc build cài file vào `/var/lib` — ví dụ systemd đặt file vào `/var/lib/systemd`, dbus đặt file vào `/var/lib/dbus`. Nếu Yocto biến `/var/lib` thành symlink trỏ sang `/var/volatile/lib`, toàn bộ nội dung gốc mà các package cài vào đó sẽ biến mất, vì /var/volatile là tmpfs trống rỗng mỗi lần boot.
+Nhưng với `/var/lib` thì khác. Rất nhiều package lúc build cài file vào `/var/lib` - ví dụ systemd đặt file vào `/var/lib/systemd`, dbus đặt file vào `/var/lib/dbus`. Nếu Yocto biến `/var/lib` thành symlink trỏ sang `/var/volatile/lib`, toàn bộ nội dung gốc mà các package cài vào đó sẽ biến mất, vì /var/volatile là tmpfs trống rỗng mỗi lần boot.
 
 Bind mount có thể giải quyết vấn đề này: `/var/lib` vẫn là thư mục thật trên rootfs chứa nội dung gốc do các package cài vào. Lúc runtime, bind mount đè lên nó bằng một thư mục writable trên tmpfs. Nội dung gốc bị che nhưng không bị mất dữ liệu gốc.
 
 #### 3.2.3. Cách kernel xử lý bind mount
 
-Để hiểu sâu hơn, cần biết Linux VFS quản lý hai khái niệm riêng biệt: **dentry** (directory entry — đại diện cho tên file/thư mục trong filesystem) và **vfsmount** (đại diện cho một mount point).
+Để hiểu sâu hơn, cần biết Linux VFS quản lý hai khái niệm riêng biệt: **dentry** (directory entry - đại diện cho tên file/thư mục trong filesystem) và **vfsmount** (đại diện cho một mount point).
 
 Khi ta truy cập path `/var/lib/myapp/data.db`, kernel đi qua từng thành phần: `/` -> `var` -> `lib` -> `myapp` -> `data.db`. Tại mỗi bước, kernel kiểm tra mount table xem có mount point nào ở đây không.
 
@@ -350,9 +350,9 @@ Kernel thêm một entry vào mount table trong RAM. Rootfs trên đĩa không b
 Rootfs trên eMMC là read only. Nhưng `/var/lib` nằm trên rootfs đó, và nhiều service cần ghi vào `/var/lib`:
 
 ```
-/var/lib/NetworkManager/  — lưu connection state
-/var/lib/systemd/         — lưu random-seed, timers
-/var/lib/dnsmasq/         — lưu DHCP leases
+/var/lib/NetworkManager/  - lưu connection state
+/var/lib/systemd/         - lưu random-seed, timers
+/var/lib/dnsmasq/         - lưu DHCP leases
 ```
 
 Nếu không xử lý gì, service ghi vào đây sẽ nhận lỗi:
@@ -414,7 +414,7 @@ systemctl restart systemd-networkd
 
 #### 3.2.5. Bind mount cho persistent data
 
-Không phải tất cả đều nên nằm trên tmpfs. Ví dụ DHCP lease database của dnsmasq — nếu mất sau mỗi reboot, tất cả client phải xin IP mới. Ta muốn giữ dữ liệu này khi reboot.
+Không phải tất cả đều nên nằm trên tmpfs. Ví dụ DHCP lease database của dnsmasq - nếu mất sau mỗi reboot, tất cả client phải xin IP mới. Ta muốn giữ dữ liệu này khi reboot.
 
 Giải pháp là bind mount từ persistent partition thay vì tmpfs:
 
@@ -446,7 +446,7 @@ mount --bind /run/resolv.conf /etc/resolv.conf
 # Bây giờ dhclient ghi /etc/resolv.conf → thực chất ghi /run/resolv.conf
 ```
 
-Điều kiện: file target (`/etc/resolv.conf`) phải tồn tại sẵn trên rootfs lúc build. Nó có thể rỗng hoặc chứa nội dung mặc định — bind mount sẽ che nó lại. Đây là lý do trong Yocto recipe, ta thường thấy các file placeholder được tạo sẵn.
+Điều kiện: file target (`/etc/resolv.conf`) phải tồn tại sẵn trên rootfs lúc build. Nó có thể rỗng hoặc chứa nội dung mặc định - bind mount sẽ che nó lại. Đây là lý do trong Yocto recipe, ta thường thấy các file placeholder được tạo sẵn.
 
 #### 3.2.7. Bind mount trong systemd
 
@@ -477,21 +477,21 @@ Phần `Type=none` và `Options=bind` là cách systemd biểu diễn bind mount
 Hãy nghĩ về thư mục`/etc`, nó chứa hàng trăm file config và đa số là tĩnh, thiết lập lúc build, không bao giờ thay đổi. Nhưng có một số vài file cần thay đổi lúc runtime:
 
 ```
-/etc/resolv.conf          — DNS, cập nhật bởi DHCP client
-/etc/hostname             — có thể thay đổi qua web UI
-/etc/hostapd/hostapd.conf — user thay đổi WiFi password
-/etc/dnsmasq.conf         — thay đổi DHCP range
-/etc/network/interfaces   — thay đổi network config
-/etc/dropbear/            — SSH host key (tạo lần đầu boot)
+/etc/resolv.conf          - DNS, cập nhật bởi DHCP client
+/etc/hostname             - có thể thay đổi qua web UI
+/etc/hostapd/hostapd.conf - user thay đổi WiFi password
+/etc/dnsmasq.conf         - thay đổi DHCP range
+/etc/network/interfaces   - thay đổi network config
+/etc/dropbear/            - SSH host key (tạo lần đầu boot)
 ```
 
-Nếu dùng tmpfs cho toàn bộ `/etc`, ta mất hết config gốc. Nếu dùng bind mount, ta phải liệt kê từng file một — dễ bỏ sót và khó maintain.
+Nếu dùng tmpfs cho toàn bộ `/etc`, ta mất hết config gốc. Nếu dùng bind mount, ta phải liệt kê từng file một - dễ bỏ sót và khó maintain.
 
 -> OverlayFS giúp giải quyết bài toán này.
 
 OverlayFS là filesystem cho phép xếp chồng nhiều layer lên nhau, tạo thành một view hợp nhất. Người dùng và application nhìn thấy một filesystem duy nhất, nhưng bên dưới thực chất có nhiều layer riêng biệt.
 
-Hình dung đơn giản: ta có một tờ giấy in sẵn (không được viết lên), ta đặt một tờ giấy bóng kính trong suốt lên trên. Nhìn xuống thấy nội dung tờ giấy gốc. Khi cần sửa, ta viết lên tờ bóng kính — tờ gốc không bị ảnh hưởng. Muốn quay về bản gốc, bỏ tờ bóng kính đi.
+Hình dung đơn giản: ta có một tờ giấy in sẵn (không được viết lên), ta đặt một tờ giấy bóng kính trong suốt lên trên. Nhìn xuống thấy nội dung tờ giấy gốc. Khi cần sửa, ta viết lên tờ bóng kính - tờ gốc không bị ảnh hưởng. Muốn quay về bản gốc, bỏ tờ bóng kính đi.
 
 #### 3.3.1. Kiến trúc của OverlayFS
 
@@ -568,7 +568,7 @@ cat /mnt/merged/file1.txt
 #         file1.txt có ở lower không? -> Có -> trả về nội dung từ lower
 ```
 
-**Sửa file (copy-up):** OverlayFS thực hiện thao tác gọi là "copy-up" — copy file từ lowerdir lên upperdir, rồi apply thay đổi trên bản copy. Từ lần sau, file trong upperdir sẽ "che" file gốc trong lowerdir. File gốc trong lowerdir không bị động vào.
+**Sửa file (copy-up):** OverlayFS thực hiện thao tác gọi là "copy-up" - copy file từ lowerdir lên upperdir, rồi apply thay đổi trên bản copy. Từ lần sau, file trong upperdir sẽ "che" file gốc trong lowerdir. File gốc trong lowerdir không bị động vào.
 
 ```
 # file1.txt đang ở lower
@@ -577,7 +577,7 @@ echo "modified" > /mnt/merged/file1.txt
 # Chuyện gì xảy ra bên trong:
 # 1. Kernel copy /mnt/lower/file1.txt -> /mnt/upper/file1.txt
 # 2. Kernel ghi "modified" vào /mnt/upper/file1.txt
-# 3. /mnt/lower/file1.txt vẫn chứa "original" — không bị sửa
+# 3. /mnt/lower/file1.txt vẫn chứa "original" - không bị sửa
 
 # Kiểm chứng
 cat /mnt/lower/file1.txt     # -> "original"  (nguyên vẹn)
@@ -618,7 +618,7 @@ bashrm /mnt/upper/file2.txt     # xóa whiteout
 
 upperdir trên tmpfs: Mỗi lần boot, `/etc` trở về trạng thái gốc 100%.
 - Ưu điểm là đơn giản, sạch, và đảm bảo tính nhất quán tuyệt đối.
-- Nhược điểm: nếu user thay đổi config, thay đổi mất sau reboot — ta cần cơ chế riêng để persist những config này.
+- Nhược điểm: nếu user thay đổi config, thay đổi mất sau reboot - ta cần cơ chế riêng để persist những config này.
 
 ```bash
 # upperdir trên tmpfs
@@ -662,7 +662,7 @@ Mỗi daemon khi start ghi process ID của mình vào file để init system v�
 
 **Socket file**
 
-Các Unix domain socket mà process tạo để giao tiếp IPC. Ví dụ `/var/run/dbus/system_bus_socket` — mọi process cần nói chuyện với D-Bus đều connect qua socket file này. Sau reboot, dbus-daemon tạo lại socket mới.
+Các Unix domain socket mà process tạo để giao tiếp IPC. Ví dụ `/var/run/dbus/system_bus_socket` - mọi process cần nói chuyện với D-Bus đều connect qua socket file này. Sau reboot, dbus-daemon tạo lại socket mới.
 
 **Lock file**
 
@@ -684,7 +684,7 @@ tmpfs  /var/lock  tmpfs  size=2m,mode=1777   0  0
 
 ### 4.2. Dữ liệu persistent
 
-Đây là dữ liệu mà người dùng hoặc hệ thống tạo ra lúc runtime và mất đi sẽ gây hậu quả — phải giữ qua reboot.
+Đây là dữ liệu mà người dùng hoặc hệ thống tạo ra lúc runtime và mất đi sẽ gây hậu quả - phải giữ qua reboot.
 
 **Config đã thay đổi bởi user**
 
@@ -692,7 +692,7 @@ Network config: user thay đổi IP tĩnh, WiFi SSID/password, VLAN config qua w
 
 Service config: user tùy chỉnh DHCP range trong `/etc/dnsmasq.conf`, firewall rules trong `/etc/iptables/`, port forwarding, DNS server tùy chỉnh. Tất cả là config user đã sửa, phải giữ lại.
 
-Certificates và keys: SSL cert cho web UI (`/etc/ssl/`), SSH host key (`/etc/dropbear/`, `/etc/ssh/`), VPN certificates. SSH host key đặc biệt quan trọng — nếu thay đổi mỗi boot, user sẽ nhận warning "host key changed" mỗi lần SSH vào.
+Certificates và keys: SSL cert cho web UI (`/etc/ssl/`), SSH host key (`/etc/dropbear/`, `/etc/ssh/`), VPN certificates. SSH host key đặc biệt quan trọng - nếu thay đổi mỗi boot, user sẽ nhận warning "host key changed" mỗi lần SSH vào.
 
 **Database và state quan trọng**
 
@@ -755,7 +755,7 @@ IMAGE_INSTALL:append = " \
 
 #### 4.3.2. Thu thập dữ liệu
 
-**Phương pháp 1: inotifywait — Theo dõi filesystem event**
+**Phương pháp 1: inotifywait - Theo dõi filesystem event**
 
 Đây là phương pháp chính, cho cái nhìn tổng quan nhanh nhất.
 
@@ -789,7 +789,7 @@ Output trông như thế này:
 2024-03-15 10:05:00 MODIFY /var/log/messages
 ```
 
-**Phương pháp 2: strace — Theo dõi system call của từng process**
+**Phương pháp 2: strace - Theo dõi system call của từng process**
 
 Khi cần phân tích sâu một service cụ thể, `strace` cho thấy chính xác từng thao tác file mà process thực hiện.
 
@@ -826,7 +826,7 @@ Output của `strace` rất chi tiết:
 
 Từ đây ta biết chính xác: dnsmasq mở `/var/run/dnsmasq.pid` để ghi (PID file -> volatile), mở `/var/lib/dnsmasq/dnsmasq.leases` để đọc-ghi (lease DB -> persistent), mở `/etc/resolv.conf` chỉ để đọc (không cần writable cho dnsmasq, nhưng dhclient thì cần ghi).
 
-**Phương pháp 3: lsof — Snapshot file đang mở**
+**Phương pháp 3: lsof - Snapshot file đang mở**
 
 Khi service đang chạy ổn định, dùng `lsof` để xem nó đang giữ những file nào:
 
@@ -844,7 +844,7 @@ lsof -c dnsmasq
 
 Cột `FD` cho biết file descriptor và mode: `w` = write only, `r` = read only, `u` = read-write. Từ đây biết file nào service cần ghi.
 
-Hoặc quét ngược — tìm tất cả process đang ghi vào thư mục cụ thể:
+Hoặc quét ngược - tìm tất cả process đang ghi vào thư mục cụ thể:
 
 ```bash
 # Ai đang ghi vào /etc?
@@ -868,14 +868,14 @@ Ví dụ phân tích các service thường có trên home gateway:
 ```
 Thu thập được:
     WRITE /var/run/dropbear.pid
-    READ  /etc/dropbear/dropbear_rsa_host_key    — đọc nếu tồn tại
-    WRITE /etc/dropbear/dropbear_rsa_host_key    — tạo nếu chưa có
-    WRITE /etc/dropbear/dropbear_ecdsa_host_key  — tương tự
-    READ  /etc/passwd, /etc/shadow               — authentication
+    READ  /etc/dropbear/dropbear_rsa_host_key    - đọc nếu tồn tại
+    WRITE /etc/dropbear/dropbear_rsa_host_key    - tạo nếu chưa có
+    WRITE /etc/dropbear/dropbear_ecdsa_host_key  - tương tự
+    READ  /etc/passwd, /etc/shadow               - authentication
 
 Phân tích đặc biệt:
     Host key là trường hợp thú vị. Nó chỉ được tạo một lần (lần boot
-    đầu tiên), sau đó chỉ đọc. Nhưng nó phải persistent — nếu thay đổi
+    đầu tiên), sau đó chỉ đọc. Nhưng nó phải persistent - nếu thay đổi
     mỗi boot, SSH client sẽ báo "HOST KEY CHANGED" và từ chối kết nối.
 
 Giải pháp:
@@ -891,8 +891,8 @@ Giải pháp:
 ```
 Thu thập được:
     WRITE /var/run/mosquitto.pid
-    WRITE /var/lib/mosquitto/mosquitto.db        — retained messages DB
-    WRITE /var/log/mosquitto/mosquitto.log       — log
+    WRITE /var/lib/mosquitto/mosquitto.db        - retained messages DB
+    WRITE /var/log/mosquitto/mosquitto.log       - log
     READ  /etc/mosquitto/mosquitto.conf
 
 Phân loại:
@@ -1041,7 +1041,7 @@ def volatile_systemd_services(d):
 
 Với entry `/var/volatile/lib /var/lib`, nó tạo ra hai file systemd:
 
-**File 1: var-lib.mount — mount unit**
+**File 1: var-lib.mount - mount unit**
 
 ```ini
 [Unit]
@@ -1056,7 +1056,7 @@ Type=none
 Options=bind
 ```
 
-**File 2: var-lib.service — service unit đi kèm**
+**File 2: var-lib.service - service unit đi kèm**
 
 ```ini
 [Unit]
@@ -1172,7 +1172,7 @@ WantedBy=local-fs.target
 
 Hiểu rõ sự khác biệt: `volatile-binds` bind mount từ tmpfs -> dữ liệu mất khi reboot. Nó phù hợp cho trạng thái mà service tạo lại khi khởi động.
 
-Nếu ta cần dữ liệu giữ sau khi reboot, không dùng `volatile-binds` mà tạo bind mount từ partition `/data` — đây là phần ta phải làm thủ công vì Yocto không có cơ chế built-in cho persistent data partition.
+Nếu ta cần dữ liệu giữ sau khi reboot, không dùng `volatile-binds` mà tạo bind mount từ partition `/data` - đây là phần ta phải làm thủ công vì Yocto không có cơ chế built-in cho persistent data partition.
 
 ### 5.3. systemd-tmpfiles
 
@@ -1273,7 +1273,7 @@ cat /proc/mounts | grep " / "
 
 **Thử ghi trực tiếp**
 
-Test thủ công đơn giản nhất — thử tạo file trên rootfs:
+Test thủ công đơn giản nhất - thử tạo file trên rootfs:
 
 ```bash
 touch /test_readonly
@@ -1322,7 +1322,7 @@ journalctl -b | grep -i "Read-only file system"
 # Tìm trong dmesg
 dmesg | grep -i "read-only"
 
-# Tìm rộng hơn — lỗi permission cũng có thể liên quan
+# Tìm rộng hơn - lỗi permission cũng có thể liên quan
 journalctl -b | grep -iE "read-only|EROFS|permission denied|cannot create|cannot open|failed to write|failed to create|No such file"
 ```
 
@@ -1463,12 +1463,12 @@ Triển khai read only rootfs trên thực tế là quy trình lặp:
 1. Bật flag, build image
 2. Flash lên BBB, boot
 3. Đọc log lỗi
-4. Xử lý lỗi đầu tiên — thêm tmpfs, bind mount, hoặc tmpfiles rule
+4. Xử lý lỗi đầu tiên - thêm tmpfs, bind mount, hoặc tmpfiles rule
 5. Rebuild, reflash, boot lại
 6. Kiểm tra lỗi đầu tiên đã hết, xử lý lỗi tiếp theo
 7. Lặp cho đến khi không còn lỗi
 
-Mỗi vòng lặp thường xử lý được một đến vài lỗi. Với nhiều hệ thống đầy đủ service, có thể cần 5-10 vòng lặp. Kiên nhẫn — mỗi lỗi đều có giải pháp rõ ràng khi ta đã hiểu ba cơ chế ở phần 3.
+Mỗi vòng lặp thường xử lý được một đến vài lỗi. Với nhiều hệ thống đầy đủ service, có thể cần 5-10 vòng lặp. Kiên nhẫn - mỗi lỗi đều có giải pháp rõ ràng khi ta đã hiểu ba cơ chế ở phần 3.
 
 #### 5.5.4. Mẹo giảm số vòng lặp
 

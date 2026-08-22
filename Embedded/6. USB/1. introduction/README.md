@@ -47,7 +47,7 @@ USB ra đời để giải quyết các vấn đề của các chuẩn giao ti�
 
 ## 4. Tổng quan kiến trúc USB
 
-USB là một cable bus hỗ trợ giao tiếp giữa một host duy nhất và các thiết bị ngoại vi. Toàn bộ giao tiếp trên bus đều do host khởi tạo — device không được phép tự ý gửi dữ liệu nếu host không yêu cầu.
+USB là một cable bus hỗ trợ giao tiếp giữa một host duy nhất và các thiết bị ngoại vi. Toàn bộ giao tiếp trên bus đều do host khởi tạo - device không được phép tự ý gửi dữ liệu nếu host không yêu cầu.
 
 ### 4.1. Vòng đời của một USB Device
 
@@ -90,7 +90,7 @@ Các thành phần chính:
  
 | Thành phần | Vai trò | Vị trí trong cây |
 |---|---|---|
-| **Host** | Điều khiển toàn bộ bus, khởi tạo mọi giao tiếp. Chỉ có một host duy nhất trong hệ thống. | Root — tương ứng Root Hub |
+| **Host** | Điều khiển toàn bộ bus, khởi tạo mọi giao tiếp. Chỉ có một host duy nhất trong hệ thống. | Root - tương ứng Root Hub |
 | **Hub** | Mở rộng số cổng kết nối. Nhận dữ liệu từ upstream port và phân phối đến downstream port. | Node |
 | **Function** | Thiết bị ngoại vi thực sự cung cấp chức năng cho người dùng (bàn phím, chuột, storage,...). | Leaf |
  
@@ -100,7 +100,7 @@ Mỗi kết nối giữa hai thành phần là một liên kết **point-to-poin
 - Hub $\leftrightarrow$ Function
 
 :::warning Giới hạn 7 tầng
-Do giới hạn thời gian truyền tín hiệu qua hub và cable, USB cho phép tối đa 7 tầng (bao gồm cả Root Hub ở tầng 1). Ở tầng 7, chỉ được phép kết nối function — không được đặt hub. Điều này có nghĩa tối đa có 5 hub xếp chồng (non-root) giữa host và device cuối cùng.
+Do giới hạn thời gian truyền tín hiệu qua hub và cable, USB cho phép tối đa 7 tầng (bao gồm cả Root Hub ở tầng 1). Ở tầng 7, chỉ được phép kết nối function - không được đặt hub. Điều này có nghĩa tối đa có 5 hub xếp chồng (non-root) giữa host và device cuối cùng.
 :::
 
 :::warning Số lượng thiết bị tối đa

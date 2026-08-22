@@ -322,7 +322,7 @@ z_cstart: khởi tạo kernel
      ▼
 Kernel service sẵn sàng, tạo main thread và idle thread
      │
-     ├── POST_KERNEL   : đa số driver (gpio, i2c, spi, uart) — được phép dùng API kernel
+     ├── POST_KERNEL   : đa số driver (gpio, i2c, spi, uart) - được phép dùng API kernel
      ├── APPLICATION   : khởi tạo mức ứng dụng
      │
      ▼

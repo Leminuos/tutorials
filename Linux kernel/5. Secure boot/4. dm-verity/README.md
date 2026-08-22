@@ -82,7 +82,7 @@ Trên disk, hash partition trông như sau:
 Giả sử ứng dụng chạy `cat /etc/hostname`. File này nằm ở data block 300.
 
 
-**Bước 1 — Ứng dụng gọi system call**
+**Bước 1 - Ứng dụng gọi system call**
 
 ```
 Userspace:  cat gọi read() -> system call vào kernel
@@ -95,7 +95,7 @@ VFS layer:  Kernel tra inode của /etc/hostname
 Device-mapper: Request đi đến dm-verity target
 ```
 
-**Bước 2 — dm-verity kiểm tra cache**
+**Bước 2 - dm-verity kiểm tra cache**
 
 Trước khi làm bất cứ điều gì, dm-verity kiểm tra buffer cache của kernel:
 
@@ -110,7 +110,7 @@ dm-verity nhận request đọc block #300
           └── không -> tiếp tục bước 3
 ```
 
-**Bước 3 — Đọc data block từ disk**
+**Bước 3 - Đọc data block từ disk**
 
 ```
 dm-verity yêu cầu đọc block #300 từ data partition
@@ -118,7 +118,7 @@ dm-verity yêu cầu đọc block #300 từ data partition
        (Chưa trả cho ứng dụng, chờ xác minh)
 ```
 
-**Bước 4 — Tính hash của data block**
+**Bước 4 - Tính hash của data block**
 
 dm-verity tính hash:
 
@@ -128,11 +128,11 @@ computed_hash = SHA-256(salt ∥ block_data)
             = ví dụ: a3f2...9b71 (32 bytes)
 ```
 
-**Bước 5 — Xác minh qua Merkle tree**
+**Bước 5 - Xác minh qua Merkle tree**
 
 Đây là phần cốt lõi. dm-verity cần xác minh `computed_hash` khớp với hash đã lưu, rồi xác minh hash đó ngược lên đến root hash.
 
-**5a. Tra Level 0 — tìm leaf hash:**
+**5a. Tra Level 0 - tìm leaf hash:**
 
 Block #300 nằm trong hash block nào ở Level 0?
 
@@ -146,7 +146,7 @@ Mỗi hash block chứa 128 hash entry
 So sánh: computed_hash   == stored_hash_L0 ?
 ```
 
-**5b. Tra Level 1 — xác minh hash block H2:**
+**5b. Tra Level 1 - xác minh hash block H2:**
 
 Bây giờ cần chắc chắn hash block H2 chưa bị sửa đổi.
 
@@ -168,7 +168,7 @@ Lấy entry #2 -> stored_hash_L1 = ví dụ: 7c8e...3d42
 So sánh: computed_hash_H2 == stored_hash_L1 ?
 ```
 
-**5c. Tra Level 2 — xác minh root hash:**
+**5c. Tra Level 2 - xác minh root hash:**
 
 Cuối cùng, xác minh hash block H32 (level 1) với root hash.
 
@@ -209,7 +209,7 @@ Root hash được truyền vào kernel cmdline
   -> ROM kiểm tra signature dựa trên key hash trong eFuse
 ```
 
-Nếu attacker muốn thay đổi root hash phải thì cần phải sửa cmdline -> phải sửa FIT image -> chữ ký FIT không match -> U-Boot từ chối boot. Muốn sign lại FIT -> cần private key. Muốn thay public key trong U-Boot -> phải sửa U-Boot → SPL từ chối. Chuỗi này kéo dài đến tận eFuse trong silicon — không thể sửa đổi bằng phần mềm.
+Nếu attacker muốn thay đổi root hash phải thì cần phải sửa cmdline -> phải sửa FIT image -> chữ ký FIT không match -> U-Boot từ chối boot. Muốn sign lại FIT -> cần private key. Muốn thay public key trong U-Boot -> phải sửa U-Boot → SPL từ chối. Chuỗi này kéo dài đến tận eFuse trong silicon - không thể sửa đổi bằng phần mềm.
 
 Ngoài ra, mỗi lần rootfs thay đổi như thêm/xóa file, cập nhật package...thì root hash sẽ khác hoàn toàn. Vì vậy quy trình build phải tự động tính root hash mới và nhúng vào FIT image mỗi lần build.
 
@@ -256,7 +256,7 @@ Root hash:          7e0ad1...3f82   <- Giá trị này cần truyền cho kernel
 3. Gộp 128 hash thành 1 hash block (4KB)
 4. Hash tiếp lên level trên, lặp lại cho đến root
 5. Ghi toàn bộ hash tree vào `rootfs.hashtree`
-6. In ra root hash — 32 byte hex
+6. In ra root hash - 32 byte hex
 
 :::tip Salt là gì?
 Salt là giá trị random 32 byte được chọn lúc build image. Nó được nối vào trước mỗi data block trước khi hash: `hash = SHA-256(salt || block_data)`. Mục đích của nó là đảm bảo rằng hai block có cùng content nhưng nằm trong hai image khác nhau sẽ có hash khác nhau. Điều này ngăn attacker dùng pre-computed hash table.
@@ -528,7 +528,7 @@ root=/dev/dm-0
                                                Đọc data từ /dev/mmcblk1p2
 ```
 
-Kernel mount `/dev/dm-0`, không phải `/dev/mmcblk1p2`. Mọi I/O đều đi qua dm-verity layer. dm-verity đóng vai trò trung gian — nó đọc data từ partition thật, verify hash, rồi mới trả dữ liệu lên cho ext4/VFS.
+Kernel mount `/dev/dm-0`, không phải `/dev/mmcblk1p2`. Mọi I/O đều đi qua dm-verity layer. dm-verity đóng vai trò trung gian - nó đọc data từ partition thật, verify hash, rồi mới trả dữ liệu lên cho ext4/VFS.
 
 Nếu `/dev/dm-0` chưa tồn tại lúc kernel muốn mount rootfs, kernel không có gì để mount -> panic. Vì vậy dm-mod phải tạo device trước.
 
@@ -836,7 +836,7 @@ DEPENDS += "cryptsetup-native"
 DEPENDS += "coreutils-native util-linux-native"
 
 # -----------------------------------------------------------------------------
-# Biến cấu hình — user có thể override trong local.conf hoặc trong image recipe
+# Biến cấu hình - user có thể override trong local.conf hoặc trong image recipe
 # -----------------------------------------------------------------------------
 
 # Thuật toán hash
@@ -961,7 +961,7 @@ ${DM_VERITY_HASH_ALGORITHM} ${ROOT_HASH} ${SALT}"
 }
 
 # -----------------------------------------------------------------------------
-# Hàm chính — verity_setup
+# Hàm chính - verity_setup
 # -----------------------------------------------------------------------------
 
 verity_setup() {
@@ -1144,7 +1144,7 @@ veritysetup verify \
     /tmp/tampered.ext4 \
     core-image-verity-<machine>-*.rootfs.verity \
     ${DM_VERITY_ROOT_HASH}
-# Output: "Verification failed" — hash tree phát hiện thay đổi
+# Output: "Verification failed" - hash tree phát hiện thay đổi
 ```
 
 ### 7.4. Truyền root hash qua kernel cmdline

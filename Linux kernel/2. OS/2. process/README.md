@@ -4,17 +4,17 @@
 
 ### 1.1. Tại sao cần có khái niệm Process?
 
-Những chiếc máy tính đầu tiên chạy theo mô hình đơn giản: **một chương trình, một máy**. Khi muốn chạy chương trình mới, người vận hành phải dừng chương trình hiện tại, nạp chương trình mới vào bộ nhớ, rồi chạy lại từ đầu. CPU hầu hết thời gian ngồi chờ — chờ người dùng nhập liệu, chờ đọc băng từ, chờ in xong. Tài nguyên đắt tiền bị lãng phí.
+Những chiếc máy tính đầu tiên chạy theo mô hình đơn giản: **một chương trình, một máy**. Khi muốn chạy chương trình mới, người vận hành phải dừng chương trình hiện tại, nạp chương trình mới vào bộ nhớ, rồi chạy lại từ đầu. CPU hầu hết thời gian ngồi chờ - chờ người dùng nhập liệu, chờ đọc băng từ, chờ in xong. Tài nguyên đắt tiền bị lãng phí.
 
 Câu hỏi đặt ra: **Tại sao không chạy nhiều chương trình cùng lúc?**
 
 Nhưng ngay lập tức xuất hiện loạt vấn đề nan giải:
-- **Bộ nhớ:** Chương trình A và B cùng nạp vào RAM — ai ở đâu? Nếu A ghi nhầm vào vùng nhớ của B thì sao?
-- **CPU:** Hai chương trình cùng muốn chạy — ai được chạy trước? Chương trình nào chạy vòng lặp vô tận có thể chiếm CPU mãi mãi.
-- **Tài nguyên:** Cả hai cùng muốn ghi vào một file — kết quả sẽ là gì?
-- **Lỗi:** Chương trình A crash — B có bị kéo theo không?
+- **Bộ nhớ:** Chương trình A và B cùng nạp vào RAM - ai ở đâu? Nếu A ghi nhầm vào vùng nhớ của B thì sao?
+- **CPU:** Hai chương trình cùng muốn chạy - ai được chạy trước? Chương trình nào chạy vòng lặp vô tận có thể chiếm CPU mãi mãi.
+- **Tài nguyên:** Cả hai cùng muốn ghi vào một file - kết quả sẽ là gì?
+- **Lỗi:** Chương trình A crash - B có bị kéo theo không?
 
-Để giải quyết tất cả những vấn đề này, hệ điều hành cần một đơn vị quản lý — một cái hộp cô lập cho mỗi chương trình đang chạy, có ranh giới rõ ràng về bộ nhớ, quyền hạn, và thời gian CPU. Đơn vị đó được gọi là **process**.
+Để giải quyết tất cả những vấn đề này, hệ điều hành cần một đơn vị quản lý - một cái hộp cô lập cho mỗi chương trình đang chạy, có ranh giới rõ ràng về bộ nhớ, quyền hạn, và thời gian CPU. Đơn vị đó được gọi là **process**.
 
 :::tip Kết luận
 Process không phải là chương trình. Process là môi trường được kiểm soát mà trong đó chương trình được phép thực thi.
@@ -30,16 +30,16 @@ Khi lập trình vi điều khiển (MCU), developer quen với mô hình:
 
 Linux hoàn toàn khác:
 - Hàng chục đến hàng trăm chương trình chạy đồng thời
-- Mỗi chương trình bị cô lập — không thể đọc/ghi bộ nhớ của chương trình khác
+- Mỗi chương trình bị cô lập - không thể đọc/ghi bộ nhớ của chương trình khác
 - Kernel là trọng tài: phân phối CPU, RAM, quyền truy cập tài nguyên
 - Khi một chương trình crash, các chương trình còn lại không bị ảnh hưởng
 
 :::warning Câu hỏi
 Trên STM32, nếu một task FreeRTOS ghi đè bộ nhớ của task khác, điều gì xảy ra? Trên Linux thì sao?
 
-Trên STM32 (không có MPU hoặc MPU không được cấu hình), tất cả các task chia sẻ chung một không gian địa chỉ vật lý — task A hoàn toàn có thể ghi đè lên stack hay biến của task B mà không hề có cảnh báo. Hậu quả thường là hard fault hoặc hành vi không xác định (undefined behavior) trên toàn hệ thống.
+Trên STM32 (không có MPU hoặc MPU không được cấu hình), tất cả các task chia sẻ chung một không gian địa chỉ vật lý - task A hoàn toàn có thể ghi đè lên stack hay biến của task B mà không hề có cảnh báo. Hậu quả thường là hard fault hoặc hành vi không xác định (undefined behavior) trên toàn hệ thống.
 
-Trên Linux, mỗi process có không gian địa chỉ ảo riêng biệt, được bảo vệ bởi MMU. Nếu process A cố truy cập vùng nhớ không thuộc về nó, MMU phát hiện vi phạm và kernel gửi signal SIGSEGV (Segmentation Fault) — chỉ process A bị kill, các process khác không bị ảnh hưởng.
+Trên Linux, mỗi process có không gian địa chỉ ảo riêng biệt, được bảo vệ bởi MMU. Nếu process A cố truy cập vùng nhớ không thuộc về nó, MMU phát hiện vi phạm và kernel gửi signal SIGSEGV (Segmentation Fault) - chỉ process A bị kill, các process khác không bị ảnh hưởng.
 :::
 
 ### 1.3. Program vs Process
@@ -65,15 +65,15 @@ Kernel đại diện mỗi process bằng một struct gọi là `task_struct` (
 
 ```
 task_struct
-├── pid          — Process ID
-├── ppid         — Parent PID
-├── state        — Trạng thái hiện tại (R/S/D/T/Z)
-├── mm           — Con trỏ đến memory map (địa chỉ ảo)
-├── files        — Danh sách file descriptors đang mở
-├── signal       — Thông tin xử lý signal
-├── sched_class  — Thuật toán scheduling áp dụng
-├── prio         — Priority hiện tại
-└── ...          — Hàng trăm trường khác
+├── pid          - Process ID
+├── ppid         - Parent PID
+├── state        - Trạng thái hiện tại (R/S/D/T/Z)
+├── mm           - Con trỏ đến memory map (địa chỉ ảo)
+├── files        - Danh sách file descriptors đang mở
+├── signal       - Thông tin xử lý signal
+├── sched_class  - Thuật toán scheduling áp dụng
+├── prio         - Priority hiện tại
+└── ...          - Hàng trăm trường khác
 ```
 
 :::tip Không cần thuộc lòng các trường
@@ -87,18 +87,18 @@ Mỗi process đang chạy trong hệ điều hành sẽ được cấp phát m�
 - Dải mặc định từ 1 đến 32768, có thể tăng lên 4194304 (cấu hình qua `/proc/sys/kernel/pid_max`)
 - Khi process kết thúc, PID được giải phóng và có thể được tái sử dụng
 
-Không có hai process nào trong hệ thống có cùng PID tại bất kỳ thời điểm nào. Hệ điều hành sử dụng PID để nhận diện và quản lý process — ví dụ khi gửi signal (`kill`), theo dõi trạng thái (`ps`, `top`), hay khi process cha cần chờ process con kết thúc (`wait`).
+Không có hai process nào trong hệ thống có cùng PID tại bất kỳ thời điểm nào. Hệ điều hành sử dụng PID để nhận diện và quản lý process - ví dụ khi gửi signal (`kill`), theo dõi trạng thái (`ps`, `top`), hay khi process cha cần chờ process con kết thúc (`wait`).
 
-Các child process có PID riêng, nhưng cũng lưu **PPID (Parent Process ID)** — PID của process cha đã tạo ra chúng.
+Các child process có PID riêng, nhưng cũng lưu **PPID (Parent Process ID)** - PID của process cha đã tạo ra chúng.
 
 **Một số PID đặc biệt:**
 | PID | Process | Vai trò |
 |---|---|---|
 | 0 | swapper/idle | Process đầu tiên kernel tạo ra, chạy scheduler. Không xuất hiện trong `ps` vì nó là một phần của kernel. |
-| 1 | `init` hoặc `systemd` | Process userspace đầu tiên, được kernel khởi tạo thông qua đường dẫn hardcode trong kernel (thường là `/sbin/init`). Process này đọc file cấu hình để khởi tạo toàn bộ hệ thống — mount filesystem, start services, spawn login prompts. |
+| 1 | `init` hoặc `systemd` | Process userspace đầu tiên, được kernel khởi tạo thông qua đường dẫn hardcode trong kernel (thường là `/sbin/init`). Process này đọc file cấu hình để khởi tạo toàn bộ hệ thống - mount filesystem, start services, spawn login prompts. |
 
 :::warning Vai trò đặc biệt của PID 1
-Ngoài việc khởi tạo hệ thống, init/systemd còn là **"cha nuôi" mặc định** — khi một process cha kết thúc trước process con, kernel tự động gán PID 1 làm cha mới cho process con mồ côi đó (orphan process). Init sẽ gọi `wait()` để thu dọn tài nguyên, tránh zombie.
+Ngoài việc khởi tạo hệ thống, init/systemd còn là **"cha nuôi" mặc định** - khi một process cha kết thúc trước process con, kernel tự động gán PID 1 làm cha mới cho process con mồ côi đó (orphan process). Init sẽ gọi `wait()` để thu dọn tài nguyên, tránh zombie.
 :::
 
 **Một số lệnh thường dùng với PID:**
@@ -134,7 +134,7 @@ Mỗi process có không gian địa chỉ ảo (virtual address space) riêng, 
 ```
 
 :::tip Liên hệ với bài Virtual Memory
-Đây là không gian địa chỉ ảo — kernel + MMU ánh xạ chúng sang địa chỉ vật lý thực sự. Hai process có thể có cùng địa chỉ ảo nhưng trỏ đến vùng RAM vật lý hoàn toàn khác nhau.
+Đây là không gian địa chỉ ảo - kernel + MMU ánh xạ chúng sang địa chỉ vật lý thực sự. Hai process có thể có cùng địa chỉ ảo nhưng trỏ đến vùng RAM vật lý hoàn toàn khác nhau.
 :::
 
 **Quan sát thực tế:**
@@ -148,7 +148,7 @@ cat /proc/<pid>/status | grep -i vm
 
 ## 2. Process Environment
 
-Mỗi process khi được tạo ra không chỉ có code và bộ nhớ — nó còn mang theo một **môi trường (environment)** gồm hai thành phần: command line arguments và environment variables.
+Mỗi process khi được tạo ra không chỉ có code và bộ nhớ - nó còn mang theo một **môi trường (environment)** gồm hai thành phần: command line arguments và environment variables.
 
 ### 2.1. Command line arguments
 
@@ -158,9 +158,9 @@ Khi kernel khởi tạo process, nó truyền vào hàm `main()` hai tham số:
 int main(int argc, char *argv[])
 ```
 
-- `argc` — số lượng argument (luôn >= 1)
-- `argv[0]` — đường dẫn của chính chương trình
-- `argv[1]`, `argv[2]`... — các tham số người dùng truyền vào
+- `argc` - số lượng argument (luôn >= 1)
+- `argv[0]` - đường dẫn của chính chương trình
+- `argv[1]`, `argv[2]`... - các tham số người dùng truyền vào
 
 Ví dụ:
 
@@ -217,7 +217,7 @@ khi `fork()` được gọi, process con kế thừa toàn bộ env vars của c
 :::
 
 :::tip Liên hệ thực tế với systemd
-Khi deploy service trên embedded Linux, có thể truyền config vào chương trình qua env vars thay vì hardcode — linh hoạt hơn khi thay đổi môi trường `dev/production`:
+Khi deploy service trên embedded Linux, có thể truyền config vào chương trình qua env vars thay vì hardcode - linh hoạt hơn khi thay đổi môi trường `dev/production`:
 
 ```ini
 [Service]
@@ -227,9 +227,9 @@ ExecStart=/usr/local/bin/myservice
 ```
 :::
 
-## 3. Vòng đời của process — Sinh ra và kết thúc
+## 3. Vòng đời của process - Sinh ra và kết thúc
 
-### 3.1. Trước khi vào `main()` — C Runtime Startup
+### 3.1. Trước khi vào `main()` - C Runtime Startup
 
 Hàm `main()` là điểm bắt đầu của một chương trình theo góc nhìn của developer, nhưng không phải là code đầu tiên chạy trong process. Trước khi `main()` được gọi, kernel và C runtime thực hiện một chuỗi khởi tạo:
 
@@ -257,9 +257,9 @@ Process có thể kết thúc theo hai cách:
 
 **Kết thúc chủ động (normal termination):**
 
-- `return` từ hàm `main()` — giá trị return trở thành exit status
-- Gọi `exit(status)` từ bất kỳ đâu trong code — thực hiện cleanup rồi kết thúc
-- Gọi `_exit(status)` hoặc `_Exit(status)` — kết thúc ngay lập tức, không cleanup
+- `return` từ hàm `main()` - giá trị return trở thành exit status
+- Gọi `exit(status)` từ bất kỳ đâu trong code - thực hiện cleanup rồi kết thúc
+- Gọi `_exit(status)` hoặc `_Exit(status)` - kết thúc ngay lập tức, không cleanup
 
 **Kết thúc bị động (abnormal termination):**
 
@@ -314,7 +314,7 @@ pid_t fork(void)
 Ngoài ra, tất cả các biến trong bộ nhớ (memory space) của process cha sẽ được sao chép vào process con, bao gồm cả các dữ liệu trong stack, heap và data. **Kernel sẽ dùng copy-on-write để làm điều này**.
 
 :::tip Copy-on-write (COW)
-Khi `fork()` được gọi, kernel không copy toàn bộ bộ nhớ ngay lập tức — thay vào đó, cha và con cùng trỏ đến các page vật lý giống nhau (đánh dấu read-only). Chỉ khi một trong hai process ghi vào một page, kernel mới thực sự tạo bản copy riêng cho page đó. Cơ chế này giúp `fork()` rất nhanh, ngay cả khi process cha có hàng GB bộ nhớ.
+Khi `fork()` được gọi, kernel không copy toàn bộ bộ nhớ ngay lập tức - thay vào đó, cha và con cùng trỏ đến các page vật lý giống nhau (đánh dấu read-only). Chỉ khi một trong hai process ghi vào một page, kernel mới thực sự tạo bản copy riêng cho page đó. Cơ chế này giúp `fork()` rất nhanh, ngay cả khi process cha có hàng GB bộ nhớ.
 :::
 
 Mỗi process có không gian bộ nhớ riêng biệt, và các thay đổi trong bộ nhớ của process cha sẽ không ảnh hưởng đến bộ nhớ của process con, và ngược lại.
@@ -369,7 +369,7 @@ Dưới đây là các biến thể của exec:
 Các hàm này khác nhau ở cách chúng nhận và truyền đối số cho chương trình mới, nhưng mục đích chính vẫn là thay thế chương trình hiện tại bằng chương trình mới.
 
 :::warning Chú ý
-`execve()` là system call thực sự — tất cả các biến thể khác đều là wrapper trong C library, cuối cùng gọi `execve()`.
+`execve()` là system call thực sự - tất cả các biến thể khác đều là wrapper trong C library, cuối cùng gọi `execve()`.
 :::
 
 ### 3.5. Kết hợp giữa fork và exec
@@ -440,12 +440,12 @@ Process con kết thúc
 ```
  
 :::warning Zombie không thể bị kill
-Vì zombie thực chất đã kết thúc rồi — nó không chạy code, không chiếm CPU hay RAM (chỉ chiếm một entry nhỏ trong process table). `kill -9` không có tác dụng vì không có process nào đang chạy để nhận signal. Cách duy nhất để xoá zombie là buộc process cha gọi `wait()`, hoặc kill process cha (khi đó init sẽ nhận nuôi và gọi `wait()`).
+Vì zombie thực chất đã kết thúc rồi - nó không chạy code, không chiếm CPU hay RAM (chỉ chiếm một entry nhỏ trong process table). `kill -9` không có tác dụng vì không có process nào đang chạy để nhận signal. Cách duy nhất để xoá zombie là buộc process cha gọi `wait()`, hoặc kill process cha (khi đó init sẽ nhận nuôi và gọi `wait()`).
 :::
 
 ### 5.2. Orphan process
  
-Khi process cha kết thúc trước process con, process con trở thành **orphan**. Kernel tự động gán init (PID 1) làm cha mới. Init luôn gọi `wait()` cho các con của nó, nên orphan process sẽ được thu dọn sạch sẽ khi kết thúc — không bị zombie.
+Khi process cha kết thúc trước process con, process con trở thành **orphan**. Kernel tự động gán init (PID 1) làm cha mới. Init luôn gọi `wait()` cho các con của nó, nên orphan process sẽ được thu dọn sạch sẽ khi kết thúc - không bị zombie.
  
 ```
 Cha kết thúc trước con:

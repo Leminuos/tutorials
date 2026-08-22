@@ -31,7 +31,7 @@ QObject::connect(sender, &SenderClass::signalName,
 
 Ví dụ:
 
-- File `sensor.h` — class đọc cảm biến trên BBB
+- File `sensor.h` - class đọc cảm biến trên BBB
 
 ```h
 #pragma once
@@ -94,7 +94,7 @@ void Sensor::readHardware() {
 }
 ```
 
-- File `main.cpp` — kết nối mọi thứ lại
+- File `main.cpp` - kết nối mọi thứ lại
 
 ```cpp
 Sensor *sensor = new Sensor();
@@ -117,7 +117,7 @@ sensor->start();
 
 ### 2.2. Auto connect
 
-Auto connect là tính năng của Qt Designer/`uic` — khi ta đặt tên slot theo quy tắc đặc biệt, Qt tự động kết nối mà không cần gọi connect().
+Auto connect là tính năng của Qt Designer/`uic` - khi ta đặt tên slot theo quy tắc đặc biệt, Qt tự động kết nối mà không cần gọi connect().
 
 Quy tắc đặt tên:
 
@@ -126,9 +126,9 @@ on_<objectName>_<signalName>(<param>)
 ```
 
 Trong đó:
-- `on_` — tiền tố cố định
-- `objectName` — tên object trong Qt Designer (thuộc tính objectName)
-- `signalName` — tên signal (ví dụ: clicked, valueChanged, textChanged)
+- `on_` - tiền tố cố định
+- `objectName` - tên object trong Qt Designer (thuộc tính objectName)
+- `signalName` - tên signal (ví dụ: clicked, valueChanged, textChanged)
 
 Ví dụ nếu ta có một widget `QPushButton` đặt tên là `btnStart` trong Qt Designer với signal `clicked`, ta chỉ cần khai báo slot sau trong class, Qt sẽ tự động connect cho ta mà không cần viết `connect()` thủ công:
 
@@ -651,7 +651,7 @@ source /opt/poky/4.0.x/environment-setup-cortexa8hf-neon-poky-linux-gnueabi
 Lệnh này sẽ tự động set một số biến môi trường:
 - `OECORE_TARGET_SYSROOT`: Chứa tất cả các file của target trên máy host, bao gồm thư viện và header. Đây là những file sẽ chạy trên target như BBB.
 - `OECORE_NATIVE_SYSROOT`: Chứa toolchain và thư viện để biên dịch trên host PC. Các file trong đây chỉ chạy trên máy tính, không dùng trên target.
-- `CMAKE_PREFIX_PATH`: Nói cho CMake biết tìm package ở đâu — trỏ vào sysroot của BBB, không phải host.
+- `CMAKE_PREFIX_PATH`: Nói cho CMake biết tìm package ở đâu - trỏ vào sysroot của BBB, không phải host.
 - `CXX`, `CXXFLAGS` – dùng cho cross compiler.
 
 Kiểm tra:

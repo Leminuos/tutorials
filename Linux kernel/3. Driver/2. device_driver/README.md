@@ -1,8 +1,6 @@
-# Device driver
+## 1. Vấn đề
 
-## Vấn đề
-
-Trên MCU, khi muốn điều khiển một ngoại vi — ví dụ UART — developer làm thẳng:
+Trên MCU, khi muốn điều khiển một ngoại vi, ví dụ như UART:
 
 ```c
 // STM32 HAL
@@ -15,11 +13,11 @@ Khi chuyển sang Linux, developer thường hỏi: *"Tại sao không làm vậ
 
 Câu trả lời nằm ở hai điểm:
 
-**Thứ nhất — Linux là hệ thống đa tiến trình.** Có thể có 5 process cùng muốn ghi UART một lúc. Nếu mỗi process tự gọi thẳng vào hardware register, dữ liệu sẽ xen lẫn nhau và không process nào nhận được output đúng.
+**Thứ nhất: Linux là hệ thống đa tiến trình.** Có thể có 5 process cùng muốn ghi UART một lúc. Nếu mỗi process tự gọi thẳng vào hardware register, dữ liệu sẽ xen lẫn nhau và không process nào nhận được output đúng.
 
-**Thứ hai — Linux có memory protection.** User space process không được phép truy cập physical address của hardware register trực tiếp. Kernel chặn điều này thông qua MMU.
+**Thứ hai: Linux có memory protection.** User space process không được phép truy cập physical address của hardware register trực tiếp. Kernel chặn điều này thông qua MMU.
 
-## Các loại device trong linux
+## 2. Các loại device trong linux
 
 Trong Linux, tất cả thiết bị phần cứng đều được quản lý thông qua device driver, và các thiết bị này thường thuộc một trong ba loại chính:
 | Loại | Đặc điểm | Ví dụ |
@@ -30,7 +28,7 @@ Trong Linux, tất cả thiết bị phần cứng đều được quản lý th
 
 Mỗi loại device có cách truy cập dữ liệu khác nhau, ảnh hưởng đến cách hệ điều hành xử lý I/O.
 
-### Block device
+### 2.1. Block device
 
 Block device là các thiết bị đọc/ghi dữ liệu theo từng block (thường là 512KB hoặc 4KB) và có cơ chế caching/buffering để tối ưu hiệu suất.
 
@@ -82,7 +80,7 @@ Ví dụ:
 └────────────────────────────────────────────┘
 ```
 
-### Network device
+### 2.2. Network device
 
 Network device là thiết bị giao tiếp với mạng, không sử dụng cơ chế đọc/ghi theo byte hoặc block như hai loại trên.
 
@@ -94,7 +92,7 @@ Ví dụ:
 
 Network devices không có file trong /dev/, thay vào đó, chúng xuất hiện trong danh sách giao diện mạng: `ip link show`
 
-### Character device
+### 2.3. Character device
 
 Character device là loại thiết bị truy cập dữ liệu theo từng byte, không có cache hoặc buffer trung gian.
 
@@ -138,9 +136,9 @@ Một số character device tiêu biểu:
 └────────────────────────────────────────────┘
 ```
 
-Với embedded developer, character device là loại phổ biến nhất — hầu hết ngoại vi giao tiếp tuần tự (UART, I2C, SPI, GPIO) đều được implement dưới dạng character device.
+Với embedded developer, character device là loại phổ biến nhất - hầu hết ngoại vi giao tiếp tuần tự (UART, I2C, SPI, GPIO) đều được implement dưới dạng character device.
 
-## Device file
+## 3. Device file
 
 Device file hay device node là một file đặc biệt nằm trong folder `/dev` được kernel tạo ra nhằm mục đích cho phép tầng user giao tiếp với driver thông qua file.
 
@@ -164,9 +162,9 @@ vfs_write()
 file->f_op->write()   ← gọi tới hàm `write` trong driver của bạn
 ```
 
--> Tức là `/dev/led` chỉ là một entry để kernel biết lệnh `write` này thuộc driver nào.
+$\rightarrow$ Tức là `/dev/led` chỉ là một entry để kernel biết lệnh `write` này thuộc driver nào.
 
-Khi tạo ra device file thì OS cho phép driver được phép đăng ký các hàm đọc, ghi, mở, đóng,...cho device file đấy. Khi thực hiện các hàm này trên tầng user thì những hàm tương ứng ở driver sẽ được gọi => cơ chế này được gọi là device file operation.
+Khi tạo ra device file thì OS cho phép driver được phép đăng ký các hàm đọc, ghi, mở, đóng,...cho device file đấy. Khi thực hiện các hàm này trên tầng user thì những hàm tương ứng ở driver sẽ được gọi $\rightarrow$ cơ chế này được gọi là device file operation.
 
 Các nguyên mẫu hàm sẽ như sau:
 
@@ -299,11 +297,11 @@ Nhìn vào hình sau, tương ứng với việc tạo thì ta cần dùng API t
 
 Trên MCU, khi muốn copy dữ liệu từ buffer này sang buffer khác, dùng `memcpy` là chuyện bình thường. Nhưng trong Linux kernel, copy giữa kernel space và user space không thể dùng `memcpy` vì ba lý do:
 
-**Thứ nhất — con trỏ user space có thể không hợp lệ.** User space application có thể truyền vào một con trỏ NULL, một địa chỉ chưa được map, hoặc cố tình truyền địa chỉ của kernel space. Nếu kernel dereference thẳng con trỏ đó, kết quả là kernel panic.
+**Thứ nhất - con trỏ user space có thể không hợp lệ.** User space application có thể truyền vào một con trỏ NULL, một địa chỉ chưa được map, hoặc cố tình truyền địa chỉ của kernel space. Nếu kernel dereference thẳng con trỏ đó, kết quả là kernel panic.
 
-**Thứ hai — page có thể chưa có trong RAM.** Linux dùng lazy allocation — page của user space có thể đang bị swap ra disk. `copy_from_user` xử lý page fault một cách an toàn; `memcpy` thì không.
+**Thứ hai - page có thể chưa có trong RAM.** Linux dùng lazy allocation - page của user space có thể đang bị swap ra disk. `copy_from_user` xử lý page fault một cách an toàn; `memcpy` thì không.
 
-**Thứ ba — kiến trúc có thể yêu cầu cơ chế đặc biệt.** Trên một số kiến trúc, user space và kernel space dùng segment register khác nhau — copy trực tiếp bằng `memcpy` sẽ copy sai vùng nhớ.
+**Thứ ba - kiến trúc có thể yêu cầu cơ chế đặc biệt.** Trên một số kiến trúc, user space và kernel space dùng segment register khác nhau - copy trực tiếp bằng `memcpy` sẽ copy sai vùng nhớ.
 
 ### Read device file
 
@@ -351,7 +349,7 @@ Vậy nếu muốn thực hiện hành động đặc biệt mà không phải �
 - Reset thiết bị
 - Chọn chế độ hoạt động (MODE_1, MODE_2, MODE_3)
 
-Dùng `write` để truyền lệnh điều khiển là có thể, nhưng phải tự định nghĩa protocol, tự parse — dễ lỗi và khó maintain. `ioctl` giải quyết bài toán này bằng cách cung cấp một kênh giao tiếp có cấu trúc giữa user space và driver.
+Dùng `write` để truyền lệnh điều khiển là có thể, nhưng phải tự định nghĩa protocol, tự parse - dễ lỗi và khó maintain. `ioctl` giải quyết bài toán này bằng cách cung cấp một kênh giao tiếp có cấu trúc giữa user space và driver.
 
 **Ví dụ:**
 
