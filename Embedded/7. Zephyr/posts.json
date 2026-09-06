@@ -69,5 +69,14 @@
     "description": "Cách driver match với device tree thông qua compatible và cấu trúc struct device.",
     "image": "img/zephyr.png",
     "tags": ["zephyr"]
+  },
+
+  "9. board": {
+    "title": "Cấu trúc thư mục board",
+    "date": "05-09-2026",
+    "author": "Peizzon",
+    "description": "Cấu trúc thư mục board và ý nghĩa của từng file.",
+    "image": "img/zephyr.png",
+    "tags": ["zephyr"]
   }
 }

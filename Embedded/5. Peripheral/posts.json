@@ -15,5 +15,14 @@
     "description": "Bài viết giới thiệu về giao thức DMA.",
     "image": "img/dma.png",
     "tags": ["peripheral", "dma"]
+  },
+
+  "3. display": {
+    "title": "Giao tiếp với display",
+    "date": "05-09-2026",
+    "author": "Peizzon",
+    "description": "Bài viết giới thiệu về chuẩn MIPI DBI, bộ lệnh DCS, giao thức FSMC và các thông số cần quan tâm khi làm việc với display.",
+    "image": "",
+    "tags": ["peripheral", "display", "ili9341", "stm32f103c8t6"]
   }
 }
