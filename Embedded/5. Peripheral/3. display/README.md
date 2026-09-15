@@ -16,18 +16,15 @@ Trước khi có MIPI, mỗi hãng làm màn hình theo một kiểu riêng. MIP
 
 | Chuẩn | Tên đầy đủ | Kiểu | Đặc điểm cốt lõi |
 |-------|-----------|------|------------------|
-| **DSI** | Display Serial Interface | serial, differential | Tốc độ rất cao, truyền trên lane D-PHY |
-| **DPI** | Display Pixel Interface | parallel, đồng bộ | Flush pixel liên tục theo timing video |
-| **DBI** | Display Bus Interface | parallel/serial, bất đồng bộ | Ghi vào bộ nhớ của display |
-| **DCS** | Display Command Set | tập lệnh | Không phải giao thức truyền mà là bộ lệnh chạy trên DSI/DBI |
+| **DSI** | Display Serial Interface | serial, differential | Serial tốc độ rất cao, differential lanes, dùng cho điện thoại |
+| **DPI** | Display Pixel Interface | parallel, đồng bộ | Host phải bơm pixel liên tục theo timing VSYNC/HSYNC |
+| **DBI** | Display Bus Interface | parallel/serial, bất đồng bộ | Host gửi lệnh + dữ liệu khi cần, panel tự refresh |
 
 **DSI** dùng cặp dây differential (1-4 lane data + 1 lane clock), băng thông tới hàng Gbps mỗi lane. Đây là chuẩn của điện thoại, tablet, các SoC lớn (Snapdragon, Raspberry Pi CM). MCU phổ thông không có DSI vì cần khối D-PHY analog chuyên dụng.
 
 **DPI** còn gọi là RGB interface. MCU xuất thẳng bus song song RGB (16/18/24 bit) kèm các tín hiệu đồng bộ HSYNC, VSYNC, DE, PCLK. Panel loại này **không có bộ nhớ bên trong** nên MCU phải liên tục quét lại toàn bộ khung hình 60 lần mỗi giây, đồng nghĩa với việc phải có framebuffer trong RAM và một khối phần cứng như LTDC. Dùng cho panel lớn 5-10 inch.
 
-**DBI** còn gọi là **MCU interface** hoặc **MPU interface**. MCU ghi dữ liệu vào **GRAM** (Graphics RAM) nằm ngay trong display controller và controller tự lo việc quét lại panel. MCU chỉ ghi khi có sự thay đổi. Đây là chuẩn của hầu hết module TFT nhỏ 1.8-3.5 inch trên thị trường.
-
-**DCS** không phải là giao tiếp vật lý mà là danh sách các lệnh chuẩn mà display controller phải hiểu. DCS được truyền bên trong DSI hoặc DBI giống như HTTP chạy trên TCP.
+**DBI** còn gọi là **MCU interface** hoặc **MPU interface**. MCU chỉ cần ghi dữ liệu vào **GRAM** (Graphics RAM) nằm ngay trong display controller và controller tự quét lại panel liên tục mà không cần MCU can thiệp. Đây là chuẩn của hầu hết module TFT nhỏ 1.8-3.5 inch trên thị trường.
 
 :::warning Đừng nhầm DPI với DBI
 Cả hai đều có thể là bus parallel 16-bit nhưng bản chất khác hẳn nhau. DPI cần MCU gửi frame liên tục theo timing cố định. DBI chỉ cần gửi khi nội dung thay đổi. Nhìn tên chân là biết ngay: có HSYNC/VSYNC/DE/PCLK là DPI, có CS/WR/RD/DC là DBI.
@@ -43,7 +40,7 @@ DBI còn gọi là MCU interface hoặc CPU interface, là chuẩn giao tiếp g
 
 ### 2.1. Mô hình giao tiếp
 
-Trong DBI, MCU đóng vai trò là master và gửi hai loại thông tin:
+Trong giao tiếp DBI, MCU đóng vai trò là master và chỉ gửi hai loại thông tin:
 
 | Loại | Ý nghĩa | Ví dụ |
 |------|-------|-------|
@@ -65,13 +62,6 @@ Trong DBI, MCU đóng vai trò là master và gửi hai loại thông tin:
                                  controller tự quét GRAM ra panel,
                                  không cần MCU can thiệp
 ```
-
-Toàn bộ chuẩn DBI xoay quanh việc trả lời ba câu hỏi:
-1. Làm sao display biết khi nào giá trị trên dây là hợp lệ để đọc? $\rightarrow$ tín hiệu strobe
-2. Làm sao display biết byte vừa nhận là command hay data? $\rightarrow$ chân D/CX
-3. Dữ liệu ghi vào chỗ nào trên màn hình? $\rightarrow$ GRAM và con trỏ tự tăng
-
-Ba mục tiếp theo lần lượt trả lời ba câu hỏi này.
 
 ### 2.2. Tín hiệu strobe
 
@@ -284,7 +274,20 @@ D/CX = 0  ->  gửi 1 byte mã lệnh
 D/CX = 1  ->  gửi N byte tham số (N phụ thuộc từng lệnh, có thể bằng 0)
 ```
 
-Với `RAMWR`, phần tham số chính là toàn bộ dữ liệu pixel và có thể dài tùy ý cho đến khi có lệnh khác.
+Ví dụ chuỗi ghi một vùng pixel lên ILI9341:
+
+```
+D/C=0  0x2A                    ; CASET - set cột
+D/C=1  0x00 0x00 0x00 0xEF     ; từ cột 0 đến cột 239
+
+D/C=0  0x2B                    ; PASET - set hàng
+D/C=1  0x00 0x00 0x01 0x3F     ; từ hàng 0 đến hàng 319
+
+D/C=0  0x2C                    ; RAMWR - bắt đầu ghi vào GRAM
+D/C=1  <150KB pixel data...>   ; con trỏ tự tăng, tự xuống dòng
+```
+
+Với lệnh `RAMWR`, phần tham số chính là toàn bộ dữ liệu pixel và có thể dài tùy ý cho đến khi có lệnh khác.
 
 :::warning Tham số DCS luôn là big-endian
 Mọi tham số nhiều byte của DCS đều gửi byte cao trước. Ví dụ `CASET` với cột 0 đến 239 phải gửi `0x00 0x00 0x00 0xEF`, không phải theo thứ tự byte trong bộ nhớ của STM32.
@@ -394,7 +397,7 @@ void lcd_set_window(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
 ```
 
 :::warning CASET và PASET thay đổi ý nghĩa khi xoay
-Toạ độ trong CASET/PASET là toạ độ **của GRAM**, không phải của khung nhìn. Khi bật bit MV để xoay 90 độ, chiều mà CASET điều khiển sẽ trở thành chiều ngang trên màn hình. Nếu quên hoán đổi giới hạn 239/319 tương ứng, hình sẽ bị cắt mất một phần hoặc quấn vòng sang hàng kế tiếp.
+Toạ độ trong CASET/PASET là toạ độ của GRAM, không phải của khung nhìn. Khi bật bit MV để xoay 90 độ, chiều mà CASET điều khiển sẽ trở thành chiều ngang trên màn hình. Nếu quên hoán đổi giới hạn 239/319 tương ứng, hình sẽ bị cắt mất một phần hoặc quấn vòng sang hàng kế tiếp.
 :::
 
 ## 4. Giao tiếp qua FSMC
@@ -430,36 +433,56 @@ Hãy đặt cạnh nhau chu kỳ ghi của SRAM bất đồng bộ và của DBI
 | D[15:0] - bus dữ liệu | D[15:0] |
 | A[n:0] - bus địa chỉ | D/CX (chỉ 1 bit) |
 
-Hai bên **giống nhau về mặt điện**: kéo chip select xuống thấp, đặt dữ liệu lên bus, tạo một xung strobe ghi, dữ liệu được chốt ở cạnh lên của xung đó. Khác biệt duy nhất là số lượng "ô nhớ": SRAM có hàng triệu ô nên cần cả bus địa chỉ, còn màn hình chỉ có đúng **hai ô** - một ô command và một ô data.
+Hai bên giống nhau về mặt electrical:
+- Kéo chip select xuống mức thấp
+- Đặt dữ liệu lên bus
+- Tạo một xung strobe ghi
+- Dữ liệu được chốt ở cạnh lên của xung đó.
 
-Từ đó ra cách làm kinh điển: **nối một đường address bất kỳ của FSMC vào chân D/CX**. Khi CPU ghi vào địa chỉ có bit đó bằng 0, FSMC kéo đường address xuống thấp, màn hình hiểu là command. Ghi vào địa chỉ có bit đó bằng 1 thì màn hình hiểu là data.
+Khác biệt duy nhất là số lượng ô nhớ: SRAM có hàng triệu ô nên cần cả bus địa chỉ còn màn hình chỉ có đúng hai ô - một ô command và một ô data.
 
-Bản thân màn hình **không hề giải mã địa chỉ**. Nó chỉ lấy mẫu mức logic của chân D/CX tại thời điểm WRX tích cực. Đường address chỉ đóng vai trò một chân GPIO được phần cứng bật/tắt tự động theo địa chỉ mà CPU truy cập - nhờ vậy tiết kiệm được thao tác đảo chân D/CX bằng phần mềm giữa command và data.
+$\rightarrow$ Từ đó, nối một đường address bất kỳ của FSMC vào chân D/CX. Khi CPU ghi vào địa chỉ có bit đó bằng 0, FSMC kéo đường address xuống thấp, màn hình hiểu là command. Ghi vào địa chỉ có bit đó bằng 1 thì màn hình hiểu là data.
+
+Bản thân màn hình không hề giải mã địa chỉ. Nó chỉ lấy mẫu mức logic của chân D/CX tại thời điểm WRX active. Đường address chỉ đóng vai trò một chân GPIO được phần cứng bật/tắt tự động theo địa chỉ mà CPU truy cập - nhờ vậy tiết kiệm được thao tác đảo chân D/CX bằng phần mềm giữa command và data.
 
 ### 4.3. Ánh xạ chân và địa chỉ
 
 Cách nối phổ biến nhất là dùng NE1 và đường A16:
 
-| FSMC | ILI9341 | Ghi chú |
+| FSMC | ILI9341 | Vai trò |
 |------|---------|---------|
 | FSMC_NE1 | CSX | Chip select |
 | FSMC_NWE | WRX | Write strobe |
 | FSMC_NOE | RDX | Read strobe |
 | FSMC_A16 | D/CX | Chọn command hay data |
-| FSMC_D[15:0] | D[15:0] | Bus dữ liệu 16-bit |
+| FSMC_D[15:0] | D[15:0] | Bus dữ liệu 16 bit |
 | GPIO bất kỳ | RESX | Reset, điều khiển bằng phần mềm |
 
-Cần lưu ý cách FSMC dịch địa chỉ: với **bus dữ liệu 16-bit**, chân FSMC_A[x] được nối vào HADDR[x+1] (vì mỗi địa chỉ ứng với 2 byte). Do đó để bật FSMC_A16 phải bật bit 17 của địa chỉ CPU:
+Cần lưu ý cách FSMC dịch địa chỉ: khi bus dữ liệu ở chế độ 16 bit thì chân FSMC_A[x] được nối vào HADDR[x+1] (vì mỗi địa chỉ ứng với 2 byte). Do đó để bật FSMC_A16 thì ta cần phải bật bit 17 của địa chỉ CPU:
+
+```
+A16 <-> HADDR17 -> offset 1 << 17 = 0x20000
+```
+
+Bank1 / NE1 có base address `0x60000000`, nên:
 
 ```c
-/* Bus 16-bit: A16 <-> HADDR17 -> offset 1 << 17 = 0x20000 */
 #define LCD_BASE        0x60000000UL
 #define LCD_REG         (*(volatile uint16_t *)(LCD_BASE + 0x00000))
 #define LCD_RAM         (*(volatile uint16_t *)(LCD_BASE + 0x20000))
 ```
 
-:::warning Offset khác nhau giữa bus 8-bit và 16-bit
-Với bus 8-bit thì A16 tương ứng HADDR16, offset là 0x10000. Với bus 16-bit thì offset là 0x20000. Dùng nhầm offset khiến D/CX không bao giờ đổi trạng thái, hậu quả là màn hình nhận toàn command hoặc toàn data - biểu hiện là màn hình trắng hoàn toàn dù code chạy đúng.
+Nếu dùng chân khác, offset tương ứng:
+
+| Chân nối D/CX	| Offset (bus 16 bit) |
+| ----- | --------- |
+| A0    | 0x02      |
+| A16   | 0x20000   |
+| A18   | 0x80000   |
+| A23   | 0x1000000 |
+
+:::warning Offset khác nhau giữa bus 8 bit và 16 bit
+Với bus 8 bit thì A16 tương ứng HADDR16, offset là 0x10000. Với bus 16 bit thì offset là 0x20000. Dùng nhầm offset khiến D/CX không bao giờ đổi trạng thái, hậu quả là màn hình nhận toàn command hoặc toàn data - biểu hiện là màn hình trắng hoàn toàn dù code chạy đúng.
 :::
 
 ### 4.4. Cấu hình timing
@@ -468,8 +491,8 @@ FSMC sinh chu kỳ bus theo số chu kỳ HCLK khai báo trong thanh ghi `FSMC_B
 
 | Trường | Ý nghĩa |
 |--------|---------|
-| ADDSET | Số chu kỳ giữ address ổn định trước khi strobe tích cực |
-| DATAST | Số chu kỳ giữ strobe ở mức tích cực |
+| ADDSET | Số chu kỳ giữ address ổn định trước khi kéo strobe |
+| DATAST | Số chu kỳ giữ strobe ở mức active |
 | BUSTURN | Số chu kỳ nghỉ giữa hai giao dịch |
 
 Với mode A / mode 1, độ dài một chu kỳ ghi xấp xỉ:
@@ -507,9 +530,7 @@ void lcd_fill(uint16_t color, uint32_t count)
 }
 ```
 
-Không cần hàm HAL, không cần chờ cờ trạng thái, không cần đảo chân D/CX. Một lệnh `STR` của CPU là xong một pixel. Đây chính là lý do FSMC nhanh hơn SPI rất nhiều.
-
-Muốn nhanh hơn nữa thì dùng DMA memory-to-memory: nguồn là buffer trong RAM (bật tăng địa chỉ), đích là `LCD_RAM` (tắt tăng địa chỉ), data width 16-bit.
+Muốn nhanh hơn nữa thì ta dùng DMA memory-to-memory: nguồn là buffer trong RAM (bật tăng địa chỉ), đích là `LCD_RAM` (tắt tăng địa chỉ), data width 16-bit.
 
 ### 4.6. So sánh FSMC và SPI
 
@@ -520,7 +541,7 @@ Muốn nhanh hơn nữa thì dùng DMA memory-to-memory: nguồn là buffer tron
 | Thời gian vẽ full frame 240x320 | ~137 ms (~7 fps) | ~5.4 ms (~185 fps lý thuyết) |
 | Số chân tiêu tốn | 5 | 21+ |
 
-Con số FSMC ở trên là giới hạn của bus. Trên thực tế tốc độ bị chặn bởi việc CPU sinh dữ liệu, nên hãy dùng DMA hoặc vòng lặp đã unroll để tiến gần con số này.
+Con số FSMC ở trên là giới hạn của bus. Trên thực tế tốc độ bị chặn bởi việc CPU sinh dữ liệu nên hãy dùng DMA hoặc vòng lặp đã unroll để tiến gần con số này.
 
 ## 5. Các thông số cần quan tâm khi làm việc với display
 
@@ -535,7 +556,7 @@ Datasheet ILI9341 quy định ở phần Serial Interface Characteristics:
 
 Trên STM32F103, với SPI1 nằm trên APB2 chạy 72 MHz:
 
-| Prescaler | Tần số SCK | Đánh giá |
+| Prescaler | Tần số | Đánh giá |
 |-----------|-----------|----------|
 | /8 | 9 MHz | Đúng spec, an toàn |
 | /4 | 18 MHz | Vượt spec 1.8 lần |
@@ -553,9 +574,7 @@ Display không kịp lấy mẫu mức logic tại cạnh clock, dẫn tới:
 Rất nhiều thư viện chạy được ở 36 MHz vì bản thân IC còn dư margin và dây ngắn. Nhưng đó là chạy ngoài spec: mọi lỗi phát sinh sẽ không tái hiện đều đặn và cực kỳ khó debug. Nguyên tắc an toàn: dùng 9 MHz cho sản phẩm thật và mỗi khi gặp lỗi hiển thị lạ hãy hạ tốc độ xuống trước tiên để loại trừ nguyên nhân.
 :::
 
-### 5.2. Thứ tự byte: little-endian hay big-endian
-
-Đây là nguyên nhân số một gây lỗi màu và cũng là chỗ dễ hiểu nhầm nhất.
+### 5.2. Byte order: little-endian hay big-endian
 
 **Quy tắc: mọi thứ đi trên dây đều là big-endian.** DCS quy định byte có trọng số cao được truyền trước, áp dụng cho cả tham số lệnh lẫn dữ liệu pixel.
 
@@ -570,36 +589,38 @@ Ví dụ lỗi kinh điển:
 
 ```c
 uint16_t buf[240];
-for (int i = 0; i < 240; i++) buf[i] = 0xF800;      /* muốn màu đỏ */
+for (int i = 0; i < 240; i++) buf[i] = 0xF800;      /* màu đỏ */
 
 /* SPI 8 bit gửi 0x00 rồi mới tới 0xF8
-   -> display nhận pixel 0x00F8 -> ra màu xanh dương đậm */
+ * -> display nhận pixel 0x00F8
+ * -> ra màu xanh dương đậm
+ */
 HAL_SPI_Transmit_DMA(&hspi1, (uint8_t *)buf, 480);
 ```
 
 ### 5.3. Thứ tự màu RGB hay BGR
 
-Bit **BGR (D3 của MADCTL)** cho biết panel nối subpixel theo thứ tự nào. Nếu sai bit này, màu đỏ và xanh dương sẽ đổi chỗ cho nhau trong khi màu xanh lá vẫn đúng - đây là dấu hiệu nhận biết rất rõ ràng.
+Bit BGR (D3 của MADCTL) cho biết panel nối subpixel theo thứ tự nào. Nếu sai bit này, màu đỏ và xanh dương sẽ đổi chỗ cho nhau trong khi màu xanh lá vẫn đúng.
 
 Cách phân biệt nhanh khi debug màu sai:
 
 | Hiện tượng | Nguyên nhân |
 |------------|-------------|
 | Đỏ và xanh dương đổi chỗ, xanh lá đúng | Bit BGR trong MADCTL sai |
-| Màu hoàn toàn không liên quan, ảnh còn bị lệch | Sai thứ tự byte (mục 5.2) |
-| Màu như âm bản của ảnh gốc | Thiếu `INVON` hoặc `INVOFF` |
-| Ảnh chỉ có 8 màu | Đang ở idle mode, gọi `IDMOFF` |
+| Màu hoàn toàn không liên quan, ảnh còn bị lệch | Sai byte order (mục 5.2) |
+| Màu ngược hay inversion với ảnh gốc | Thiếu `INVON` hoặc `INVOFF` |
+| Ảnh chỉ có 8 màu | Đang ở idle mode |
 
 ### 5.4. Reset và timing khởi tạo
 
-Chuỗi khởi tạo có vài mốc thời gian bắt buộc, bỏ qua là màn hình không lên:
+Chuỗi khởi tạo có vài mốc thời gian bắt buộc:
 
 | Bước | Thời gian chờ | Lý do |
 |------|---------------|-------|
 | RESX giữ mức thấp | tối thiểu 10 µs | Đảm bảo logic bên trong nhận được reset |
 | Sau khi nhả RESX | 120 ms | Chờ khối power-on nội bộ ổn định |
 | Sau `SWRESET` | 5 ms (120 ms nếu từ sleep) | Nạp lại giá trị mặc định |
-| Sau `SLPOUT` | **120 ms** | Chờ bơm điện áp và bộ dao động khởi động |
+| Sau `SLPOUT` | 120 ms | Chờ bơm điện áp và bộ dao động khởi động |
 | Sau `DISPON` | không bắt buộc | - |
 
 :::warning Bỏ 120 ms sau SLPOUT là lỗi hay gặp nhất
@@ -609,7 +630,7 @@ Nếu gửi lệnh tiếp theo quá sớm, display sẽ nhận lệnh nhưng b�
 ### 5.5. Nguồn và backlight
 
 - **Mức logic**: đa số module TFT chạy logic 3.3 V. Nối thẳng vào MCU 5 V có thể làm hỏng IC nếu module không có level shifter
-- **Dòng backlight**: đèn nền tiêu thụ 40-80 mA, vượt xa khả năng của một chân GPIO (20 mA). Phải qua transistor hoặc MOSFET
+- **Dòng backlight**: đèn backlight tiêu thụ 40-80 mA, vượt xa khả năng của một chân GPIO (20 mA). Phải qua transistor hoặc MOSFET.
 - **Tụ decoupling**: thiếu tụ 100 nF sát chân VCC gây sụt áp mỗi khi backlight bật, biểu hiện là nhiễu ngẫu nhiên trên màn hình
 - **Điều chỉnh độ sáng**: dùng PWM tần số trên 200 Hz để mắt không thấy nhấp nháy, đồng thời tránh hiện tượng vân sọc khi chụp ảnh màn hình
 
@@ -633,13 +654,13 @@ Với ILI9341 240x320 ở RGB565: 240 x 320 x 2 = **153,600 byte mỗi frame**.
 | SPI @ 36 MHz | 4.5 MB/s | ~29 fps |
 | FSMC 16-bit, chu kỳ 70 ns | 28.6 MB/s | ~185 fps |
 
-Đây là con số **lý thuyết**, chưa trừ overhead của lệnh `CASET`/`PASET`/`RAMWR`, thời gian CPU tính toán nội dung, và độ trễ khi bật/tắt chân CS. Thực tế nên trừ đi khoảng 20-30%.
+Đây là con số lý thuyết, chưa trừ overhead của lệnh `CASET`/`PASET`/`RAMWR`, thời gian CPU tính toán nội dung và độ trễ khi bật/tắt chân CS. Thực tế nên trừ đi khoảng 20-30%.
 
-Kết luận thực dụng: với SPI, **đừng bao giờ vẽ lại toàn màn hình mỗi frame**. Chỉ cập nhật vùng thực sự thay đổi (dirty rectangle) - vẽ lại một ô chữ 16x16 chỉ tốn 512 byte, tức nhanh gấp 300 lần so với vẽ cả màn hình.
+Kết luận: với SPI thì đừng bao giờ vẽ lại toàn màn hình mỗi frame. Chỉ cập nhật vùng thực sự thay đổi (dirty rectangle) - vẽ lại một ô chữ 16x16 chỉ tốn 512 byte, tức nhanh gấp 300 lần so với vẽ cả màn hình.
 
 ### 6.2. Tearing và tín hiệu TE
 
-**Tearing** là hiện tượng một khung hình trên màn hình chứa một phần nội dung cũ và một phần nội dung mới, tạo ra đường gãy ngang khi có chuyển động.
+Tearing là hiện tượng một khung hình trên màn hình chứa một phần nội dung cũ và một phần nội dung mới, tạo ra đường gãy ngang khi có chuyển động.
 
 Nguyên nhân: MCU ghi vào GRAM trong khi controller đang quét chính vùng GRAM đó ra panel. Hai quá trình này chạy độc lập và không đồng bộ với nhau.
 
@@ -658,7 +679,7 @@ Con trỏ ghi của MCU      ────────────►  vừa ghi 
 2. Nối TE vào một chân EXTI của STM32
 3. Trong ISR, bắt đầu việc ghi frame mới ngay khi có cạnh tích cực
 
-Lúc đó MCU ghi đúng vào khoảng thời gian **V-blank** (panel đang nghỉ giữa hai khung), đảm bảo con trỏ ghi luôn đi trước con trỏ quét.
+Lúc đó MCU ghi đúng vào khoảng thời gian V-blank (panel đang nghỉ giữa hai khung), đảm bảo con trỏ ghi luôn đi trước con trỏ quét.
 
 Lệnh `STE` (0x44) cho phép chọn dòng cụ thể sẽ phát tín hiệu TE, hữu ích khi chỉ cập nhật một phần màn hình và muốn canh chính xác thời điểm.
 
@@ -678,15 +699,15 @@ Tần số quét panel do lệnh `FRMCTR1` (0xB1) quy định, gồm hai tham s�
 Frame rate = f_OSC / (DIVA x (RTNA_clocks x (lines + VFP + VBP)))
 ```
 
-Giá trị mặc định của ILI9341 cho khoảng 70 Hz. Hạ frame rate xuống 50-60 Hz giúp giảm tiêu thụ điện, nhưng xuống thấp quá sẽ thấy nhấp nháy rõ.
+Giá trị mặc định của ILI9341 cho khoảng 70 Hz. Hạ frame rate xuống 50-60 Hz giúp giảm tiêu thụ điện nhưng xuống thấp quá sẽ thấy nhấp nháy rõ.
 
 :::warning Frame rate của panel không phải FPS của ứng dụng
-Đây là hai khái niệm hoàn toàn tách biệt. Frame rate là tốc độ controller quét GRAM ra panel - luôn chạy kể cả khi MCU không làm gì. FPS ứng dụng là số lần MCU ghi nội dung mới vào GRAM mỗi giây. Tăng `FRMCTR1` không làm ứng dụng mượt hơn.
+Đây là hai khái niệm hoàn toàn tách biệt. Frame rate là tốc độ controller quét GRAM ra panel, luôn chạy kể cả khi MCU không làm gì. FPS ứng dụng là số lần MCU ghi nội dung mới vào GRAM mỗi giây. Tăng `FRMCTR1` không làm ứng dụng mượt hơn.
 :::
 
 ### 6.4. Gamma curve
 
-Quan hệ giữa giá trị số của pixel và độ sáng thực tế của tinh thể lỏng là **phi tuyến**. Gamma curve là bảng hiệu chỉnh giúp giá trị 128 thực sự trông như "sáng một nửa" đối với mắt người.
+Quan hệ giữa giá trị số của pixel và độ sáng thực tế của tinh thể lỏng là phi tuyến tính. Gamma curve là bảng hiệu chỉnh giúp giá trị 128 thực sự trông như "sáng một nửa" đối với mắt người.
 
 ILI9341 cung cấp hai mức điều chỉnh:
 - `GAMSET` (0x26): chọn một curve dựng sẵn, nhanh và đơn giản
@@ -701,11 +722,11 @@ Dấu hiệu gamma sai:
 | Vùng sáng cháy trắng, mất chi tiết | Sửa các hệ số gamma ở đoạn cuối |
 | Ám màu ở vùng xám | Lệch giữa gamma dương và gamma âm |
 
-Trên thực tế, hãy **copy nguyên bộ giá trị gamma từ code mẫu của nhà sản xuất module** rồi chỉ tinh chỉnh khi thật sự cần. Đây là các con số phụ thuộc vào từng loại tấm panel cụ thể, không thể tính ra bằng lý thuyết.
+Trên thực tế, hãy copy nguyên bộ giá trị gamma từ code mẫu của nhà sản xuất module rồi chỉ tinh chỉnh khi thật sự cần. Đây là các con số phụ thuộc vào từng loại tấm panel cụ thể, không thể tính ra bằng lý thuyết.
 
 ### 6.5. Rotate
 
-Có hai cách xoay ảnh, khác nhau hoàn toàn về chi phí:
+Hai cách xoay ảnh, khác nhau hoàn toàn về chi phí:
 
 | Cách | Cơ chế | Chi phí |
 |------|--------|---------|
@@ -741,42 +762,6 @@ Với các panel có độ phân giải nhỏ hơn GRAM của controller (điể
 | Giữ CS ở mức thấp | Không nhả CS giữa các pixel | Giảm đáng kể overhead trên SPI |
 | Bỏ qua CASET/PASET | Ghi tuần tự thì con trỏ tự chạy | Tiết kiệm 11 byte cho mỗi lần vẽ |
 | `RAMWRC` (0x3C) | Ghi tiếp mà không reset con trỏ | Dùng khi vẽ nối tiếp nhiều mảnh |
-
-## 7. Bảng tra lỗi thường gặp
-
-| Hiện tượng | Nguyên nhân thường gặp | Cách kiểm tra |
-|------------|------------------------|---------------|
-| Màn hình trắng hoàn toàn | Chưa chạy init, sai chân D/CX, sai offset FSMC | Đọc `RDDID` (0x04), nếu trả về rác thì lỗi ở lớp giao tiếp |
-| Màn hình đen, backlight sáng | Thiếu `SLPOUT` hoặc `DISPON`, sai chuỗi khởi tạo | Kiểm tra lại thứ tự và các mốc delay ở mục 5.4 |
-| Không sáng gì cả | Backlight chưa cấp nguồn, thiếu transistor | Đo điện áp trực tiếp trên chân LED |
-| Đỏ và xanh dương đổi chỗ | Bit BGR (D3 của MADCTL) sai | Đảo bit D3 |
-| Màu như âm bản | Thiếu `INVON` (panel IPS) hoặc thừa `INVON` | Thử đảo giữa 0x20 và 0x21 |
-| Màu sai hoàn toàn kèm ảnh lệch | Sai thứ tự byte của RGB565 | Đảo byte hoặc chuyển SPI sang frame 16-bit |
-| Pixel lỗi rải rác ngẫu nhiên | SPI quá nhanh, dây dài, thiếu tụ decoupling | Hạ prescaler xuống 1-2 nấc, nếu hết lỗi thì đúng nguyên nhân |
-| Ảnh bị xé chéo, dịch dần | Mất hoặc thừa xung clock | Hạ tốc độ SPI, rút ngắn dây |
-| Ảnh xoay hoặc lật sai | Sai bit MX/MY/MV của MADCTL | Thử lần lượt 4 giá trị 0x48/0x28/0x88/0xE8 |
-| Một phần màn hình không cập nhật | CASET/PASET chưa đổi theo hướng xoay | In ra giá trị lcd_w, lcd_h sau khi xoay |
-| Ảnh lệch một vài pixel | Panel cần offset (ST7789 240x240) | Cộng offset vào CASET/PASET theo hướng xoay |
-| Đường xé ngang khi có chuyển động | Tearing | Bật TE, hoặc giảm diện tích vùng cập nhật |
-| Hiển thị nhạt, thiếu tương phản | Sai gamma hoặc VCOM | Nạp lại bộ giá trị E0/E1/C5 từ code mẫu |
-| Chỉ hiển thị 8 màu | Đang bật idle mode | Gửi `IDMOFF` (0x38) |
-| Chạy tốt lúc đầu, lỗi khi nóng | Timing ngoài spec | Hạ tốc độ SPI hoặc nới DATAST của FSMC |
-| Đọc thanh ghi luôn trả về 0 hoặc 0xFF | Tốc độ đọc quá cao, hoặc chưa nối MISO | Hạ tốc độ riêng cho thao tác đọc |
-
-## 8. Tóm tắt
-
-**Chọn interface:**
-
-- Thiếu chân, UI tĩnh, chi phí thấp → **DBI Type C (4-line serial)**
-- Cần refresh nhanh, có animation, MCU có FSMC → **DBI Type B (8080 parallel)**
-- Panel lớn không có GRAM → **DPI**, cần MCU có LTDC
-- Thiết bị di động, độ phân giải cao → **DSI**, ngoài tầm của MCU phổ thông
-
-**Ba quy tắc dễ nhớ nhất:**
-
-1. Mọi thứ đi trên dây DBI đều **big-endian**, còn STM32 lưu trong bộ nhớ theo **little-endian**. Chỉ cần một trong hai bên bị bỏ sót là màu sẽ sai.
-2. Đừng vượt chu kỳ ghi tối thiểu trong datasheet. Gặp lỗi hiển thị lạ, việc đầu tiên luôn là **hạ tốc độ**.
-3. Chỉ vẽ lại **vùng thực sự thay đổi**. Đây là tối ưu hiệu quả nhất, hơn mọi kỹ thuật khác cộng lại.
 
 ## Tài liệu tham khảo
 
