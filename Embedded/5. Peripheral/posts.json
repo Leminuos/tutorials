@@ -22,7 +22,7 @@
     "date": "05-09-2026",
     "author": "Peizzon",
     "description": "Bài viết giới thiệu về chuẩn MIPI DBI, bộ lệnh DCS, giao thức FSMC và các thông số cần quan tâm khi làm việc với display.",
-    "image": "",
+    "image": "img/display.png",
     "tags": ["peripheral", "display", "ili9341", "stm32f103c8t6"]
   }
 }

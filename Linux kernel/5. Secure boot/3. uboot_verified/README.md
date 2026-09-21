@@ -137,16 +137,18 @@ kernel {
 Ý nghĩa của từng property:
 - `data = /incbin/("zImage")`: Đây là directive đặc biệt của device tree compiler. `/incbin/` nói với compiler rằng hãy đọc toàn bộ nội dung binary của file `zImage` và nhúng vào property `data` trong blob output. Khi ta mở file `.itb` bằng hex editor, ta sẽ thấy toàn bộ kernel binary nằm ngay trong đó. Đường dẫn file là tương đối so với vị trí file `.its`.
 - `type`: cho U-Boot biết cách xử lý binary này. Các giá trị hợp lệ:
-  + `kernel`: Linux kernel image.
-  + `flat_dt`: device tree blob.
-  + `ramdisk`: initramfs hoặc initrd.
-  + `firmware`: bare-metal firmware.
-  + `standalone`: chương trình standalone, U-Boot chạy bằng lệnh `go`.
-  + `script`: U-Boot script.
-  + `kernel_noload`: kernel không cần copy vào load address, boot tại chỗ.
+    | Type | Ý nghĩa |
+    | ---- | ------- |
+    | `kernel` | Linux kernel image. |
+    | `flat_dt` | device tree blob. |
+    | `ramdisk` | initramfs hoặc initrd. |
+    | `firmware` | bare-metal firmware. |
+    | `standalone` | chương trình standalone, U-Boot chạy bằng lệnh `go`. |
+    | `script` | U-Boot script. |
+    | `kernel_noload` | kernel không cần copy vào load address, boot tại chỗ. |
 - `arch`: Kiến trúc CPU.
 - `os`: Target OS. U-Boot dùng thông tin này để biết cách truyền parameters cho kernel.
-- `compression`: thuật toán nén đã áp dụng lên image. U-Boot cần giải nén trước khi copy vào load address. Quan trọng: hash được tính trên data nén, không phải dữ liệu sau giải nén. Giá trị hợp lệ: "none", `gzip`, `bzip2`, `lzma`, `lzo`, `lz4`, `zstd`.
+- `compression`: thuật toán nén đã áp dụng lên image. U-Boot cần giải nén trước khi copy image vào load address. Quan trọng: hash được tính trên data nén, không phải dữ liệu sau giải nén. Giá trị hợp lệ: "none", `gzip`, `bzip2`, `lzma`, `lzo`, `lz4`, `zstd`.
 - `load`: Địa chỉ DRAM nơi U-Boot sẽ copy binary vào trước khi thực thi. Giá trị này phụ thuộc vào memory map của từng board.
 - `entry`: Địa chỉ mà CPU sẽ jump tới để bắt đầu thực thi kernel. Thường bằng load address, nhưng có thể khác nếu binary có header cần skip.
 
@@ -222,9 +224,9 @@ Property compression `gzip` ở đây có ý nghĩa hơi khác với kernel. V�
 
 #### 1.2.3. Configuration node
 
-Configuration node là lớp trừu tượng giữa các component có sẵn và cách đóng gói các component -> Nó cho phép một FIT image phục vụ nhiều hardware variant khác nhau mà không lặp data.
+Configuration node là lớp trừu tượng giữa các component có sẵn và cách đóng gói các component $\rightarrow$ Nó cho phép một FIT image phục vụ nhiều hardware variant khác nhau mà không lặp data.
 
-Configuration node bản thân không chứa bất kỳ data nào. Nó chỉ chứa các tham chiếu tới image node bằng tên. kernel = "kernel" có nghĩa "dùng image node có tên kernel trong /images". Tương tự cho fdt và ramdisk.
+Configuration node bản thân không chứa bất kỳ data nào. Nó chỉ chứa các tham chiếu tới image node bằng tên. `kernel = "kernel"` có nghĩa dùng image node có tên kernel trong `/images`. Tương tự cho fdt và ramdisk.
 
 Ta có thể có nhiều configuration cho cùng một FIT image, ví dụ:
 
@@ -264,7 +266,7 @@ signature-1 {
 
 Ý nghĩa của các property:
 - `algo = "sha256,rsa2048"`: Chứa hai thuật toán được cách nhau bằng dấu phẩy. Phần trước (sha256) là thuật toán hash dùng để tạo digest. Phần sau (rsa2048) là thuật toán signature dùng để sign digest đó. U-Boot hỗ trợ các tổ hợp: `sha1,rsa2048` / `sha256,rsa2048` / `sha256,rsa4096`. Nên dùng `sha256,rsa2048` tối thiểu và `sha256,rsa4096` nếu muốn an toàn hơn nhưng verify chậm hơn.
-- `key-name-hint = "dev"`: Đây chỉ là gợi ý, không phải ràng buộc. Khi `mkimage` sign, nó tìm file `dev.key` và `dev.crt` trong thư mục key. Khi U-Boot verify, nó tìm node `/signature/key-dev` trong DTB của nó. Chữ dev ở cả hai phía phải khớp nhau. Nếu ta đặt key-name-hint = "production", `mkimage` tìm `production.key` và U-Boot tìm `/signature/key-production`.
+- `key-name-hint = "dev"`: Đây chỉ là gợi ý, không phải ràng buộc. Khi `mkimage` sign, nó tìm file `dev.key` và `dev.crt` trong thư mục key. Khi U-Boot verify, nó tìm node `/signature/key-dev` trong DTB của nó. Chữ dev ở cả hai phía phải match nhau. Nếu ta đặt `key-name-hint = "production"`, `mkimage` tìm `production.key` và U-Boot tìm `/signature/key-production`.
 - `sign-images = "kernel", "fdt", "ramdisk"`: Danh sách các image node cần sign. `mkimage` sẽ lấy hash value từ hash sub-node của từng image được liệt kê, nối chúng theo thứ tự, rồi ký toàn bộ blob hash đó. Nếu ta bỏ ramdisk khỏi danh sách, ramdisk vẫn có hash check nhưng không nằm trong signature -> attacker có thể thay ramdisk khác mà vẫn giữ kernel và DTB nguyên vẹn.
 
 Sau khi `mkimage` sign, signature node trong `.itb` có thêm:
@@ -285,7 +287,7 @@ signature-1 {
 
 ## 2. Quy trình sign tại boot time
 
-Quá trình sign diễn ra trên build server, sử dụng `mkimage` - tool của U-Boot. Đây là flow chi tiết:
+Quá trình sign diễn ra như sau:
 
 ```bash
 # Bước 1: Tạo RSA key pair (chỉ làm 1 lần)
@@ -388,7 +390,7 @@ SHA-256 digest chỉ có 32 byte, trong khi RSA-2048 cần làm việc với blo
 Ghi toàn bộ thông tin public key dưới dạng pre-computed RSA parameters vào U-Boot DTB tại node `/signature/key-{name}`. Flag `-r` đặt property `required = "conf"` vào node này.
 
 Sau khi `mkimage` chạy xong, U-Boot DTB chứa node sau:
-l
+
 ```dts
 / {
     signature {
@@ -584,7 +586,7 @@ Tuy nhiên có một điểm cần chú ý là uboot environment variables. Mặ
 => reset
 ```
 
-Để ngăn chặn, ta cần lock down uboot environment:
+**Để ngăn chặn, ta cần lock down uboot environment:**
 
 Uboot không lưu environment ra persistent storage. Mỗi lần boot đều dùng default environment được compile sẵn trong binary. Attacker không thể `setenv bootcmd load mmc 0:1 0x80000000 malicious; go 0x80000000` rồi `saveenv` vì không có chỗ save. Tuy nhiên cũng có nghĩa là ta không thể thay đổi environment sau khi build, mọi thay đổi phải rebuild uboot.
 
@@ -651,15 +653,17 @@ uboot-mkimage -F fitImage \
     -r \
 ```
 
-Đây là bước signing thật sự. `mkimage` mở fitImage từ bước 2, đọc private key từ `UBOOT_SIGN_KEYDIR`, thực hiện toàn bộ quy trình: concat hash -> SHA-256 -> PKCS#1 pad -> RSA sign -> ghi signature vào FIT blob. Đồng thời ghi public key vào `u-boot.dtb`.
-
-Flag `-r` được thêm vào khi `FIT_SIGN_INDIVIDUAL = "0"`.
+Lệnh này thực hiện theo flow sau:
+- `mkimage` mở fitImage từ bước 2
+- Đọc private key từ `UBOOT_SIGN_KEYDIR`
+- Thực hiện toàn bộ quy trình: concat hash $\rightarrow$ SHA-256 $\rightarrow$ PKCS#1 pad $\rightarrow$ RSA sign $\rightarrow$ ghi signature vào FIT blob. Đồng thời ghi public key vào `u-boot.dtb`.
+- Flag `-r` được thêm vào khi `FIT_SIGN_INDIVIDUAL = "0"`.
 
 **Bước 4: Reassemble U-Boot binary với DTB mới**
 
 Sau khi `mkimage` ghi public key vào `u-boot.dtb`, DTB này cần được inject vào uboot binary. Tùy theo cấu hình `CONFIG_OF_SEPARATE` hay `CONFIG_OF_EMBED` của uboot:
 
-- `CONFIG_OF_SEPARATE`: Yocto compile ra hai file riêng biệt là uboot binary (`u-boot-nodtb.bin`) và DTB (`u-boot.dtb`). Hai file này được concatenate thành binary cuối cùng. Mode này phù hợp cho signing vì DTB là file riêng, `mkimage` có thể mở `u-boot.dtb`, ghi thêm node `/signature/key-dev` chứa public key. Sau đó chỉ cần concatenate lại với `u-boot-nodtb.bin` mà không cần phải compile lại uboot. Quá trình concatenate đơn giản:
+- `CONFIG_OF_SEPARATE`: Yocto compile ra hai file riêng biệt là uboot binary (`u-boot-nodtb.bin`) và DTB (`u-boot.dtb`). Hai file này được merge thành binary cuối cùng. Mode này phù hợp cho signing vì DTB là file riêng, `mkimage` có thể mở `u-boot.dtb`, ghi thêm node `/signature/key-dev` chứa public key. Sau đó chỉ cần merge lại với `u-boot-nodtb.bin` mà không cần phải compile lại uboot. Quá trình merge đơn giản:
 
     ```bash
     cat u-boot-nodtb.bin u-boot.dtb > u-boot.bin
@@ -699,30 +703,604 @@ do_deploy[depends] += "virtual/kernel:do_assemble_fitimage"
 
 Nếu thiếu dependency này, uboot sẽ deploy với DTB không có public key -> required property không tồn tại -> verified boot thực tế bị vô hiệu hóa mà không có lỗi nào.
 
-### 4.5. Cách verify rằng signing hoạt động đúng
+## 5. Tool kiểm chứng
 
-Sau khi build xong, bạn nên kiểm tra trên build host trước khi flash lên device:
+### 5.1. Nguồn gốc các tool
+
+Toàn bộ các tool dùng trong mục 6 đến từ hai package:
 
 ```bash
-# Kiểm tra fitImage có signature không
+sudo apt install u-boot-tools device-tree-compiler
+```
+
+- `u-boot-tools` cung cấp `mkimage`, `dumpimage`, `mkenvimage`.
+- `device-tree-compiler` cung cấp `dtc`, `fdtget`, `fdtput`, `fdtdump`, `fdtoverlay`.
+
+`fit_check_sign` không có trong package, phải build từ uboot source (sẽ được nói ở mục 5.7).
+
+Trong Yocto, các tool này tồn tại dưới dạng native recipe và có thể gọi trực tiếp mà không cần cài lên host:
+
+```bash
+bitbake u-boot-tools-native dtc-native
+# binary nằm trong tmp/work/x86_64-linux/<recipe>/*/recipe-sysroot-native/usr/bin/
+```
+
+:::warning Phiên bản `mkimage` phải match
+`mkimage` trên host và uboot trên device phải hiểu cùng một format. Một `mkimage` quá mới có thể sinh ra FIT dùng property mà uboot cũ không parse được, dẫn tới verify fail mà thông báo lỗi rất khó hiểu. Khi debug, luôn kiểm tra `mkimage -V` và so với version uboot đang chạy, và ưu tiên dùng `uboot-mkimage` do chính Yocto build thay vì bản của distro.
+:::
+
+### 5.2. `mkimage` - tool đóng gói, sign và xem FIT
+
+```bash
+mkimage -V                          # xem version
+mkimage -l fitImage                 # in cấu trúc FIT (không verify)
+mkimage -f fitImage.its fitImage    # đóng gói fit từ .its
+```
+
+Các option liên quan đến signing:
+
+| Option | Ý nghĩa |
+| --- | --- |
+| `-f <file.its>` | Đóng gói FIT từ image tree source |
+| `-F <file>` | Thao tác trên FIT đã tồn tại thay vì tạo mới, dùng khi sign |
+| `-k <dir>` | Thư mục chứa `<key-name-hint>.key` và `.crt` |
+| `-K <dtb>` | DTB đích để ghi public key vào |
+| `-r` | Đặt `required` cho key, làm cho việc verify trở thành bắt buộc |
+| `-c <text>` | Ghi comment vào signature node |
+| `-l <file>` | Liệt kê nội dung image |
+| `-E` | Để data nằm ngoài FIT structure (external data) |
+
+Khi dùng `-E` thì các image node không còn property `data` mà thay bằng `data-offset` và `data-size`. `mkimage -l` và `dumpimage` vẫn hoạt động bình thường, nhưng script nào đọc trực tiếp property `data` bằng `fdtget` sẽ hỏng. Kiểm tra bằng:
+
+```bash
+fdtget -p fitImage /images/kernel-1 | grep -E '^data'
+# FIT thường:   data
+# FIT dùng -E:  data-size
+#               data-offset
+```
+
+### 5.3. `dumpimage` - tool extract sub-image
+
+```bash
+dumpimage -l fitImage                              # liệt kê, tương tự mkimage -l
+dumpimage -T flat_dt -p 0 -o kernel.bin fitImage   # extract image index 0
+```
+
+| Option | Ý nghĩa |
+| --- | --- |
+| `-l` | Liệt kê nội dung |
+| `-T <type>` | Kiểu image nguồn, với FIT luôn là `flat_dt` |
+| `-p <n>` | Index của sub-image, đếm từ 0 theo thứ tự node trong `/images` |
+| `-o <file>` | File output |
+
+Index `-p` đếm theo thứ tự xuất hiện của node chứ không theo tên nên luôn lấy thứ tự từ `mkimage -l` thay vì đoán. Data được extract là data thô, chưa giải nén: nếu image có `compression = "gzip"` thì file nhận được vẫn là file `.gz`.
+
+Đây là công cụ duy nhất trong bộ này đọc được phần data của FIT một cách đáng tin cậy, kể cả khi FIT dùng external data.
+
+### 5.4. `fdtget` - tool đọc property từ DTB hoặc FIT
+
+FIT image bản chất là một DTB nên mọi công cụ device tree đều dùng được trên fitImage.
+
+```bash
+fdtget -l <file> <node>              # liệt kê sub-node
+fdtget -p <file> <node>              # liệt kê property
+fdtget -t <type> <file> <node> <prop> [<node> <prop> ...]
+```
+
+Tham số `-t` quyết định cách in giá trị:
+
+| | Ý nghĩa | Ví dụ output |
+| --- | --- | --- |
+| `s` | Chuỗi, stringlist nối bằng dấu cách | `sha256,rsa2048` |
+| `u` | Số nguyên không dấu 32-bit | `1789922070` |
+| `x` | Word 32 bit dạng hex | `b0f0e0af 7eb8c11e ...` |
+| `bx` | Từng byte dạng hex | `b0 f0 e0 af 7e ...` |
+| `i` | Số nguyên có dấu | `-1` |
+
+:::warning Tham số phải đi theo cặp node property
+Không thể viết `fdtget -t s file /node prop1 prop2`, phải lặp lại tên node:
+
+```bash
+fdtget -t s $DTB /signature/key-dev required /signature/key-dev algo
+```
+
+Viết sai sẽ nhận được lỗi `must have an even number of arguments` kèm nguyên trang help.
+:::
+
+### 5.5. `fdtput` - tool sửa DTB để test
+
+`fdtput` ghi ngược vào DTB. Trong ngữ cảnh verified boot, nó hữu ích nhất khi ta muốn chứng minh rằng các biện pháp bảo vệ thực sự có tác dụng.
+
+```bash
+# Xóa property required để mô phỏng build bị lỗi
+cp u-boot.dtb noreq.dtb
+fdtput -d noreq.dtb /signature/key-dev required
+
+# Sửa 1 byte trong modulus để mô phỏng key sai
+fdtput -t x wrong.dtb /signature/key-dev rsa,exponent 0x00 0x10003
+```
+
+Ghép DTB đã sửa vào uboot rồi boot thử sẽ cho thấy chính xác device phản ứng thế nào khi key hỏng hoặc khi `required` biến mất. Đây là cách duy nhất để chắc chắn rằng device thật sự từ chối image sai, thay vì chỉ tin rằng nó sẽ từ chối.
+
+:::warning
+Chỉ làm những thử nghiệm này trên bản copy và trên thiết bị phát triển. Một DTB bị sửa hỏng sẽ làm uboot không boot được và nếu thiết bị không có cách recovery bằng USB hoặc UART thì sẽ thành gạch.
+:::
+
+### 5.6. `fdtdump` và `dtc` - tool xem toàn bộ cây
+
+Hai công cụ này cùng đọc DTB nhưng phục vụ hai mục đích khác nhau.
+
+`fdtdump` in ra header của blob, dùng để kiểm tra nhanh xem một file có phải DTB hợp lệ không và nó lớn bao nhiêu:
+
+```bash
+fdtdump u-boot.dtb | head -12
+```
+
+```
+/dts-v1/;
+// magic:		0xd00dfeed
+// totalsize:		0xc90 (3216)
+// off_dt_struct:	0x38
+// off_dt_strings:	0x344
+// off_mem_rsvmap:	0x28
+// version:		17
+// last_comp_version:	16
+// boot_cpuid_phys:	0x0
+// size_dt_strings:	0x8b
+// size_dt_struct:	0x30c
+```
+
+`totalsize` ở đây là thông tin quan trọng khi debug lỗi `FDT_ERR_NOSPACE`: so sánh `totalsize` với kích thước file thật sẽ biết DTB còn bao nhiêu chỗ trống cho `mkimage` ghi thêm key vào.
+
+```bash
+ls -l u-boot.dtb        # 3216 byte
+fdtdump u-boot.dtb | grep totalsize
+```
+
+`fdtdump` cũng chạy được trên fitImage vì fitImage là DTB nhưng output sẽ rất lớn do nó in cả vùng data nhị phân của kernel. Dùng kèm `head` hoặc chỉ đọc header.
+
+`dtc` decompile toàn bộ cây về dạng `.dts` đọc được, đây mới là công cụ để xem nội dung:
+
+```bash
+dtc -I dtb -O dts -o - u-boot.dtb            # decompile ra stdout
+dtc -I dts -O dtb -p 2000 -o out.dtb in.dts  # compile kèm 2000 byte padding
+```
+
+| Option | Ý nghĩa |
+| --- | --- |
+| `-I <fmt>` | Format đầu vào: `dts`, `dtb` |
+| `-O <fmt>` | Format đầu ra: `dts`, `dtb` |
+| `-p <n>` | Chừa thêm `n` byte trống trong DTB output |
+| `-o <file>` | File output, `-` là stdout |
+
+Option `-p` chính là thứ `UBOOT_MKIMAGE_DTCOPTS = "-I dts -O dtb -p 2000"` đang dùng. Chỗ trống đó dành cho `mkimage` ghi node public key vào sau.
+
+:::tip Padding còn cần thiết không
+Với `mkimage` 2022.01 trở lên, khi `-K` trỏ tới một file `.dtb` độc lập thì `mkimage` tự nới file ra nếu thiếu chỗ. Nhưng padding vẫn nên giữ, vì trong một số layout, DTB nằm trong vùng có kích thước cố định của binary hoặc partition, lúc đó không thể nới được và lỗi `FDT_ERR_NOSPACE` sẽ quay lại.
+:::
+
+### 5.7. `openssl` - tool làm việc với key và certificate
+
+```bash
+# Xem toàn bộ thông tin certificate
+openssl x509 -in keys/dev.crt -noout -text
+
+# Chỉ lấy modulus, dùng để so với DTB
+openssl x509 -in keys/dev.crt -noout -modulus
+
+# Lấy modulus từ private key
+openssl rsa -in keys/dev.key -noout -modulus
+
+# Kiểm tra private key và certificate có thuộc cùng một cặp không
+diff <(openssl rsa  -in keys/dev.key -noout -modulus) \
+     <(openssl x509 -in keys/dev.crt -noout -modulus)
+
+# Kiểm tra độ dài key
+openssl rsa -in keys/dev.key -noout -text | head -1
+# -> Private-Key: (2048 bit, 2 primes)
+
+# Xem hạn của certificate
+openssl x509 -in keys/dev.crt -noout -dates
+```
+
+Phép `diff` hai modulus ở trên đáng chạy mỗi khi thay key. `mkimage` đọc private key từ file `.key` để sign nhưng đọc public key từ file `.crt` để nhúng vào DTB. Nếu hai file này không thuộc cùng một cặp, `mkimage` vẫn chạy thành công, image vẫn được sign, key vẫn được nhúng nhưng device sẽ từ chối boot vì key trong DTB không verify được chữ ký đó.
+
+### 5.8. Bảng tra cứu nhanh
+
+| | Lệnh |
+| --- | --- |
+| FIT có được ký chưa | `mkimage -l fitImage \| grep -A2 'Sign algo'` |
+| Tên key đã ký FIT | `fdtget -t s fitImage /configurations/conf-1/signature-1 key-name-hint` |
+| Độ dài chữ ký | `fdtget -t bx fitImage /configurations/conf-1/signature-1 value \| wc -w` |
+| Chữ ký bao phủ node nào | `fdtget -t s fitImage /configurations/conf-1/signature-1 hashed-nodes` |
+| Danh sách image trong FIT | `fdtget -l fitImage /images` |
+| Trích kernel ra khỏi FIT | `dumpimage -T flat_dt -p 0 -o kernel.bin fitImage` |
+| DTB có key nào | `fdtget -l u-boot.dtb /signature` |
+| Verify có bắt buộc không | `fdtget -t s u-boot.dtb /signature/key-dev required` |
+| Xem toàn bộ node key | `dtc -I dtb -O dts -o - u-boot.dtb \| sed -n '/signature/,/^\t};/p'` |
+| Modulus trong certificate | `openssl x509 -in dev.crt -noout -modulus` |
+| DTB có hợp lệ không | `fdtdump u-boot.dtb \| head -3` |
+| Verify chữ ký thật sự | `fit_check_sign -f fitImage -k u-boot.dtb` |
+
+## 6. Kiểm chứng trên build host
+
+Build thành công không có nghĩa là verified boot đang hoạt động. Ba tình huống sau đều build pass, không warning và device vẫn boot lên bình thường:
+
+- `UBOOT_SIGN_ENABLE = "1"` được set nhưng `mkimage` không ghi được public key vào DTB.
+- fitImage được tạo nhưng không ký (thiếu key, sai tên key).
+- uboot deploy ra lại dùng DTB cũ chưa có public key (lỗi dependency ở mục 4.4).
+
+Điểm chung của cả ba là chúng im lặng. Kernel vẫn load, userspace vẫn chạy, chỉ khác là signature không bao giờ được verify. Vì vậy cần phải kiểm chứng thủ công trên build host trước khi flash.
+
+Sáu câu hỏi cần trả lời, theo đúng thứ tự:
+
+```
++---+--------------------------------------------------------+--------------------------+
+| # | Câu hỏi                                                | Kiểm tra trên file       |
++---+--------------------------------------------------------+--------------------------+
+| 1 | fitImage có signature node và có property value chưa?  | fitImage                 |
+| 2 | Signature đó bao phủ những image nào?                  | fitImage                 |
+| 3 | Hash lưu trong FIT có match với data thật không?       | fitImage                 |
+| 4 | U-Boot DTB có node /signature/key-<name> chưa?         | u-boot.dtb               |
+| 5 | Public key trong DTB có đúng là key của ta không?      | u-boot.dtb + dev.crt     |
+| 6 | Binary deploy có chứa DTB đã có key không?             | u-boot.bin / u-boot.img  |
++---+--------------------------------------------------------+--------------------------+
+```
+
+Câu 4 và câu 6 là hai lỗi hay gặp nhất và cũng nguy hiểm nhất, vì không có bất kỳ dấu hiệu nào khi boot.
+
+### 6.1. fitImage đã được sign chưa?
+
+Cách nhanh nhất là `mkimage -l`, nó in ra toàn bộ cấu trúc FIT:
+
+```bash
+mkimage -l tmp/deploy/images/<machine>/fitImage
+```
+
+Phần cuối của output là thông tin configuration, đây chính là chỗ chứa câu trả lời:
+
+```
+ Default Configuration: 'conf-1'
+ Configuration 0 (conf-1)
+  Description:  Boot Linux
+  Kernel:       kernel-1
+  Init Ramdisk: ramdisk-1
+  FDT:          fdt-1
+  Sign algo:    sha256,rsa2048:dev
+  Sign value:   098d30e122c9dc7805ee115f88a1546df88de4c7f414e3fa06...
+  Timestamp:    Sun Sep 20 23:34:30 2026
+```
+
+Ba dòng cuối là dấu hiệu cần tìm:
+
+- `Sign algo: sha256,rsa2048:dev` - thuật toán và tên key. Phần sau dấu `:` chính là `key-name-hint`, phải trùng với `UBOOT_SIGN_KEYNAME`.
+- `Sign value` - chữ ký RSA. Nếu in ra `unavailable` nghĩa là FIT chỉ mới được đóng gói mà chưa qua bước ký.
+- `Timestamp` - thời điểm ký. Cũng in ra `unavailable` nếu chưa ký.
+
+So sánh với output của một FIT chưa ký, node signature vẫn tồn tại (vì nó được khai báo trong file `.its`) nhưng không có giá trị:
+
+```
+  Sign algo:    sha256,rsa2048:dev
+  Sign value:   unavailable
+  Timestamp:    unavailable
+```
+
+:::warning `mkimage -l` không phải là lệnh verify
+`mkimage -l` chỉ đọc và in lại các giá trị đang lưu trong blob. Nó không tính lại hash, không kiểm tra chữ ký. Nếu ta sửa một byte trong vùng data của fitImage rồi chạy lại `mkimage -l`, nó vẫn in ra hash cũ và vẫn báo `Sign value` đầy đủ như bình thường. Lệnh này trả lời câu hỏi đã ký hay chưa, không trả lời câu hỏi chữ ký có đúng không.
+:::
+
+Nếu cần kiểm tra trong script, dùng `fdtget` để đọc thẳng property thay vì parse text output:
+
+```bash
+FIT=tmp/deploy/images/<machine>/fitImage
+
+# Liệt kê các sub-node của configuration
+fdtget -l $FIT /configurations/conf-1
+# -> signature-1
+
+# Đọc metadata của signature node
+fdtget -t s $FIT /configurations/conf-1/signature-1 algo /configurations/conf-1/signature-1 key-name-hint
+# -> sha256,rsa2048
+# -> dev
+
+# Đếm độ dài chữ ký, RSA-2048 phải ra đúng 256
+fdtget -t bx $FIT /configurations/conf-1/signature-1 value | wc -w
+# -> 256
+```
+
+Nếu property `value` không tồn tại, `fdtget` trả về `FDT_ERR_NOTFOUND` và exit code 1. Đây là cách phát hiện chưa sign đáng tin cậy nhất cho script.
+
+Ngoài ra `mkimage` còn ghi thêm vài property metadata hữu ích cho việc truy vết:
+
+```bash
+fdtget -t s $FIT /configurations/conf-1/signature-1 signer-name /configurations/conf-1/signature-1 signer-version
+# -> mkimage
+# -> 2022.01+dfsg-2ubuntu2.7
+
+# timestamp lưu dạng số giây Unix, cần convert
+TS=$(fdtget -t u $FIT /configurations/conf-1/signature-1 timestamp)
+date -u -d @$TS
+```
+
+`signer-version` cho biết chính xác phiên bản `mkimage` đã ký. Khi một image ký được trên máy này nhưng verify fail trên uboot, so sánh version giữa `mkimage` và uboot là bước debug đầu tiên.
+
+### 6.2. Chữ ký bao phủ những gì?
+
+Một chữ ký hợp lệ vẫn có thể vô dụng nếu nó không bao phủ hết các component. Ví dụ nếu signature chỉ ký kernel mà không ký DTB, attacker có thể thay DTB để đổi `bootargs` và trỏ `root=` sang một partition khác, trong khi chữ ký vẫn pass.
+
+`mkimage` ghi lại chính xác danh sách node đã được hash vào property `hashed-nodes`:
+
+```bash
+fdtget -t s $FIT /configurations/conf-1/signature-1 hashed-nodes
+```
+
+Output:
+
+```
+/ /configurations/conf-1 /images/kernel-1 /images/kernel-1/hash-1 /images/fdt-1
+/images/fdt-1/hash-1 /images/ramdisk-1 /images/ramdisk-1/hash-1
+```
+
+Đọc danh sách này để đối chiếu với danh sách image thực có:
+
+```bash
+fdtget -l $FIT /images
+# -> kernel-1
+# -> fdt-1
+# -> ramdisk-1
+```
+
+Mọi image node xuất hiện trong `/images` mà không xuất hiện trong `hashed-nodes` đều là image không được ký.
+
+Lưu ý rằng `hashed-nodes` bao gồm cả node `/` và node configuration, nghĩa là các property ở root và các property `kernel`, `fdt`, `ramdisk` của configuration cũng nằm trong vùng được ký. Attacker không thể sửa configuration để trỏ sang một image node khác.
+
+### 6.3. Hash trong FIT có match với data không?
+
+Hai câu hỏi trên mới chỉ kiểm tra metadata. Để kiểm tra data thật, ta dùng `dumpimage` extract từng sub-image ra rồi tự tính hash và so sánh.
+
+```bash
+# Extract sub-image theo index, index đếm từ 0 theo thứ tự node trong /images
+dumpimage -T flat_dt -p 0 -o out-kernel.bin  $FIT
+dumpimage -T flat_dt -p 1 -o out-fdt.dtb     $FIT
+dumpimage -T flat_dt -p 2 -o out-ramdisk.gz  $FIT
+
+# Tự tính hash
+sha256sum out-kernel.bin
+# -> 8086b810a0a054a1b350a3a1c185dc1b3ae95e7749367df2aa956c447b4d286b
+```
+
+So sánh với hash mà FIT đang lưu:
+
+```bash
+fdtget -t bx $FIT /images/kernel-1/hash-1 value
+```
+
+File extract ra phải giống hệt file gốc trước khi đóng gói, kể cả DTB:
+
+```bash
+sha256sum zImage out-kernel.bin board.dtb out-fdt.dtb
+# 8086b810...286b  zImage
+# 8086b810...286b  out-kernel.bin
+# 7ff42077...db4d  board.dtb
+# 7ff42077...db4d  out-fdt.dtb
+```
+
+Đây cũng là cách kiểm tra nội dung DTB thật sự được đóng gói vào fitImage, vì file extract ra là một DTB hợp lệ và decompile được:
+
+```bash
+dtc -I dtb -O dts -o - out-fdt.dtb | head -20
+```
+
+:::tip Vì sao phải so hash thủ công
+`bootm` trên device sẽ làm đúng việc này nhưng nó chỉ báo lỗi lúc boot, khi image đã nằm trên thiết bị. Làm trên build host cho phép phát hiện file hỏng trước khi flash và quan trọng hơn là phân biệt được hai loại lỗi khác nhau: hash sai nghĩa là file bị hỏng hoặc bị sửa sau khi đóng gói, còn chữ ký sai nghĩa là sai key.
+:::
+
+### 6.4. Public key đã nằm trong U-Boot DTB chưa?
+
+Đây là câu hỏi quan trọng nhất vì nếu thiếu public key thì uboot không có gì để verify và sẽ boot mọi image mà không kiểm tra.
+
+Cách trực quan nhất là decompile DTB ngược về dạng text:
+
+```bash
+dtc -I dtb -O dts -o - tmp/deploy/images/<machine>/u-boot.dtb | sed -n '/signature/,/^\t};/p'
+```
+
+```dts
+	signature {
+
+		key-dev {
+			required = "conf";
+			algo = "sha256,rsa2048";
+			rsa,r-squared = <0x1523632a 0x4760194a ... 0xdcc95499>;
+			rsa,modulus = <0xb0f0e0af 0x7eb8c11e ... 0xf71ac487>;
+			rsa,exponent = <0x00 0x10001>;
+			rsa,n0-inverse = <0x38453ec9>;
+			rsa,num-bits = <0x800>;
+			key-name-hint = "dev";
+		};
+	};
+```
+
+Để kiểm tra trong script, `fdtget` gọn hơn nhiều:
+
+```bash
+DTB=tmp/deploy/images/<machine>/u-boot.dtb
+
+# Có node /signature không và có những key nào
+fdtget -l $DTB /signature
+# -> key-dev
+
+# Liệt kê property của key
+fdtget -p $DTB /signature/key-dev
+# -> required
+# -> algo
+# -> rsa,r-squared
+# -> rsa,modulus
+# -> rsa,exponent
+# -> rsa,n0-inverse
+# -> rsa,num-bits
+# -> key-name-hint
+
+# Đọc các giá trị dạng chuỗi
+fdtget -t s $DTB /signature/key-dev required /signature/key-dev algo /signature/key-dev key-name-hint
+# -> conf
+# -> sha256,rsa2048
+# -> dev
+```
+
+Hai trường hợp fail cần phân biệt rõ:
+
+```bash
+# 1. Không có node /signature -> mkimage chưa từng ghi key vào DTB này
+fdtget -l $DTB /signature
+# -> Error at '/signature': FDT_ERR_NOTFOUND
+
+# 2. Có key nhưng thiếu required -> ký thiếu flag -r
+fdtget -t s $DTB /signature/key-dev required
+# -> Error at '/signature/key-dev': FDT_ERR_NOTFOUND
+```
+
+Trường hợp 2 nguy hiểm hơn trường hợp 1 vì nhìn qua thì mọi thứ đều đủ: key có, modulus có, thuật toán có. Nhưng thiếu `required` thì uboot coi việc verify là tùy chọn, một image hoàn toàn không ký vẫn boot được bình thường. Khi signing trực tiếp bằng `mkimage`, flag `-r` chính là thứ tạo ra property này:
+
+```bash
+# Ký không có -r
+mkimage -F fitImage -k keys -K u-boot.dtb
+
+dtc -I dtb -O dts -o - u-boot.dtb | sed -n '/key-dev/,/algo/p'
+# 		key-dev {
+# 			algo = "sha256,rsa2048";      <- không có required
+```
+
+### 6.5. Public key đó có đúng là key của ta không?
+
+Node `/signature/key-dev` tồn tại không có nghĩa là nó chứa đúng key ta muốn. Trong một build server dùng nhiều key hoặc sau khi rotate key, rất dễ gặp tình huống DTB mang key cũ trong khi fitImage được ký bằng key mới.
+
+Cách kiểm tra chắc chắn là so trực tiếp modulus trong DTB với modulus trong certificate:
+
+```bash
+# Modulus lấy từ DTB: nối các word 32-bit lại thành chuỗi hex
+DTB_MOD=$(fdtget -t x $DTB /signature/key-dev rsa,modulus \
+          | tr ' ' '\n' | sed 's/^0x//' | awk '{printf "%08s",$0}' | tr ' ' '0' \
+          | tr 'a-f' 'A-F')
+
+# Modulus lấy từ certificate
+CRT_MOD=$(openssl x509 -in keys/dev.crt -noout -modulus | sed 's/^Modulus=//')
+
+[ "$DTB_MOD" = "$CRT_MOD" ] && echo "match" || echo "mismatch"
+```
+
+```
+B0F0E0AF7EB8C11E498D4E6D57E54461D1FD743B9F3CD04AEA288E1E2D23A791F526370AA7F8FEAD...
+B0F0E0AF7EB8C11E498D4E6D57E54461D1FD743B9F3CD04AEA288E1E2D23A791F526370AA7F8FEAD...
+match
+```
+
+Phép so sánh này hoạt động được vì `mkimage` ghi modulus vào DTB theo đúng thứ tự big-endian, word đầu tiên là phần có trọng số lớn nhất. Chuỗi hex thu được dài đúng 512 ký tự tương ứng 256 byte của RSA-2048, trùng khít với output `-modulus` của openssl.
+
+Nếu chỉ có private key mà không có certificate, lấy modulus từ private key:
+
+```bash
+openssl rsa -in keys/dev.key -noout -modulus | sed 's/^Modulus=//'
+```
+
+:::warning `fdtget -t bx` làm mất số 0 đứng đầu
+`fdtget` in mỗi byte bằng `%x` chứ không phải `%02x`, nên byte `0x07` in ra thành `7` và `0x01` in ra thành `1`. Nối trực tiếp output của `fdtget -t bx ... | tr -d ' '` sẽ ra một chuỗi hex sai độ dài và so sánh luôn fail:
+
+```
+Đúng: ... 36 bb 07 b4 37 07 68 14 01 6e ...  ->  ...36bb07b437076814016e...
+Sai : ... 36 bb 7 b4 37 7 68 14 1 6e ...     ->  ...36bb7b437768141 6e...
+```
+
+Luôn pad lại từng phần tử trước khi nối, dùng `awk '{printf "%02s",$0}' | tr ' ' '0'` cho `-t bx` và `%08s` cho `-t x`. Cùng lý do đó, output `dtc -I dtb -O dts` cũng in `0x80a89e9` thay vì `0x080a89e9`, không dùng để so sánh chuỗi được.
+:::
+
+### 6.6. Binary deploy có thật sự chứa DTB đã có key không?
+
+Tất cả các bước trên đều kiểm tra file `u-boot.dtb` rời. Nhưng cái được flash lên device là `u-boot.bin` hoặc `u-boot.img`, được ghép từ `u-boot-nodtb.bin` và `u-boot.dtb`. Nếu dependency ở mục 4.4 bị thiếu, uboot sẽ ghép với bản DTB cũ chưa có key, trong khi file `u-boot.dtb` trong thư mục deploy lại là bản mới đã có key. Kiểm tra file rời sẽ pass, còn device thì không có key.
+
+Cách duy nhất chắc chắn là mọi DTB ra từ chính binary sẽ được flash. Với `CONFIG_OF_SEPARATE`, DTB nằm ở cuối binary và bắt đầu bằng magic `0xd00dfeed`:
+
+```bash
+python3 - <<'EOF'
+import struct
+data = open('u-boot.bin','rb').read()
+off = data.find(b'\xd0\x0d\xfe\xed')
+if off < 0:
+    raise SystemExit('Không tìm thấy DTB trong binary')
+size = struct.unpack('>I', data[off+4:off+8])[0]
+print(f'DTB tại offset {off}, kích thước {size} byte')
+open('extracted.dtb','wb').write(data[off:off+size])
+EOF
+
+fdtget -t s extracted.dtb /signature/key-dev required /signature/key-dev algo
+# -> conf
+# -> sha256,rsa2048
+```
+
+Bốn byte ngay sau magic chính là `totalsize` trong FDT header, nên ta cắt được đúng kích thước DTB mà không cần đoán.
+
+:::warning Đừng dùng grep để tìm magic
+`grep -abo $'\xd0\x0d\xfe\xed'` thường không ra kết quả vì byte `0x0d` là carriage return và grep xử lý dữ liệu theo dòng. Dùng Python như trên, hoặc `binwalk u-boot.bin` nếu đã cài, kết quả tin cậy hơn nhiều.
+:::
+
+Với `u-boot.img` thì binary có thêm 64 byte uImage header ở đầu, đoạn script trên vẫn chạy đúng vì nó tìm magic chứ không giả định offset. Nếu tìm thấy nhiều hơn một vị trí magic, lấy vị trí cuối cùng, vì đó mới là control DTB của uboot.
+
+### 6.7. Verify chữ ký thật sự bằng `fit_check_sign`
+
+Các bước trên kiểm tra đầy đủ sự hiện diện và tính nhất quán, nhưng chưa thực sự chạy phép toán RSA để verify chữ ký. Công cụ làm việc đó là `fit_check_sign`, nó dùng đúng code verify của uboot nhưng chạy trên host:
+
+```bash
 fit_check_sign -f tmp/deploy/images/<machine>/fitImage \
-    -k tmp/deploy/images/<machine>/u-boot.dtb
-
-# Hoặc dùng mkimage để xem nội dung FIT
-mkimage -l tmp/deploy/images/beaglebone-yocto/fitImage
+               -k tmp/deploy/images/<machine>/u-boot.dtb
 ```
 
-Lệnh `mkimage -l` sẽ in ra cấu trúc FIT: danh sách image node, hash value, signature status. Nếu thấy sign value và timestamp trong output, signing đã hoạt động.
+```
+## Checking hash-1 in configuration conf-1 ...
+   Verifying Hash Integrity ... sha256,rsa2048:dev+ OK
+Signature check OK
+```
 
-Kiểm tra uboot DTB có public key:
+Hai điểm cần chú ý về tham số:
+
+- `-f` là FIT image cần kiểm tra.
+- `-k` là **U-Boot DTB** chứa public key, không phải file `.crt` hay `.key`. Đây là chỗ hay nhầm nhất.
+
+Vì nó nhận DTB, `fit_check_sign` kiểm tra đúng cặp mà device sẽ dùng: FIT sẽ boot và key sẽ verify. Chạy pass ở đây gần như đảm bảo device cũng sẽ boot được.
+
+Trên Debian/Ubuntu, package `u-boot-tools` không đóng gói `fit_check_sign`, chỉ có `mkimage`, `dumpimage`, `mkenvimage`. Phải build từ source:
 
 ```bash
-fdtdump tmp/deploy/images/beaglebone-yocto/u-boot.dtb | grep -A 20 "signature"
+git clone --depth 1 https://source.denx.de/u-boot/u-boot.git
+cd u-boot
+make tools-only_defconfig
+make tools-only -j$(nproc)
+ls tools/fit_check_sign
 ```
 
-Ta phải thấy node `/signature/key-dev` với các property `rsa,modulus`, `rsa,exponent`, `rsa,r-squared`, `rsa,n0-inverse`, và `required = "conf"`. Nếu thiếu bất kỳ property nào, signing chưa đúng.
+Trong Yocto, sau khi `bitbake u-boot-tools-native` thì binary nằm trong thư mục build của recipe:
 
-### 4.6. Kiểm tra trên device thật
+```bash
+find tmp/work/*/u-boot-tools-native -name 'fit_check_sign' -type f
+```
+
+:::tip Một cách verify offline khác khi không có `fit_check_sign`
+Chữ ký RSA PKCS#1 v1.5 là deterministic, cùng input và cùng key luôn ra cùng một chữ ký. Nên ta có thể ký lại rồi so sánh byte-by-byte. Chỉ cần cố định timestamp, vì timestamp nằm trong vùng dữ liệu được hash:
+
+```bash
+export SOURCE_DATE_EPOCH=1700000000
+mkimage -f fitImage.its a.itb && mkimage -F a.itb -k keys -K a.dtb -r
+mkimage -f fitImage.its b.itb && mkimage -F b.itb -k keys -K b.dtb -r
+# signature trong a.itb và b.itb giống hệt nhau
+```
+
+Cách này dùng để kiểm tra tính tái lập của build, không thay thế được `fit_check_sign` vì nó cần private key.
+:::
+
+## 7. Kiểm chứng trên device thật
+
+Kiểm tra trên build host chứng minh được file đúng. Chỉ có boot thật mới chứng minh được uboot trên device thật sự kiểm tra chữ ký đó.
+
+### 7.1. Output khi verify pass
 
 Boot device qua serial console, vào uboot và chạy:
 
@@ -748,15 +1326,67 @@ Nếu `CONFIG_FIT_VERBOSE=y`, uboot sẽ in chi tiết:
      Verifying Hash Integrity ... sha256+ OK
 ```
 
-Dòng `sha256,rsa2048:dev+ OK` nghĩa là RSA signature verify pass. Dòng `sha256+ OK` sau mỗi image nghĩa là hash verify pass. Nếu ta thấy `sha256,rsa2048:dev- Failed` hoặc `sha256- Failed` thì nghĩa là có vấn đề với key hoặc image bị corrupt.
+Dòng `sha256,rsa2048:dev+ OK` nghĩa là RSA signature verify pass và phần `dev` cho biết uboot đã dùng đúng key `key-dev`. Dòng `sha256+ OK` sau mỗi image nghĩa là hash verify pass. Dấu `+` là pass, dấu `-` là fail.
 
-Để test, ta có thể sửa 1 byte trong fitImage rồi thử boot lại:
+:::warning Không có dòng verify nào cũng là một kết quả
+Nếu output chỉ có `Loading kernel from FIT Image` rồi nhảy thẳng sang `Starting kernel` mà không hề có dòng `Verifying Hash Integrity ... sha256,rsa2048`, nghĩa là uboot không hề verify chữ ký. Nguyên nhân thường là `CONFIG_FIT_SIGNATURE` chưa bật hoặc DTB trong binary không có `/signature` và `required` như đã kiểm tra ở mục 5.4 và 5.6.
+:::
+
+### 7.2. Các phép thử phá hoại
+
+Boot thành công một image hợp lệ mới chỉ chứng minh được một nửa. Nửa còn lại là device phải từ chối image không hợp lệ. Ba testcase dưới đây nên chạy ít nhất một lần cho mỗi sản phẩm trước khi chốt cấu hình production.
+
+**Thử 1: sửa một byte trong data**
 
 ```bash
-# Trên build host, corrupt 1 byte
-printf '\x00' | dd of=fitImage bs=1 seek=1000 count=1 conv=notrunc
+cp fitImage fitImage.bad
+printf '\x00' | dd of=fitImage.bad bs=1 seek=100000 count=1 conv=notrunc
 ```
 
-Copy fitImage đã corrupt lên SD card và boot lại
-$\rightarrow$ U-Boot phải in: `Hash Integrity ... sha256- Failed`
-$\rightarrow$ Từ chối boot
+Kiểm tra trước trên host để biết chắc mình đã sửa trúng vùng data:
+
+```bash
+dumpimage -T flat_dt -p 0 -o bad-kernel.bin fitImage.bad
+sha256sum bad-kernel.bin
+fdtget -t bx fitImage.bad /images/kernel-1/hash-1 value | tr -d ' '
+# hai giá trị này phải khác nhau
+```
+
+Copy `fitImage.bad` lên device và boot. Uboot phải dừng ở bước verify với dấu `-` thay vì `+`, kèm thông báo báo hỏng hash, và không được nhảy vào kernel.
+
+**Thử 2: ký bằng key khác**
+
+```bash
+openssl genrsa -out keys/attacker.key 2048
+openssl req -batch -new -x509 -key keys/attacker.key -out keys/attacker.crt -subj "/CN=attacker"
+
+# Ký lại FIT bằng key lạ, key-name-hint giữ nguyên là dev
+cp keys/attacker.key keys/dev.key && cp keys/attacker.crt keys/dev.crt
+mkimage -f fitImage.its evil.itb
+mkimage -F evil.itb -k keys -r
+```
+
+Phép thử này mô phỏng đúng kịch bản tấn công thật: attacker có toàn quyền sửa fitImage và ký nó bằng key của họ, nhưng không có private key gốc. Uboot phải từ chối vì modulus trong DTB không verify được chữ ký này. Lưu ý là ở đây ta cố tình không truyền `-K u-boot.dtb` vì nếu truyền thì key của attacker sẽ được ghi đè vào DTB trên host, đó không còn là mô phỏng tấn công nữa.
+
+**Thử 3: bỏ hoàn toàn chữ ký**
+
+```bash
+mkimage -f fitImage.its unsigned.itb   # chỉ đóng gói, không ký
+```
+
+Đây là phép thử quan trọng nhất, vì nó kiểm tra property `required`. Nếu `required` tồn tại, uboot phải từ chối image không có chữ ký. Nếu thiếu `required`, uboot sẽ vui vẻ boot image này và ta sẽ thấy nó khởi động bình thường, đó chính là dấu hiệu verified boot đang bị vô hiệu hóa.
+
+Kết quả mong đợi của ba phép thử:
+
+| Phép thử | Kết quả bắt buộc |
+| --- | --- |
+| fitImage sửa 1 byte | Verify fail, không boot |
+| fitImage ký bằng key lạ | Verify fail, không boot |
+| fitImage không ký | Từ chối boot vì thiếu chữ ký bắt buộc |
+| fitImage hợp lệ | `sha256,rsa2048:dev+ OK`, boot bình thường |
+
+Chỉ khi cả bốn dòng trên đều đúng thì verified boot mới thực sự hoạt động. Nếu phép thử 3 lại boot được, quay lại mục 5.4 kiểm tra property `required`, và mục 5.6 kiểm tra xem binary deploy có đúng là DTB đã nhúng key hay không.
+
+:::tip Thông điệp lỗi thay đổi theo phiên bản
+Chuỗi thông báo lỗi cụ thể khác nhau giữa các bản uboot, nên đừng viết test tự động dựa trên việc so khớp nguyên văn thông báo. Dấu hiệu ổn định để bám vào là ký tự `+` với `-` ngay sau tên thuật toán, và quan trọng hơn cả là kết quả cuối cùng: device có vào được kernel hay không.
+:::

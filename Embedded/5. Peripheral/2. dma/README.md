@@ -48,7 +48,7 @@ void ADC_IRQHandler(void) {
 }
 ```
 
-CPU đã được rảnh giữa các mẫu, nhưng vấn đề chuyển sang chỗ khác: với 1 MHz, hệ thống nhận 1000000 interrupt mỗi giây. Mỗi lần ngắt, CPU phải lưu ngữ cảnh, đọc thanh ghi, ghi vào RAM rồi khôi phục ngữ cảnh. Chi phí vào/ra ngắt lớn hơn nhiều so với chính thao tác copy 2 byte.
+CPU đã được rảnh giữa các mẫu nhưng vấn đề chuyển sang chỗ khác: với 1 MHz, hệ thống nhận 1000000 interrupt mỗi giây. Mỗi lần ngắt, CPU phải lưu ngữ cảnh, đọc thanh ghi, ghi vào RAM rồi khôi phục ngữ cảnh. Chi phí vào/ra ngắt lớn hơn nhiều so với chính thao tác copy 2 byte.
 
 Hậu quả: CPU vẫn quá tải, tốn năng lượng, độ trễ ngắt tăng và có thể bỏ lỡ các tác vụ quan trọng khác.
 
@@ -61,7 +61,7 @@ Nhận xét chung của hai cách trên: CPU tham gia vào từng mẫu dữ li�
 3. Khi chuyển xong cả khối, DMA phát một interrupt.
 4. ISR báo cho task xử lý dữ liệu.
 
-Với ví dụ ADC ở trên, nếu buffer 1000 mẫu thì CPU chỉ nhận khoảng 1000 ngắt/giây thay vì 1 000 000.
+Với ví dụ ADC ở trên, nếu buffer 1000 mẫu thì CPU chỉ nhận khoảng 1000 ngắt/giây thay vì 1000000.
 
 Lợi ích:
 - **Giải phóng CPU:** Trong khi DMA vận chuyển dữ liệu, CPU có thể vào sleep mode để tiết kiệm điện hoặc chạy các thuật toán như bộ lọc số, PID, xử lý ảnh,...
@@ -73,8 +73,8 @@ Vậy làm sao DMA tự đọc/ghi bộ nhớ khi không có CPU và làm sao n�
 ## 3. Cơ chế hoạt động
 
 DMA cần hai khả năng để làm việc độc lập với CPU:
-1. **Truy cập bộ nhớ và ngoại vi** $\rightarrow$ DMA là một bus master ([3.1](#31-dma-là-một-bus-master)).
-2. **Biết thời điểm cần chuyển dữ liệu** $\rightarrow$ DMA nhận tín hiệu request từ ngoại vi ([3.2](#32-dma-request)).
+1. **Truy cập bộ nhớ và ngoại vi** $\rightarrow$ DMA là một bus master.
+2. **Biết thời điểm cần chuyển dữ liệu** $\rightarrow$ DMA nhận tín hiệu request từ ngoại vi.
 
 ### 3.1. DMA là một bus master
 
@@ -108,7 +108,7 @@ Một hiểu lầm phổ biến là DMA giống như camera giám sát, liên t�
 - DMA không biết khi nào UART nhận được byte mới.
 - DMA không biết khi nào timer tràn.
 
-Nếu DMA tự ý đọc liên tục thanh ghi dữ liệu, nó sẽ đọc phải dữ liệu cũ chưa được cập nhật, và còn gây tranh chấp bus không cần thiết. Vì vậy, DMA cần một cơ chế đồng bộ: hardware request signal.
+Nếu DMA tự ý đọc liên tục thanh ghi dữ liệu, nó sẽ đọc phải dữ liệu cũ chưa được cập nhật và còn gây tranh chấp bus không cần thiết. Vì vậy, DMA cần một cơ chế đồng bộ gọi là hardware request signal.
 
 Quay lại về ví dụ nhà hàng:
 - **Không có request (polling):** Phụ bếp cứ vài giây lại chạy tới quầy hỏi "Có món chưa?". Phần lớn các lần đều về tay không - tốn sức và làm rối bếp.
@@ -116,8 +116,8 @@ Quay lại về ví dụ nhà hàng:
 
 Tương ứng trong phần cứng:
 - Ngoại vi được bật chức năng DMA (ví dụ bit `DMAR`/`DMAT` của UART, bit `DMA` của ADC).
-- Khi có sự kiện (UART `RXNE`, ADC `EOC`, timer update,...), thay vì (hoặc bên cạnh việc) bật cờ ngắt cho CPU, ngoại vi kéo đường request tới kênh DMA tương ứng.
-- DMA thực hiện một lần truyền, và thao tác đọc/ghi thanh ghi dữ liệu thường tự xóa request.
+- Khi có sự kiện (UART `RXNE`, ADC `EOC`, timer update,...) thì thay vì bật cờ ngắt cho CPU, ngoại vi kéo đường request tới kênh DMA tương ứng.
+- DMA thực hiện một lần truyền và thao tác đọc/ghi thanh ghi dữ liệu thường tự xóa request.
 
 :::warning Lưu ý
 Mỗi ngoại vi chỉ được nối tới một số kênh/stream DMA cố định (hoặc chọn qua bộ ghép kênh request mux). Cần tra bảng mapping trong reference manual của chip để chọn đúng kênh.
@@ -139,7 +139,7 @@ Mỗi bước trên tương ứng với một nhóm tham số cấu hình, đư�
 
 ## 4. Cấu hình một kênh DMA
 
-Trước khi DMA chạy, CPU phải "giao việc" cho nó. Mỗi kênh (channel/stream) DMA được cấu hình bởi các nhóm tham số sau:
+Trước khi DMA chạy, CPU phải giao việc cho nó. Mỗi kênh (channel/stream) DMA được cấu hình bởi các nhóm tham số sau:
 
 | Nhóm tham số | Trả lời câu hỏi | Mục |
 |---|---|---|
@@ -158,7 +158,7 @@ Trước khi DMA chạy, CPU phải "giao việc" cho nó. Mỗi kênh (channel/
 
 **Trigger** xác định thời điểm mỗi đơn vị dữ liệu được chuyển:
 - **Hardware request:** Tín hiệu từ ngoại vi như đã mô tả ở [3.2](#32-dma-request). Đây là chế độ mặc định cho P2M và M2P, vì tốc độ truyền phải khớp với tốc độ của ngoại vi.
-- **Software trigger:** Không chờ request, DMA chạy liên tục với tốc độ tối đa ngay khi được bật. Chỉ dùng cho M2M, vì bộ nhớ luôn "sẵn sàng".
+- **Software trigger:** Không chờ request, DMA chạy liên tục với tốc độ tối đa ngay khi được bật. Chỉ dùng cho M2M, vì bộ nhớ luôn sẵn sàng.
 
 ### 4.2. Source & destination
 
@@ -172,7 +172,7 @@ Nguồn là nơi DMA lấy dữ liệu, đích là nơi DMA ghi dữ liệu. C�
 - Tùy chọn: Byte (8-bit), Half-word (16-bit), Word (32-bit).
 - Độ rộng phía ngoại vi phải khớp với thanh ghi. Truy cập 32-bit vào một thanh ghi 8-bit có thể đọc sai dữ liệu hoặc gây bus fault.
 - Độ rộng phía bộ nhớ phải khớp với kiểu phần tử của mảng (`uint8_t`, `uint16_t`, `uint32_t`).
-- Nếu nguồn và đích khác độ rộng, DMA vẫn chuyển **theo từng item** (cắt bớt hoặc thêm bit 0 tùy hãng) chứ không gom nhiều byte thành một word. Nên cấu hình hai bên giống nhau để tránh bất ngờ.
+- Nếu nguồn và đích khác độ rộng, DMA vẫn chuyển theo từng item (cắt bớt hoặc thêm bit 0 tùy hãng) chứ không gom nhiều byte thành một word. Nên cấu hình hai bên giống nhau để tránh bất ngờ.
 
 **Address increment (tăng địa chỉ)**: sau mỗi item, con trỏ có tự tăng không.
 - **Enable:** Dùng cho bộ nhớ. Ghi xong `buffer[0]` thì chuyển sang `buffer[1]`.
@@ -195,7 +195,7 @@ Transfer size là số lượng item DMA cần chuyển trong một phiên.
 - Ngoài TC, DMA thường có cờ HT (Half Transfer) khi chuyển được một nửa, và TE (Transfer Error) khi có lỗi bus.
 
 :::warning Lưu ý
-Size là số lượng **item**, không phải số byte. Nếu data width là 16-bit (2 byte) và size = 10 thì tổng dung lượng là 20 byte. Buffer phía bộ nhớ phải đủ lớn tương ứng.
+Size là số lượng item, không phải số byte. Nếu data width là 16-bit (2 byte) và size = 10 thì tổng dung lượng là 20 byte. Buffer phía bộ nhớ phải đủ lớn tương ứng.
 :::
 
 ### 4.4. Priority
@@ -242,7 +242,7 @@ Cách này chỉ an toàn nếu CPU xử lý xong mỗi nửa trước khi DMA q
 
 Kỹ thuật nâng cao, loại bỏ triệt để xung đột truy cập giữa CPU và DMA, thường dùng trong các hệ thống băng thông cao.
 
-**Vì sao cần:** Kỹ thuật HT/TC ở trên vẫn dùng chung **một** vùng nhớ: khi CPU đang đọc một nửa thì DMA đang ghi ngay nửa bên cạnh, và chỉ cần CPU chậm một chút là hai bên chạm nhau. Double buffer dùng **hai vùng nhớ tách biệt** để CPU và DMA không bao giờ làm việc trên cùng một buffer.
+**Vì sao cần:** Kỹ thuật HT/TC ở trên vẫn dùng chung một vùng nhớ: khi CPU đang đọc một nửa thì DMA đang ghi ngay nửa bên cạnh, và chỉ cần CPU chậm một chút là hai bên chạm nhau. Double buffer dùng hai vùng nhớ tách biệt để CPU và DMA không bao giờ làm việc trên cùng một buffer.
 
 **Cơ chế:** Hoạt động như hai người chơi bóng bàn:
 1. DMA điền dữ liệu vào buffer A. CPU rảnh hoặc xử lý dữ liệu cũ.
@@ -260,19 +260,9 @@ Kỹ thuật nâng cao, loại bỏ triệt để xung đột truy cập giữa 
 - **Graphic display:** Một buffer để render khung hình tiếp theo, buffer kia được đẩy ra LCD.
 - **High-speed logging:** Ghi log ra thẻ SD. Tốc độ ghi thẻ không đều và thường chậm hơn tốc độ thu thập, double buffer giúp không mất dữ liệu trong lúc chờ.
 
-### 5.4. So sánh
-
-| | Normal | Circular | Double buffer |
-|---|---|---|---|
-| Khi bộ đếm về 0 | Dừng | Nạp lại, ghi đè từ đầu | Chuyển sang buffer còn lại |
-| CPU can thiệp | Sau mỗi phiên | Không (chỉ đọc dữ liệu) | Không (chỉ đọc dữ liệu) |
-| Rủi ro ghi đè | Không | Có | Không (nếu CPU xử lý kịp một buffer) |
-| Bộ nhớ | 1 buffer | 1 buffer | 2 buffer |
-| Phù hợp | Khối dữ liệu rời rạc | Luồng liên tục, xử lý nhẹ | Luồng liên tục, xử lý nặng |
-
 ## 6. Ví dụ: nhận dữ liệu UART bằng DMA
 
-Phần này ghép lại toàn bộ kiến thức ở trên. Bài toán: nhận dữ liệu từ module GPS qua UART ở tốc độ cao, các câu NMEA đến liên tục.
+Phần này ghép lại toàn bộ kiến thức ở trên. Bài toán: nhận dữ liệu từ module GPS qua UART ở tốc độ cao.
 
 ### 6.1. Cấu hình
 
@@ -283,8 +273,8 @@ Phần này ghép lại toàn bộ kiến thức ở trên. Bài toán: nhận d
 | Kênh DMA | Kênh nối với UART RX | Tra bảng mapping ([3.2](#32-dma-request)) |
 | Direction | P2M | Dữ liệu đi từ UART vào RAM ([4.1](#41-direction--trigger)) |
 | Trigger | Hardware request (`RXNE`) | Chỉ chuyển khi có byte mới |
-| Nguồn | `&UART->DR`, 8-bit, increment **disable** | Thanh ghi cố định ([4.2](#42-source--destination)) |
-| Đích | `uint8_t rxBuffer[100]`, 8-bit, increment **enable** | Ghi lần lượt vào mảng |
+| Nguồn | `&UART->DR`, 8-bit, increment disable | Thanh ghi cố định ([4.2](#42-source--destination)) |
+| Đích | `uint8_t rxBuffer[100]`, 8-bit, increment enable | Ghi lần lượt vào mảng |
 | Transfer size | 100 | Kích thước buffer ([4.3](#43-transfer-size)) |
 | Mode | Normal hoặc Circular | Xem [6.3](#63-chọn-chế-độ) |
 
@@ -306,8 +296,8 @@ Suốt quá trình nhận 100 byte, CPU không bị ngắt lần nào.
 
 ### 6.3. Chọn chế độ
 
-- **Normal mode** phù hợp khi mỗi gói có độ dài cố định và biết trước. Trong ngắt TC, CPU xử lý buffer rồi khởi động lại DMA ([5.1](#51-normal-mode)).
-- Tuy nhiên câu NMEA có độ dài thay đổi, nên chờ đủ 100 byte là không thực tế: một câu ngắn có thể nằm trong buffer rất lâu. Giải pháp phổ biến là **circular mode kết hợp ngắt IDLE line** của UART ([5.2](#52-circular-mode)):
+- Normal mode phù hợp khi mỗi gói có độ dài cố định và biết trước. Trong ngắt TC, CPU xử lý buffer rồi khởi động lại DMA.
+- Tuy nhiên câu NMEA có độ dài thay đổi, nên chờ đủ 100 byte là không thực tế: một câu ngắn có thể nằm trong buffer rất lâu. Giải pháp phổ biến là circular mode kết hợp ngắt IDLE line của UART:
   - Mỗi khi đường truyền rảnh (hết một cụm dữ liệu) hoặc có ngắt HT/TC, CPU tính vị trí ghi hiện tại: `pos = 100 - NDTR`.
   - Dữ liệu mới nằm trong khoảng `[old_pos, pos)` (có thể vòng qua cuối buffer).
   - CPU xử lý đoạn đó rồi cập nhật `old_pos = pos`.
@@ -343,15 +333,15 @@ Nếu trong một chu kỳ xử lý, UART nhận nhiều hơn `RX_BUF_SIZE` byte
 
 ## 7. DMA descriptor & scatter-gather
 
-Mọi thứ từ đầu tới giờ đều là DMA **dựa trên thanh ghi** (register-based): CPU ghi địa chỉ và kích thước vào thanh ghi, DMA chạy cho **một khối dữ liệu liền mạch**. Mô hình này có hai giới hạn:
+Mọi thứ từ đầu tới giờ đều là DMA dựa trên thanh ghi (register-based): CPU ghi địa chỉ và kích thước vào thanh ghi, DMA chạy cho một khối dữ liệu liền mạch. Mô hình này có hai giới hạn:
 - Dữ liệu phải nằm liền nhau trong bộ nhớ.
 - Muốn chuyển nhiều khối khác nhau liên tiếp (hoặc đổi buffer như double buffer ở [5.3](#53-double-buffer-mode-ping-pong)), CPU phải thức dậy cấu hình lại sau mỗi phiên.
 
-Các DMA controller cao cấp hơn (thường gặp trong Ethernet MAC, USB, SDIO hoặc SoC) giải quyết bằng **descriptor**.
+Các DMA controller cao cấp hơn (thường gặp trong Ethernet MAC, USB, SDIO hoặc SoC) giải quyết bằng descriptor.
 
 ### 7.1. Khái niệm descriptor
 
-Thay vì nạp tham số trực tiếp vào thanh ghi, CPU tạo một **danh sách công việc** nằm trong RAM. Mỗi công việc là một descriptor - thực chất là một struct chứa đúng các tham số đã học ở [Phần 4](#4-cấu-hình-một-kênh-dma), cộng thêm một con trỏ:
+Thay vì nạp tham số trực tiếp vào thanh ghi, CPU tạo một danh sách công việc nằm trong RAM. Mỗi công việc là một descriptor - thực chất là một struct chứa đúng các tham số đã học ở [Phần 4](#4-cấu-hình-một-kênh-dma), cộng thêm một con trỏ:
 
 ```c
 typedef struct DMA_Descriptor {
@@ -362,7 +352,7 @@ typedef struct DMA_Descriptor {
 } DMA_Descriptor_t;
 ```
 
-CPU chỉ cần ghi địa chỉ của descriptor đầu tiên vào thanh ghi DMA. Khi xong một descriptor, DMA tự đọc trường `next` để lấy việc tiếp theo, tạo thành một **danh sách liên kết do phần cứng duyệt**.
+CPU chỉ cần ghi địa chỉ của descriptor đầu tiên vào thanh ghi DMA. Khi xong một descriptor, DMA tự đọc trường `next` để lấy việc tiếp theo, tạo thành một danh sách liên kết do phần cứng duyệt.
 
 ### 7.2. Luồng hoạt động
 

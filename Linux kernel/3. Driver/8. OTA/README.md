@@ -60,13 +60,13 @@ Toàn bộ cơ chế được diễn giải như sau:
  
 ### 2.1. SWUpdate là gì?
  
-SWUpdate là một framework OTA mã nguồn mở được thiết kế đặc biệt cho embedded Linux. Nó đóng vai trò là "người thực thi" - nhận gói update, kiểm tra tính hợp lệ, và áp dụng update theo đúng chỉ dẫn.
+SWUpdate là một framework OTA mã nguồn mở được thiết kế đặc biệt cho embedded Linux. Nó đóng vai trò là người thực thi - nhận gói update, kiểm tra tính hợp lệ và áp dụng update theo đúng chỉ dẫn.
 
 Điều quan trọng cần hiểu ngay từ đầu: SWUpdate không tự quyết định phải làm gì. Mọi quyết định đều đến từ file `sw-description` bên trong gói update. SWUpdate chỉ đọc và thực thi chỉ dẫn đó.
 
 ### 2.2. Cơ chế hoạt động
 
-SWUpdate engine hoạt động theo mô hình pipeline - dữ liệu đi qua được xử lý tuần tự:
+SWUpdate engine hoạt động theo mô hình pipeline, tức là dữ liệu đi qua được xử lý tuần tự:
 
 ```
 File .swu đến BBB
@@ -95,7 +95,9 @@ File .swu đến BBB
       ▼
 [7] Reboot
 ```
- 
+
+Tóm lại, SWUpdate engine là một single binary chạy dưới dạng daemon hoặc one-shot. Khi nhận file `.swu`, nó parse file `sw-description`, xác thực chữ ký, rồi gọi lần lượt các handler để cài đặt từng thành phần.
+
 ### 2.3. File .swu
 
 File `.swu` thực chất là cpio archive, đây là một định dạng lưu trữ nhiều file vào một file duy nhất, tương tự zip nhưng đơn giản hơn và phù hợp với streaming:
