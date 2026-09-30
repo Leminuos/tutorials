@@ -1,0 +1,181 @@
+{
+  "01-introduction": {
+    "title": "Giới thiệu Qt cho ứng dụng nhúng và Hello World",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "Qt là gì, Widgets hay Quick cho board không GPU, quy trình desktop -> BBB.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "02-qobject-meta-object": {
+    "title": "QObject và Meta-Object System",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "QObject, macro Q_OBJECT và moc, property, Q_INVOKABLE, Q_ENUM, qobject_cast qua lớp Counter.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "03-signals-slots": {
+    "title": "Signals & Slots",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "Cơ chế signal/slot, cú pháp connect con trỏ hàm, qOverload, lambda và context object qua màn hình điều khiển Counter.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "04-parent-child": {
+    "title": "Quản lý bộ nhớ với cơ chế parent-child",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "Cây đối tượng, stack hay heap, deleteLater, QPointer và cách tránh rò rỉ bộ nhớ trên thiết bị chạy lâu.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "05-event-loop-timer": {
+    "title": "Event loop và QTimer",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "Event loop hoạt động thế nào, vì sao không được chặn, QTimer, QElapsedTimer và event filter để phát hiện không có thao tác.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "06-data-types": {
+    "title": "Kiểu dữ liệu Qt",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "QString, QByteArray, QVector, QMap, QVariant và implicit sharing qua ví dụ tách dữ liệu cảm biến và đóng khung nhị phân.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "07-widgets-layout": {
+    "title": "Widget cơ bản và Layout",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, stretch và margin, toàn màn hình không viền trên linuxfb với màn hình 320×240.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "08-hmi-widgets": {
+    "title": "Các widget hay dùng trên HMI",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "QLabel, QPushButton, QSlider, QProgressBar, QLCDNumber, QStackedWidget và QButtonGroup trong một ứng dụng 3 trang.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "09-qt-designer": {
+    "title": "Qt Designer và file .ui",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "Vẽ giao diện bằng Qt Designer, uic và AUTOUIC, ghép lớp Ui vào lớp của ta, chia việc giữa Designer và code.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "10-model-view": {
+    "title": "Model/View với Widgets",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "Tự viết QAbstractTableModel và QAbstractListModel cho bảng thông số và danh sách cảnh báo, tối ưu vẽ lại và cuộn bằng cảm ứng.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "11-custom-widgets": {
+    "title": "Custom widget với QPainter",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "Tự vẽ đồng hồ kim, đèn trạng thái và đồ thị cuộn bằng QPainter; cache phần tĩnh và chỉ vẽ lại vùng thay đổi trên CPU yếu.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "12-style-sheets": {
+    "title": "Style Sheets (QSS)",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "Cú pháp QSS, bộ chọn theo objectName và property, sub-control, Qt Resource và đổi màu theo trạng thái cảnh báo.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "13-threads": {
+    "title": "Đa luồng",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "QThread với worker và moveToThread, signal/slot giữa các luồng, đọc cảm biến DS18B20 chặn 750 ms mà giao diện không đứng.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "14-cross-compile-setup": {
+    "title": "Chuẩn bị môi trường cross-compile cho BBB",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "Toolchain, sysroot, build Qt 5.15 tối thiểu cho BBB, file toolchain CMake, và giới thiệu Buildroot/Yocto SDK.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "15-remote-deploy-debug": {
+    "title": "Build, deploy và debug từ xa",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "Cấu hình Qt Creator với thiết bị Linux từ xa, deploy theo install(), chạy với linuxfb và debug bằng gdbserver.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "16-logging": {
+    "title": "Logging với QLoggingCategory",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "Category theo module, luật bật/tắt lúc chạy, message handler cho journald và file log giới hạn dung lượng, gỡ lỗi crash trên thiết bị.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "17-qml-basics": {
+    "title": "QML cơ bản",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "Cú pháp QML, property binding, signal handler, component tự làm và nạp QML từ C++; chạy bằng backend phần mềm trên board không có GPU.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "18-quick-layouts-controls": {
+    "title": "Bố cục và Qt Quick Controls",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "RowLayout, ColumnLayout, StackLayout, các control Button, Slider, Switch, ProgressBar, TabBar; mẫu nối control hai chiều và chọn style nhẹ cho CPU.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "19-cpp-qml-integration": {
+    "title": "Kết nối C++ với QML",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "Đưa HAL và AlarmMonitor vào QML qua lớp backend: Q_PROPERTY có NOTIFY, Q_INVOKABLE, qmlRegisterSingletonInstance, qmlRegisterType và enum.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  },
+
+  "20-model-animation-state": {
+    "title": "Model, Animation và State",
+    "date": "28-09-2026",
+    "author": "Peizzon",
+    "description": "ListView với model C++ của Bài 10, State và Transition cho bảng cảnh báo, animation và giới hạn của nó khi vẽ bằng CPU.",
+    "image": "img/qt.png",
+    "tags": ["qt"]
+  }
+}
