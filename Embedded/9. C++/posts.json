@@ -1,0 +1,145 @@
+{
+  "01-from-c-to-cpp": {
+    "title": "Từ C sang C++",
+    "date": "30-09-2026",
+    "author": "Peizzon",
+    "description": "Những tính năng cơ bản giúp C++ khắc phục các bất tiện quen thuộc của C khi dự án lớn dần.",
+    "image": "img/c++.png",
+    "tags": ["cpp"]
+  },
+
+  "02-references": {
+    "title": "Tham chiếu và cách truyền tham số",
+    "date": "30-09-2026",
+    "author": "Peizzon",
+    "description": "Tham chiếu là gì và cách chọn kiểu truyền tham số vừa an toàn vừa không sao chép thừa dữ liệu.",
+    "image": "img/c++.png",
+    "tags": ["cpp"]
+  },
+
+  "03-class-object": {
+    "title": "Class và object",
+    "date": "30-09-2026",
+    "author": "Peizzon",
+    "description": "Gom dữ liệu và hàm xử lý vào class để đối tượng tự khởi tạo, tự bảo vệ và tự dọn dẹp dữ liệu của mình.",
+    "image": "img/c++.png",
+    "tags": ["cpp"]
+  },
+
+  "04-object-lifetime": {
+    "title": "Vòng đời đối tượng và bộ nhớ",
+    "date": "30-09-2026",
+    "author": "Peizzon",
+    "description": "Đối tượng được tạo và hủy khi nào, và cách gắn việc giải phóng tài nguyên vào vòng đời đó để tránh rò rỉ bộ nhớ.",
+    "image": "img/c++.png",
+    "tags": ["cpp", "memory"]
+  },
+
+  "05-inheritance": {
+    "title": "Kế thừa",
+    "date": "30-09-2026",
+    "author": "Peizzon",
+    "description": "Xây dựng class mới từ class có sẵn để dùng chung phần giống nhau giữa các loại thiết bị.",
+    "image": "img/c++.png",
+    "tags": ["cpp"]
+  },
+
+  "06-virtual-polymorphism": {
+    "title": "Hàm ảo và đa hình",
+    "date": "30-09-2026",
+    "author": "Peizzon",
+    "description": "Xử lý nhiều loại đối tượng qua cùng một giao diện, và dùng nó để tách phần cứng khỏi logic ứng dụng.",
+    "image": "img/c++.png",
+    "tags": ["cpp"]
+  },
+
+  "07-class-members": {
+    "title": "Thành viên static, enum class và sao chép đối tượng",
+    "date": "30-09-2026",
+    "author": "Peizzon",
+    "description": "Dữ liệu dùng chung cho cả class, enum an toàn kiểu, và cách kiểm soát việc sao chép đối tượng.",
+    "image": "img/c++.png",
+    "tags": ["cpp"]
+  },
+
+  "08-templates-stl": {
+    "title": "Template và thư viện chuẩn",
+    "date": "30-09-2026",
+    "author": "Peizzon",
+    "description": "Viết code tổng quát cho nhiều kiểu dữ liệu và dùng các container, thuật toán có sẵn của thư viện chuẩn.",
+    "image": "img/c++.png",
+    "tags": ["cpp", "stl"]
+  },
+
+  "09-lambda": {
+    "title": "Lambda",
+    "date": "30-09-2026",
+    "author": "Peizzon",
+    "description": "Viết hàm ngay tại chỗ cần dùng để làm callback và tùy biến thuật toán, cùng các bẫy về vòng đời khi capture biến.",
+    "image": "img/c++.png",
+    "tags": ["cpp"]
+  },
+
+  "10-smart-pointer": {
+    "title": "Smart pointer",
+    "date": "30-09-2026",
+    "author": "Peizzon",
+    "description": "Để C++ tự giải phóng đối tượng trên heap, và cách dùng kiểu con trỏ thể hiện rõ ai sở hữu đối tượng.",
+    "image": "img/c++.png",
+    "tags": ["cpp", "memory"]
+  },
+
+  "11-error-handling": {
+    "title": "Xử lý lỗi",
+    "date": "30-09-2026",
+    "author": "Peizzon",
+    "description": "Các cách báo và xử lý lỗi trong C++, và vì sao code nhúng thường tránh dùng exception.",
+    "image": "img/c++.png",
+    "tags": ["cpp"]
+  },
+
+  "12-observer": {
+    "title": "Observer",
+    "date": "01-10-2026",
+    "author": "Peizzon",
+    "description": "Để một module phát thông báo cho nhiều module khác mà không phụ thuộc vào chúng, kèm cách tránh lỗi vòng đời khi đăng ký.",
+    "image": "img/c++.png",
+    "tags": ["cpp", "design-pattern"]
+  },
+
+  "13-singleton": {
+    "title": "Singleton",
+    "date": "01-10-2026",
+    "author": "Peizzon",
+    "description": "Cách cài đặt đúng một đối tượng duy nhất cho cả chương trình, và vì sao nên hạn chế dùng nó.",
+    "image": "img/c++.png",
+    "tags": ["cpp", "design-pattern"]
+  },
+
+  "14-state-machine": {
+    "title": "State machine",
+    "date": "01-10-2026",
+    "author": "Peizzon",
+    "description": "Mô tả thiết bị theo trạng thái và sự kiện, với ba cách cài đặt từ switch-case tới State pattern.",
+    "image": "img/c++.png",
+    "tags": ["cpp", "design-pattern"]
+  },
+
+  "15-producer-consumer": {
+    "title": "Ring buffer và Producer-Consumer",
+    "date": "01-10-2026",
+    "author": "Peizzon",
+    "description": "Trao đổi dữ liệu an toàn giữa các luồng chạy với tốc độ khác nhau bằng hàng đợi kích thước cố định.",
+    "image": "img/c++.png",
+    "tags": ["cpp", "design-pattern"]
+  },
+
+  "16-active-object": {
+    "title": "Active Object",
+    "date": "01-10-2026",
+    "author": "Peizzon",
+    "description": "Cho mỗi module một luồng và hàng đợi riêng để giao tiếp bằng thông điệp thay vì chia sẻ dữ liệu và mutex.",
+    "image": "img/c++.png",
+    "tags": ["cpp", "design-pattern"]
+  }
+}
