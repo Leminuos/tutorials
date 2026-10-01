@@ -1,8 +1,8 @@
-Người viết firmware bằng C thường tổ chức chương trình theo một trong hai cách. Cách thứ nhất là vòng lặp chính `while (1)` lần lượt kiểm tra mọi thứ: có byte UART mới không, nút có được bấm không, đã đến giờ đọc cảm biến chưa. Cách thứ hai là dùng RTOS, mỗi task một vòng lặp riêng, và các task trao đổi với nhau qua hàng đợi thông điệp. Cách thứ hai thực chất chính là **Active Object**: mỗi module có luồng riêng và hàng đợi riêng, chỉ giao tiếp với bên ngoài bằng thông điệp. Bài này cài đặt pattern đó bằng C++, dựa trên `BlockingQueue` của Bài C15 và máy trạng thái của Bài C14.
+Người viết firmware bằng C thường tổ chức chương trình theo một trong hai cách. Cách thứ nhất là vòng lặp chính `while (1)` lần lượt kiểm tra mọi thứ: có byte UART mới không, nút có được bấm không, đã đến giờ đọc cảm biến chưa. Cách thứ hai là dùng RTOS, mỗi task một vòng lặp riêng, và các task trao đổi với nhau qua hàng đợi thông điệp. Cách thứ hai thực chất chính là **Active Object**: mỗi module có luồng riêng và hàng đợi riêng, chỉ giao tiếp với bên ngoài bằng thông điệp. Bài này cài đặt pattern đó bằng C++, dựa trên `BlockingQueue` của Bài 15 và máy trạng thái của Bài 14.
 
 ## Vấn đề thực tế
 
-Ở Bài C14, ta đã viết máy trạng thái `Connection` quản lý kết nối UART. Trong ứng dụng thật, sự kiện đến với nó từ nhiều luồng khác nhau:
+Ở Bài 14, ta đã viết máy trạng thái `Connection` quản lý kết nối UART. Trong ứng dụng thật, sự kiện đến với nó từ nhiều luồng khác nhau:
 
 - Luồng giao diện gửi `Connect` khi người dùng bấm nút.
 - Luồng đọc UART gửi `Success` hoặc `Failure` khi nhận được phản hồi.

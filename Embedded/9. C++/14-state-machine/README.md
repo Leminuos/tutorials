@@ -1,4 +1,4 @@
-Người làm nhúng bằng C hầu như ai cũng từng viết state machine: một biến `state` kiểu `enum`, một khối `switch-case` lớn trong vòng lặp chính, mỗi `case` xử lý một trạng thái. Đây là một trong những kỹ thuật quan trọng nhất của lập trình nhúng, vì thiết bị gần như luôn hoạt động theo trạng thái: đang khởi động, đang chờ, đang chạy, đang lỗi. Bài này đi từ cách viết `switch-case` quen thuộc, qua bảng chuyển trạng thái, tới State pattern dùng class, và chỉ ra khi nào nên chọn cách nào.
+Người làm nhúng bằng C hầu như ai cũng từng viết state machine: một biến `state` kiểu `enum`, một khối `switch-case` lớn trong vòng lặp chính, mỗi `case` xử lý một trạng thái. Đây là một trong những kỹ thuật quan trọng nhất của lập trình nhúng vì thiết bị gần như luôn hoạt động theo trạng thái: đang khởi động, đang chờ, đang chạy, đang lỗi. Bài này đi từ cách viết `switch-case` quen thuộc, qua bảng chuyển trạng thái tới State pattern dùng class và chỉ ra khi nào nên chọn cách nào.
 
 ## Vấn đề thực tế
 
@@ -38,8 +38,8 @@ Code này có nhiều vấn đề:
 
 - **Tổ hợp trạng thái không hợp lệ.** Ba cờ `bool` tạo ra 8 tổ hợp, nhưng chỉ có 4 tổ hợp có nghĩa. Chỉ cần quên tắt một cờ là thiết bị rơi vào trạng thái vô lý như `isConnected && hasError`.
 - **Logic của một trạng thái nằm rải rác.** Muốn biết thiết bị làm gì khi đang kết nối, ta phải đọc mọi hàm xử lý sự kiện.
-- **Lỗi khó thấy.** Đoạn code trên có một lỗi: `retries` không bao giờ được đặt lại về 0, nên sau lần lỗi đầu tiên, các lần kết nối sau sẽ báo lỗi sớm hơn. Lỗi này rất khó phát hiện khi đọc code, vì không có chỗ nào thể hiện rõ "bắt đầu một lần kết nối mới".
-- **Khó trả lời câu hỏi cơ bản**: "nếu sự kiện X xảy ra khi đang ở trạng thái Y thì sao?"
+- **Lỗi khó thấy.** Đoạn code trên có một lỗi: `retries` không bao giờ được đặt lại về 0, nên sau lần lỗi đầu tiên, các lần kết nối sau sẽ báo lỗi sớm hơn. Lỗi này rất khó phát hiện khi đọc code vì không có chỗ nào thể hiện rõ bắt đầu một lần kết nối mới.
+- **Khó trả lời câu hỏi cơ bản**: Nếu sự kiện X xảy ra khi đang ở trạng thái Y thì sao?
 
 ## Ý tưởng của State Machine
 
@@ -47,8 +47,8 @@ State machine (máy trạng thái) mô tả hệ thống bằng bốn thành ph�
 
 - **Trạng thái** (state): hệ thống luôn ở đúng một trạng thái tại mỗi thời điểm.
 - **Sự kiện** (event): điều xảy ra từ bên ngoài, như người dùng bấm nút, nhận được phản hồi, hết thời gian chờ.
-- **Chuyển trạng thái** (transition): quy tắc "ở trạng thái A, nếu có sự kiện E thì sang trạng thái B".
-- **Hành động** (action): việc cần làm khi chuyển trạng thái, như gửi bản tin, bật đèn báo lỗi.
+- **Chuyển trạng thái** (transition): quy tắc ở trạng thái A, nếu có sự kiện E thì sang trạng thái B.
+- **Hành động** (action): việc cần làm khi chuyển trạng thái như gửi bản tin, bật đèn báo lỗi.
 
 Với module kết nối, ta có 4 trạng thái và 6 sự kiện. Sơ đồ chuyển trạng thái chính:
 
@@ -71,7 +71,7 @@ Sơ đồ được giản lược cho dễ nhìn. Bảng dưới đây liệt k�
 |---|---|---|---|
 | Disconnected | Connect | | Connecting |
 | Connecting | Success | | Connected |
-| Connecting | Failure | còn lượt thử | Connecting (thử lại) |
+| Connecting | Failure | còn lượt thử | Connecting|
 | Connecting | Failure | hết lượt thử | Error |
 | Connecting | Disconnect | | Disconnected |
 | Connected | Timeout | | Connecting |
@@ -80,7 +80,7 @@ Sơ đồ được giản lược cho dễ nhìn. Bảng dưới đây liệt k�
 
 Mọi tổ hợp không có trong bảng (ví dụ nhận `Success` khi đang `Disconnected`) đều bị bỏ qua.
 
-Thiết kế sơ đồ và bảng này trước khi viết code là thói quen rất đáng có. Bảng trả lời được mọi câu hỏi "nếu... thì sao", và code chỉ còn là việc dịch bảng sang C++.
+Thiết kế sơ đồ và bảng này trước khi viết code là thói quen rất đáng có. Bảng trả lời được mọi câu hỏi "nếu... thì sao" và code chỉ còn là việc dịch bảng sang C++.
 
 Ta khai báo trạng thái và sự kiện bằng `enum class`:
 
@@ -91,7 +91,7 @@ enum class Event { Connect, Success, Failure, Timeout, Disconnect, Reset };
 const int MAX_RETRIES = 3;
 ```
 
-Chỉ một biến `State` thay cho ba cờ `bool`, nên các tổ hợp vô lý không thể tồn tại.
+Chỉ một biến `State` thay cho ba cờ `bool` nên các tổ hợp vô lý không thể tồn tại.
 
 ## Cách 1: switch-case
 
@@ -324,7 +324,7 @@ Nhược điểm là hành động phức tạp viết trong bảng rất khó �
 
 ## Cách 3: State pattern
 
-Khi mỗi trạng thái có nhiều logic riêng, như cách xử lý dữ liệu khác nhau, bộ đếm riêng, cấu hình riêng, thì gom hết vào một class `Connection` sẽ khiến class này quá lớn. **State pattern** tách mỗi trạng thái thành một class riêng, dùng đa hình (Bài C6) để mỗi class tự xử lý sự kiện của mình.
+Khi mỗi trạng thái có nhiều logic riêng như cách xử lý dữ liệu khác nhau, bộ đếm riêng, cấu hình riêng thì gom hết vào một class `Connection` sẽ khiến class này quá lớn. **State pattern** tách mỗi trạng thái thành một class riêng, dùng đa hình để mỗi class tự xử lý sự kiện của mình.
 
 Trước hết là lớp cơ sở cho mọi trạng thái:
 
@@ -341,7 +341,7 @@ public:
 };
 ```
 
-Các hàm có cài đặt mặc định rỗng, nên mỗi trạng thái chỉ cần viết lại những gì nó quan tâm. Mỗi trạng thái là một class con:
+Các hàm có cài đặt mặc định rỗng nên mỗi trạng thái chỉ cần viết lại những gì nó quan tâm. Mỗi trạng thái là một class con:
 
 ```cpp
 class DisconnectedState : public ConnectionState {

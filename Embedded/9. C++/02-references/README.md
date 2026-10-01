@@ -139,20 +139,59 @@ void printFrame(const Frame& frame)
 
 Nhìn vào khai báo `const Frame&`, người đọc code biết ngay hai điều: dữ liệu không bị sao chép và hàm cam kết không thay đổi nó.
 
-Ngoài ra, tham chiếu hằng còn nhận được giá trị tạm thời như chuỗi ký tự viết trực tiếp. Ví dụ với `std::string`, lớp chuỗi của thư viện chuẩn C++:
+## Truyền chuỗi std::string
+
+Chuỗi là kiểu dữ liệu hay được truyền vào hàm nhất: tên thiết bị, đường dẫn file, lệnh AT gửi qua UART, nội dung log. Trong C++, chuỗi thường dùng `std::string` (trong `<string>`) thay cho mảng `char` của C. `std::string` tự cấp phát bộ nhớ trên heap để chứa ký tự nên sao chép một chuỗi nghĩa là cấp phát vùng nhớ mới và chép toàn bộ ký tự sang:
+
+```cpp
+void logMessage(std::string msg);   // mỗi lần gọi: cấp phát và chép cả chuỗi
+```
+
+Vì vậy, `std::string` gần như luôn được truyền bằng tham chiếu. Có hai cách dùng phổ biến.
+
+**Hàm chỉ đọc chuỗi: dùng `const std::string&`.** Đây là cách gặp nhiều nhất:
 
 ```cpp
 #include <string>
 
-void showMessage(const std::string& msg)
+void logMessage(const std::string& msg)
 {
-    std::cout << msg << "\n";
+    std::cout << "[LOG] " << msg << "\n";
 }
 
 std::string status = "Ready";
-showMessage(status);          // in ra: Ready
-showMessage("Sensor error");  // in ra: Sensor error (vẫn hợp lệ)
+logMessage(status);            // in ra: [LOG] Ready
+logMessage("Sensor error");    // in ra: [LOG] Sensor error
 ```
+
+Dòng cuối truyền thẳng một chuỗi ký tự `"Sensor error"`. Compiler tự tạo một `std::string` tạm thời từ chuỗi đó rồi gắn tham chiếu hằng vào. Tham chiếu không hằng `std::string&` không nhận được đối tượng tạm này (xem mục Lỗi thường gặp).
+
+**Hàm cần sửa chuỗi của nơi gọi: dùng `std::string&`.** Ví dụ thêm ký tự kết thúc vào lệnh AT hoặc đưa dòng dữ liệu đọc được ra ngoài qua tham số đầu ra:
+
+```cpp
+void appendCrLf(std::string& command)
+{
+    command += "\r\n";            // sửa trực tiếp chuỗi của nơi gọi
+}
+
+bool readLine(std::string& line)
+{
+    line = "TEMP=27.5";           // giả lập đọc một dòng từ UART
+    return true;
+}
+
+std::string cmd = "AT+RST";
+appendCrLf(cmd);                  // cmd giờ là "AT+RST\r\n"
+
+std::string line;
+if (readLine(line)) {
+    logMessage(line);             // in ra: [LOG] TEMP=27.5
+}
+```
+
+:::tip `std::string_view` cho tham số chỉ đọc
+Khi truyền chuỗi ký tự như `"Sensor error"` vào `const std::string&`, compiler vẫn phải tạo một `std::string` tạm, có thể kèm một lần cấp phát. C++17 có `std::string_view` (trong `<string_view>`): một cặp con trỏ và độ dài trỏ vào chuỗi có sẵn, không sao chép, không cấp phát. Hàm `void logMessage(std::string_view msg)` nhận được cả `std::string` lẫn chuỗi ký tự. Lưu ý `string_view` không sở hữu dữ liệu nên chỉ dùng làm tham số, không lưu lại lâu dài.
+:::
 
 ## Khi nào dùng cách truyền nào
 
@@ -160,7 +199,8 @@ showMessage("Sensor error");  // in ra: Sensor error (vẫn hợp lệ)
 |---|---|---|
 | Kiểu nhỏ: `int`, `float`, `bool`, `char`, con trỏ, enum | Theo giá trị | `void setPin(int pin)` |
 | Đối tượng lớn, hàm chỉ đọc | `const&` | `void send(const Frame& f)` |
-| Hàm cần sửa đối số | `&` | `bool read(float& out)` |
+| Chuỗi, hàm chỉ đọc | `const std::string&` | `void logMessage(const std::string& msg)` |
+| Hàm cần sửa đối số | `&` | `bool read(float& out)`, `void appendCrLf(std::string& cmd)` |
 | Đối số có thể không tồn tại | Con trỏ | `void attach(Sensor* s)`, cho phép truyền `nullptr` |
 
 Với kiểu nhỏ, truyền theo giá trị không chậm hơn truyền tham chiếu vì bản chất tham chiếu cũng được thực hiện bằng một địa chỉ có kích thước tương đương. Vì vậy ta không viết `const int&` mà chỉ viết `int`.
@@ -250,12 +290,12 @@ int getValue()
 **Truyền giá trị tạm thời vào tham chiếu không hằng: `cannot bind non-const lvalue reference of type 'std::string&' to an rvalue`**
 
 ```cpp
-void showMessage(std::string& msg);
+void logMessage(std::string& msg);
 
-showMessage("Hello");   // lỗi
+logMessage("Hello");    // lỗi
 ```
 
-`"Hello"` tạo ra một đối tượng tạm thời. C++ không cho phép tham chiếu không hằng gắn với đối tượng tạm, vì mọi thay đổi lên nó sẽ biến mất ngay. Nếu hàm chỉ đọc, hãy đổi thành `const std::string&`.
+`"Hello"` tạo ra một đối tượng tạm thời. C++ không cho phép tham chiếu không hằng gắn với đối tượng tạm vì mọi thay đổi lên nó sẽ biến mất ngay. Nếu hàm chỉ đọc, hãy đổi thành `const std::string&`.
 
 **Hàm không có tác dụng vì quên `&`**
 

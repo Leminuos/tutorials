@@ -275,21 +275,134 @@ std::cout << std::hex << int(a.data()[0]);   // in ra: aa (a không bị ảnh h
 
 Toán tử gán phức tạp hơn copy constructor ở hai điểm. Nó phải kiểm tra trường hợp tự gán (`a = a`): nếu không, ta sẽ xóa dữ liệu của chính mình trước khi kịp chép. Và nó phải giải phóng dữ liệu cũ, vì đối tượng đích đã có sẵn vùng nhớ của nó. Việc cấp phát vùng nhớ mới trước rồi mới xóa vùng cũ giúp đối tượng vẫn giữ nguyên trạng thái nếu cấp phát thất bại.
 
-## Quy tắc ba
+## Move constructor và move assignment
 
-Nếu một class cần tự viết một trong ba hàm sau thì gần như chắc chắn cần viết cả ba:
+Sao chép sâu an toàn nhưng tốn kém: mỗi lần sao chép là một lần cấp phát và chép toàn bộ dữ liệu. Điều này hợp lý khi đối tượng nguồn còn được dùng tiếp. Nhưng nếu đối tượng nguồn sắp bị bỏ đi thì việc chép là thừa:
+
+```cpp
+Buffer makeFrame()
+{
+    Buffer frame(1024);
+    // ... điền dữ liệu ...
+    return frame;   // frame sắp bị hủy, chép 1024 byte rồi xóa bản gốc là lãng phí
+}
+```
+
+Hình dung như chuyển nhà: sao chép là xây một ngôi nhà mới giống hệt rồi phá nhà cũ, còn **di chuyển** (move) chỉ là trao chìa khóa. Với `Buffer`, trao chìa khóa nghĩa là đối tượng mới lấy luôn con trỏ `m_data` của đối tượng nguồn, còn đối tượng nguồn được đặt về rỗng:
+
+```
+Trước khi move:                 Sau khi move b từ a:
+  a.m_data --> [dữ liệu]          a.m_data --> nullptr
+                                  b.m_data --> [dữ liệu]   (vẫn vùng nhớ cũ)
+```
+
+Không cấp phát, không chép dữ liệu, chỉ gán lại hai con trỏ.
+
+### Khi nào được phép move
+
+Chỉ được lấy dữ liệu của một đối tượng khi chắc chắn không ai dùng nó nữa. C++ coi hai loại đối tượng sau là không ai dùng nữa:
+
+- **Đối tượng tạm**: đối tượng không có tên, tồn tại trong một câu lệnh như `Buffer(1024)` hay giá trị trả về của hàm.
+- **Đối tượng được đánh dấu bằng `std::move`** (trong `<utility>`): ta tự khẳng định với compiler rằng biến này không dùng nữa.
+
+Để phân biệt hai trường hợp, C++ dùng hai kiểu tham số khác nhau:
+
+```cpp
+Buffer(const Buffer& other);   // copy constructor: other còn được dùng, phải chép
+Buffer(Buffer&& other);        // move constructor: other sắp bỏ đi, được lấy dữ liệu
+```
+
+`Buffer&&` (hai dấu `&`) gọi là **tham chiếu rvalue**, có thể hiểu đơn giản là tham chiếu tới đối tượng sắp bỏ đi. Giống như nạp chồng hàm, compiler nhìn vào đối số để chọn hàm: biến bình thường thì chọn bản `const Buffer&`, đối tượng tạm hoặc `std::move(a)` thì chọn bản `Buffer&&`.
+
+`std::move` không tự di chuyển gì cả. Nó chỉ dán nhãn sắp bỏ đi lên biến để compiler chọn hàm move. Việc di chuyển thật sự do move constructor hoặc move assignment thực hiện.
+
+### Move constructor
+
+Move constructor tạo đối tượng mới bằng cách lấy dữ liệu của `other`:
+
+```cpp
+Buffer(Buffer&& other) noexcept
+    : m_size(other.m_size), m_data(other.m_data)   // 1. lấy dữ liệu của other
+{
+    other.m_size = 0;                              // 2. đặt other về rỗng
+    other.m_data = nullptr;
+    std::cout << "Move constructor\n";
+}
+```
+
+Bước 2 là bắt buộc. Sau khi move, `other` vẫn tồn tại và vẫn bị hủy như bình thường. Nếu `other.m_data` còn trỏ vào vùng nhớ cũ, destructor của `other` sẽ `delete[]` vùng nhớ mà đối tượng mới đang dùng, gây double free. Đặt về `nullptr` thì an toàn vì `delete[] nullptr` không làm gì.
+
+### Move assignment
+
+Move assignment dùng khi đối tượng đích đã tồn tại. Nó giống move constructor, chỉ thêm hai bước như ở copy assignment: kiểm tra tự gán và giải phóng dữ liệu cũ:
+
+```cpp
+Buffer& operator=(Buffer&& other) noexcept
+{
+    if (this == &other) {          // 1. tự gán: a = std::move(a)
+        return *this;
+    }
+
+    delete[] m_data;               // 2. giải phóng dữ liệu cũ của đối tượng đích
+
+    m_data = other.m_data;         // 3. lấy dữ liệu của other
+    m_size = other.m_size;
+
+    other.m_data = nullptr;        // 4. đặt other về rỗng
+    other.m_size = 0;
+
+    std::cout << "Move assignment\n";
+    return *this;
+}
+```
+
+### Khi nào hàm nào được gọi
+
+Thêm hai hàm trên cùng hàm `size()` vào class `Buffer`, rồi thử:
+
+```cpp
+Buffer a(4);
+Buffer b = std::move(a);   // in ra: Move constructor
+std::cout << a.size() << " " << b.size() << "\n";   // in ra: 0 4
+
+Buffer c(8);
+c = std::move(b);          // in ra: Move assignment
+c = Buffer(16);            // in ra: Move assignment (Buffer(16) là đối tượng tạm)
+```
+
+Tóm lại:
+
+| Câu lệnh | Hàm được gọi | Lý do |
+|---|---|---|
+| `Buffer b = a;` | Copy constructor | `a` còn được dùng tiếp |
+| `Buffer b = std::move(a);` | Move constructor | Ta đánh dấu `a` không dùng nữa |
+| `c = a;` | Copy assignment | `c` đã tồn tại, `a` còn được dùng tiếp |
+| `c = std::move(a);` | Move assignment | `c` đã tồn tại, `a` không dùng nữa |
+| `c = Buffer(16);` | Move assignment | Nguồn là đối tượng tạm |
+
+Riêng câu lệnh `return frame;` trong hàm `makeFrame()` ở đầu mục, compiler tự move (hoặc bỏ hẳn bước sao chép), nên không cần viết `return std::move(frame);`.
+
+:::warning Không dùng đối tượng sau khi đã move
+Sau `Buffer b = std::move(a);`, `a` vẫn tồn tại nhưng đã rỗng. Ta chỉ nên hủy nó hoặc gán giá trị mới cho nó, không đọc dữ liệu của nó. Lỗi này compiler không cảnh báo.
+:::
+
+Cả hai hàm move đều được đánh dấu `noexcept`, nghĩa là không bao giờ ném exception. Điều này quan trọng với `std::vector` (Bài C8): khi mở rộng, `vector` chỉ move các phần tử sang vùng nhớ mới nếu move constructor là `noexcept`, nếu không nó sẽ sao chép từng phần tử. Hàm move chỉ gán lại con trỏ nên luôn có thể đánh dấu `noexcept`.
+
+## Quy tắc năm và quy tắc không
+
+Nếu một class cần tự viết một trong các hàm sau thì gần như chắc chắn cần viết đủ:
 
 - Destructor
 - Copy constructor
 - Toán tử gán sao chép
+- Move constructor
+- Toán tử gán di chuyển
 
-Lý do: class cần destructor riêng thường là vì nó sở hữu tài nguyên, và khi đó bản sao chép mặc định chắc chắn sai. Quy tắc này gọi là **quy tắc ba** (rule of three).
+Lý do: class cần destructor riêng thường là vì nó sở hữu tài nguyên, và khi đó các hàm sao chép, di chuyển mặc định đều sai. Ba hàm đầu được gọi là **quy tắc ba** (rule of three) từ trước C++11; thêm hai hàm move thành **quy tắc năm** (rule of five).
 
-Cách tốt hơn nữa là tránh phải viết cả ba hàm, bằng cách để các thành viên tự quản lý tài nguyên theo RAII. Ví dụ nếu `Buffer` dùng `std::vector<uint8_t>` (Bài C8) thay vì con trỏ thô, sao chép sâu diễn ra tự động và ta không cần viết hàm nào. Đây gọi là **quy tắc không** (rule of zero), và là cách ta nên ưu tiên.
+Compiler chỉ tự tạo move constructor và move assignment khi class không tự khai báo destructor, copy constructor hay copy assignment. Vì vậy class `Buffer` có destructor riêng mà không viết hàm move thì không bị lỗi, nhưng mọi lần "di chuyển" thực chất đều là sao chép.
 
-:::note Move constructor và quy tắc năm
-Từ C++11 còn có thêm hai hàm là move constructor và move assignment, giúp "chuyển" dữ liệu thay vì sao chép. Khi đó quy tắc ba mở rộng thành quy tắc năm. Chuỗi bài này không đi sâu vào phần move vì nếu theo quy tắc không ở trên, ta hiếm khi phải tự viết chúng.
-:::
+Cách tốt hơn nữa là tránh phải viết cả năm hàm, bằng cách để các thành viên tự quản lý tài nguyên theo RAII. Ví dụ nếu `Buffer` dùng `std::vector<uint8_t>` (Bài C8) thay vì con trỏ thô, sao chép sâu và di chuyển đều diễn ra tự động, và ta không cần viết hàm nào. Đây gọi là **quy tắc không** (rule of zero), và là cách ta nên ưu tiên.
 
 ## Cấm sao chép với = delete
 
@@ -316,6 +429,8 @@ void send(SerialPort& p);   // phải truyền theo tham chiếu
 ```
 
 Nhờ vậy, mọi ý định sao chép đều bị phát hiện lúc biên dịch thay vì gây crash lúc chạy.
+
+Không sao chép được không có nghĩa là không di chuyển được. Một cổng UART không thể có hai chủ, nhưng hoàn toàn có thể chuyển từ chủ này sang chủ khác, ví dụ trả về từ một hàm mở cổng. Khi đó ta cấm sao chép và tự viết thêm hai hàm move, theo đúng cách đã làm với `Buffer`. Các class sở hữu tài nguyên trong thư viện chuẩn như `std::unique_ptr` (Bài C10) hay `std::thread` đều được thiết kế theo cách này.
 
 Ngược lại với `= delete`, ta có `= default` để yêu cầu compiler tạo hàm mặc định một cách tường minh, như destructor ảo `virtual ~Sensor() = default;` ở Bài C6.
 

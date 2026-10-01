@@ -54,10 +54,10 @@
   },
 
   "07-class-members": {
-    "title": "Thành viên static, enum class và sao chép đối tượng",
+    "title": "Thành viên static, enum class, sao chép và di chuyển đối tượng",
     "date": "30-09-2026",
     "author": "Peizzon",
-    "description": "Dữ liệu dùng chung cho cả class, enum an toàn kiểu, và cách kiểm soát việc sao chép đối tượng.",
+    "description": "Dữ liệu dùng chung cho cả class, enum an toàn kiểu, và cách kiểm soát việc sao chép, di chuyển đối tượng.",
     "image": "img/c++.png",
     "tags": ["cpp"]
   },
