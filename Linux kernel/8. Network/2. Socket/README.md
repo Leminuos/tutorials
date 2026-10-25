@@ -613,7 +613,7 @@ Rất nhiều thành phần trên Linux dùng UDS: `systemd` (`/run/systemd/priv
 
 ### 5.2. Ba loại địa chỉ UDS
 
-- **Pathname:** `sun_path` là một đường dẫn bình thường như `/run/app.sock`. Kernel tạo file socket trong filesystem khi `bind()`. Quyền truy cập được kiểm soát bằng `chmod`/`chown` trên file. File không tự xoá khi đóng socket.
+- **Pathname:** `sun_path` là một đường dẫn bình thường như `/run/app.sock`. Kernel tạo một file kiểu socket (`ls -l` thấy chữ `s` đầu dòng) trong filesystem khi `bind()`. Quyền truy cập được kiểm soát bằng `chmod`/`chown` trên file. File không tự xoá khi đóng socket.
 - **Abstract (riêng Linux):** byte đầu tiên của `sun_path` là `'\0'`, ví dụ `"\0myapp"`. Không tạo file trong filesystem, tự biến mất khi socket đóng, không cần `unlink()`. Nhược điểm là không phân quyền bằng file được, mọi process trong cùng network namespace đều thấy. Trong `ss`, abstract socket hiển thị với ký tự `@` ở đầu, ví dụ `@myapp`.
 - **Unnamed:** socket không có địa chỉ, tạo bằng `socketpair()`. Trả về một cặp socket đã nối sẵn với nhau, thường dùng giữa process cha và con sau `fork()` - giống pipe nhưng hai chiều.
 
@@ -883,8 +883,8 @@ Multiplexing không chỉ dùng cho socket mà dùng được cho mọi fd: UART
 
 Trước khi đi vào từng API, cần hiểu rõ sẵn sàng nghĩa là gì, vì cả `select()`, `poll()` và `epoll` đều dùng chung định nghĩa này:
 
-> fd **sẵn sàng đọc** (readable) nghĩa là gọi `recv()`/`read()`/`accept()` lúc này **sẽ không bị block**.
-> fd **sẵn sàng ghi** (writable) nghĩa là gọi `send()`/`write()` lúc này **sẽ không bị block**.
+> fd sẵn sàng đọc (readable) nghĩa là gọi `recv()`/`read()`/`accept()` lúc này **sẽ không bị block**.
+> fd sẵn sàng ghi (writable) nghĩa là gọi `send()`/`write()` lúc này **sẽ không bị block**.
 
 Lưu ý rằng không bị block không có nghĩa là có dữ liệu. Lời gọi có thể trả về dữ liệu, trả về 0 (EOF) hoặc trả về lỗi - tất cả đều là không block. Đây là lý do một fd readable nhưng `recv()` lại trả về 0 hoặc -1.
 
@@ -908,7 +908,7 @@ Bên trong kernel, mỗi socket có một wait queue. Mỗi khi trạng thái so
 
 Socket readable khi xảy ra một trong các điều kiện sau:
 
-| Điều kiện | Gọi gì để xử lý | Kết quả |
+| Điều kiện | Khi đó gọi | Kết quả |
 | --- | --- | --- |
 | Receive buffer có ít nhất `SO_RCVLOWAT` byte (mặc định 1) | `recv()` | Trả về > 0 |
 | Socket datagram có ít nhất một datagram trong hàng đợi | `recvfrom()` | Trả về một datagram |
