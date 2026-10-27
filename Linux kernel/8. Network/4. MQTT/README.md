@@ -159,7 +159,7 @@ Topic là API của hệ thống, đổi topic sau khi đã có hàng nghìn thi
 Một cấu trúc thường dùng:
 
 ```
-<site>/<location>/<device-id>/<category>/<name>
+<site>/<version>/<location>/<device-id>/<category>/<name>
 ```
 
 Trong đó `category` tách riêng các loại dữ liệu khác nhau:
@@ -171,56 +171,118 @@ Trong đó `category` tách riêng các loại dữ liệu khác nhau:
 | `state` | Thiết bị -> server | `home/livingroom/esp32-01/state/led` | Trạng thái thực tế sau khi thực hiện lệnh, retained |
 | `status` | Thiết bị -> server | `home/livingroom/esp32-01/status` | `online` / `offline`, dùng với LWT, retained |
 
-Ví dụ luồng bật đèn:
+Ví dụ một hệ thống nhà kính:
 
 ```
-App    --- PUBLISH .../cmd/led    "ON" --->  Broker  ---> Device
-Device --- PUBLISH .../state/led  "ON" --->  Broker  ---> App   (retained)
+greenhouse/v1/zone1/esp32-a1/telemetry/temperature    → 28.5
+greenhouse/v1/zone1/esp32-a1/telemetry/humidity       → 76
+greenhouse/v1/zone1/esp32-a1/cmd/pump                 → ON
+greenhouse/v1/zone1/esp32-a1/state/pump               → ON
+greenhouse/v1/zone1/esp32-a1/status                   → online
+```
+
+Với cấu trúc này, wildcard trở nên rất hữu ích:
+
+```
+greenhouse/v1/+/+/telemetry/temperature     nhiệt độ của mọi thiết bị
+greenhouse/v1/zone1/#                       mọi thứ trong zone 1
+greenhouse/v1/+/+/status                    trạng thái online của mọi thiết bị
+greenhouse/v1/+/esp32-a1/#                  mọi thứ của một thiết bị
 ```
 
 Tách `cmd` và `state` giúp app biết lệnh đã thực sự được thực hiện hay chưa, thay vì chỉ biết lệnh đã được gửi đi.
 
 Một vài nguyên tắc:
 - Đặt phần cố định ở bên trái, phần thay đổi ở bên phải để subscribe bằng wildcard thuận tiện, ví dụ `home/+/+/telemetry/#` lấy toàn bộ telemetry.
-- Dùng ID duy nhất của thiết bị (MAC, serial) trong topic, cùng giá trị với Client ID. Điều này giúp viết ACL dạng thiết bị chỉ được ghi vào topic của chính nó (xem phần 6).
+- Dùng ID của thiết bị (MAC, serial) vào topic, cùng giá trị với Client ID. Điều này giúp viết ACL dạng thiết bị chỉ được ghi vào topic của chính nó (xem phần 6).
+- Mỗi topic một loại dữ liệu hoặc gom thành một JSON, chọn một cách và giữ nhất quán
 - Topic ngắn gọn nhưng đọc được. Trên mạng băng thông thấp (NB-IoT, LoRa gateway) có thể rút gọn tên nhưng phải thống nhất trong tài liệu.
 - Có thể thêm phiên bản vào topic (`v1/...`) nếu dự đoán sau này sẽ đổi định dạng payload.
+- Không subscribe `#` trong sản phẩm thật: chỉ dùng để debug, vì thiết bị sẽ bị ngập tin nhắn.
+- Không đưa dữ liệu thay đổi liên tục vào topic, như timestamp hay giá trị đo. Những thứ đó thuộc về payload.
 
 ## 3. Các cơ chế quan trọng của giao thức
 
 ### 3.1. Quality of Service
 
-QoS trong MQTT quyết định độ tin cậy khi gửi PUBLISH trên từng chặng:
-- Client → Broker: dùng QoS mà publisher chọn.
-- Broker → Subscriber: dùng QoS nhỏ hơn giữa QoS của message và QoS mà subscriber đăng ký khi subscribe.
+#### 3.1.1. QoS là gì và vì sao cần?
 
-Ví dụ: publisher gửi QoS 2, subscriber đăng ký QoS 0 thì subscriber chỉ nhận ở QoS 0.
+QoS là mức độ đảm bảo tin nhắn được giao do bên gửi chọn cho từng tin nhắn. MQTT có ba mức:
 
 | **Mức QoS** | **Tên gọi**     | **Cơ chế gửi**                                                                            | **Ưu điểm**                                                                  | **Nhược điểm**                                                                                     | **Dùng khi nào?**                                                                                                          |
 | ----------- | --------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | **QoS 0**   | *At most once*  | - Gửi **1 lần duy nhất** <br>- Không ACK <br>- Nếu mất gói → không retry                  | - Nhanh nhất <br>- Ít tốn RAM/CPU <br>- Phù hợp dữ liệu tốc độ cao           | - Có thể mất message <br>- Không đảm bảo độ tin cậy                                                | - Sensor gửi liên tục (temp/humi mỗi 1s) <br>- Dữ liệu tốc độ cao, không quan trọng mất gói <br>- Telemetry streaming      |
-| **QoS 1**   | *At least once* | - Luôn có ACK (PUBACK) <br>- Broker hoặc client có thể gửi lại → **có thể trùng message** | - Đảm bảo message đến <br>- Độ tin cậy tốt <br>- Phù hợp cho lệnh quan trọng | - Có thể nhận trùng message → phải lọc <br>- Tốn tài nguyên hơn QoS0                               | - Giá trị sensor quan trọng <br>- Thông báo trạng thái (online/offline) <br>- Logging quan trọng <br>- OTA progress/status |
+| **QoS 1**   | *At least once* | - Luôn có ACK (PUBACK) <br>- Broker hoặc client có thể gửi lại → **có thể trùng message** | - Đảm bảo message đến <br>- Độ tin cậy tốt <br>- Phù hợp cho lệnh quan trọng | - Có thể nhận trùng message → phải lọc <br>- Tốn tài nguyên hơn QoS0                               | - Giá trị sensor quan trọng <br>- Thông báo trạng thái (online/offline) <br>- Logging quan trọng <br>- OTA progress |
 | **QoS 2**   | *Exactly once*  | - Đảm bảo **đến đúng 1 lần** <br>- 4 bước handshake (PUBLISH, PUBREC, PUBREL, PUBCOMP)    | - Chắc chắn nhất <br>- Không mất message <br>- Không trùng message           | - Chậm nhất <br>- Tốn băng thông nhất <br>- Phức tạp, nặng với embedded <br>- Rất ít hệ thống dùng | - Banking/Billing <br>- Đơn hàng, giao dịch tài chính <br>- Không được dùng cho IoT streaming                              |
 
-**Luồng gói tin**
+> Một câu hỏi tự nhiên: MQTT chạy trên TCP, mà TCP đã đảm bảo tin cậy, sao còn cần QoS?
 
-QoS 0: gửi rồi quên, không có gói phản hồi.
+TCP chỉ đảm bảo dữ liệu đến nơi khi kết nối còn sống. Nếu WiFi rớt đúng lúc tin nhắn đang nằm trong buffer, kết nối TCP bị hủy và dữ liệu đó mất, TCP không gửi lại qua kết nối mới. QoS 1 và 2 giải quyết chuyện này: bên gửi giữ tin nhắn lại cho đến khi được xác nhận và gửi lại sau khi kết nối lại. Với thiết bị nhúng dùng WiFi yếu hoặc 4G, đây là tình huống xảy ra thường xuyên.
+
+#### 3.1.2. QoS áp dụng theo từng chặng
+
+QoS không phải đảm bảo từ publisher đến subscriber mà là đảm bảo trên từng chặng riêng:
+
+```
+Publisher ──(chặng 1)──> Broker ──(chặng 2)──> Subscriber
+            QoS lúc publish         QoS khi broker gửi đi
+```
+
+- Chặng 1: dùng QoS mà publisher chọn khi publish.
+- Chặng 2: dùng QoS thấp hơn giữa QoS của message và QoS mà subscriber đăng ký khi subscribe.
+
+```
+QoS thực tế ở chặng 2 = min(QoS lúc publish, QoS lúc subscribe)
+```
+
+Ví dụ: publisher gửi QoS 2, subscriber đăng ký QoS 0 thì subscriber chỉ nhận ở QoS 0.
+
+Ví dụ:
+
+| Publish với | Subscribe với | Subscriber nhận với |
+| ----------- | ------------- | ------------------- |
+| QoS 2       | QoS 0         | QoS 0               |
+| QoS 0       | QoS 2         | QoS 0               |
+| QoS 1       | QoS 2         | QoS 1               |
+| QoS 2       | QoS 1         | QoS 1               |
+
+Ngoài ra, khi subscribe, broker trả về gói `SUBACK` chứa QoS mà nó thực sự chấp nhận. Một số broker cloud giới hạn QoS tối đa (ví dụ chỉ hỗ trợ đến QoS 1) nên ta nên kiểm tra giá trị này trong `SUBACK`.
+
+#### 3.1.3. Luồng gói tin
+
+**QoS 0:** gửi rồi quên, không có gói phản hồi.
 
 ```
 Sender                     Receiver
   | ---- PUBLISH (QoS 0) ---> |
 ```
 
-QoS 1: bên gửi giữ message cho đến khi nhận PUBACK. Nếu hết thời gian chờ hoặc kết nối lại, bên gửi gửi lại PUBLISH với cờ DUP = 1. Nếu PUBACK bị mất thì bên nhận sẽ nhận message 2 lần.
+**QoS 1:** bên gửi giữ message cho đến khi nhận PUBACK. Nếu hết thời gian chờ hoặc kết nối lại, bên gửi gửi lại PUBLISH với cờ DUP = 1. Nếu PUBACK bị mất thì bên nhận sẽ nhận message 2 lần.
 
 ```
 Sender                              Receiver
   | ---- PUBLISH (QoS 1, id=10) ---> |  xử lý message
+  |                                  |
   | <--- PUBACK  (id=10) ----------- |
+  |                                  |
   |  xóa message khỏi bộ nhớ         |
 ```
 
-QoS 2: thêm một vòng xác nhận để bên nhận biết chắc chắn bên gửi đã ngừng gửi lại, nhờ vậy không bị trùng.
+Vì sao có thể bị trùng? Xét tình huống:
+
+```
+Bên gửi                               Bên nhận
+   |-- PUBLISH (ID=10) ----------------->|  đã nhận và xử lý
+   |            <-- PUBACK bị mất -------|  (mất kết nối đúng lúc này)
+   |
+   (kết nối lại)
+   |-- PUBLISH (ID=10, DUP=1) ---------->|  nhận lần 2, xử lý lần 2
+   |<---------- PUBACK (ID=10) ----------|
+```
+
+Bên nhận đã xử lý rồi nhưng bên gửi không biết, nên gửi lại. Cờ DUP chỉ mang tính gợi ý; bên nhận ở QoS 1 không bắt buộc phải loại bỏ bản trùng.
+
+**QoS 2:** thêm một vòng xác nhận để bên nhận biết chắc chắn bên gửi đã ngừng gửi lại, nhờ vậy không bị trùng.
 
 ```
 Sender                              Receiver
@@ -248,6 +310,8 @@ Ví dụ, ta có một website hiển thị trạng thái các sensor chậm tha
 
 Đặc điểm:
 - Mỗi topic chỉ có tối đa 1 retained message, message mới sẽ ghi đè message cũ.
+- Retained message không phải lịch sử: broker không lưu 10 giá trị gần nhất, chỉ lưu 1.
+- Tin nhắn publish không có cờ retain vẫn được giao bình thường cho subscriber hiện tại, nhưng không thay thế retained message đang lưu.
 - Để xóa retained message, publish một message rỗng (payload 0 byte) với cờ retain lên topic đó.
 - Dùng cho dữ liệu kiểu trạng thái hiện tại (`state`, `status`, `config`), không dùng cho dữ liệu kiểu sự kiện (nút bấm, cảnh báo) vì subscriber mới sẽ nhận lại một sự kiện cũ.
 
@@ -259,11 +323,36 @@ mosquitto_pub -h localhost -t home/livingroom/esp32-01/state/led -m "ON" -r
 mosquitto_pub -h localhost -t home/livingroom/esp32-01/state/led -n -r
 ```
 
+:::warning Chú ý
+Payload rỗng khác với payload là chuỗi "" hay "null". Gửi "null" sẽ tạo ra một retained message có nội dung là chữ null, không xóa được gì.
+:::
+
+:::tip Bài toán retained ma
+Khi ta gỡ bỏ một thiết bị, đổi tên topic hoặc chuyển từ v1 sang v2, các retained message cũ vẫn nằm trên broker mãi mãi. Dashboard sẽ tiếp tục hiển thị những thiết bị không còn tồn tại. Hãy nhớ dọn dẹp chúng, MQTT Explorer có nút xóa retained khá tiện cho việc này.
+:::
+
 ### 3.3. Last Will & Testament
 
-LWT là một message mà broker sẽ tự động gửi khi client mất kết nối bất thường.
+#### 3.3.1. Vấn đề cần giải quyết
 
-Client đăng ký LWT (topic, payload, QoS, retain) ngay trong gói CONNECT. Broker giữ LWT này và:
+Ở phần trước, thiết bị publish `status = "online"` có retain để mọi người biết nó đang hoạt động. Nhưng điều gì xảy ra khi thiết bị mất điện đột ngột hoặc WiFi rớt?
+
+Thiết bị không còn cơ hội gửi `"offline"`. Retained message vẫn ghi `"online"` và dashboard tiếp tục báo thiết bị đang chạy, trong khi thực tế nó đã chết từ lâu.
+
+LWT (Last Will and Testament) giải quyết chuyện này: thiết bị gửi trước cho broker một tin nhắn và nhờ broker tự động publish hộ nếu thiết bị mất kết nối bất thường.
+
+#### 3.3.2. Cách hoạt động
+
+Client đăng ký LWT ngay trong gói CONNECT, gồm các thành phần:
+
+| Thành phần    | Ý nghĩa   | Ví dụ |
+| ------------- | --------- | ----- |
+| Will Topic    | Topic sẽ publish  | `greenhouse/v1/zone1/esp32-a1/status` |
+| Will Message  | Nội dung          | `offline` |
+| Will QoS      | QoS khi publish   | `1` |
+| Will Retain   | Có retain không   | `true` |
+
+Broker giữ LWT này và:
 - Nếu client gửi DISCONNECT bình thường: broker xóa LWT, không gửi.
 - Nếu client chết bất thường, ví dụ như mất nguồn, mất WiFi, crash, treo task, app bị kill,... $\rightarrow$ client không kịp gửi DISCONNECT $\rightarrow$ broker phát hiện mất kết nối (lỗi socket hoặc hết Keep Alive) $\rightarrow$ broker gửi LWT cho các subscriber.
 
@@ -289,9 +378,13 @@ TCP không tự báo khi kết nối bị đứt mà không có gói FIN/RST (v�
 ```
 Client                     Broker
   | --- PUBLISH ----------> |   có dữ liệu thì không cần ping
+  |                         |
   |        ... 60s không gửi gì ...
+  |                         |
   | --- PINGREQ  ---------> |
+  |                         |
   | <-- PINGRESP ---------- |
+  |                         |
   |        ... mất mạng ...
   |                         |   sau 90s (1.5 x 60) không nhận gì
   |                         |   -> đóng kết nối, publish LWT
@@ -336,15 +429,98 @@ Lưu ý:
 
 ### 3.6. Client ID
 
-Client ID là định danh của client đối với broker, broker dùng nó để tìm session tương ứng. Vì vậy Client ID phải duy nhất trên một broker:
-- Nếu client thứ hai kết nối với cùng Client ID, broker sẽ ngắt kết nối client đang online (session takeover).
-- Nếu cả hai client đều có cơ chế tự kết nối lại, chúng sẽ lần lượt "đá" nhau ra liên tục. Log broker sẽ thấy dòng `Client xxx already connected, closing old connection` lặp lại liên tục, đây là lỗi rất hay gặp khi flash cùng một firmware có Client ID cố định cho nhiều thiết bị.
+#### 3.6.1. Client ID là gì?
+
+Client ID là tên định danh mà client gửi cho broker trong gói `CONNECT`. Với broker, Client ID chính là danh tính của client:
+
+```
+esp32-a1 ── CONNECT (client_id="gh-esp32-a1b2c3", keepalive=30, will=...) ──> Broker
+```
+
+Broker dùng Client ID để:
+
+- Gắn session với client: danh sách subscription, các tin QoS 1/2 đang dở dang hoặc đang xếp hàng chờ giao (nếu dùng persistent session).
+- Đảm bảo mỗi ID chỉ có một kết nối tại một thời điểm.
+- Ghi log và giám sát: khi đọc log broker, Client ID là thứ giúp bạn biết thiết bị nào đang kết nối, ngắt kết nối hay gặp lỗi.
+- Phân quyền (ACL) trên một số broker: cho phép client chỉ được truy cập các topic chứa ID của chính nó.
+
+#### 3.6.2. Quy tắc theo spec
+
+**MQTT 3.1.1:**
+
+- Spec chỉ bắt buộc broker chấp nhận ID dài từ 1 đến 23 byte, gồm các ký tự `0-9`, `a-z`, `A-Z`.
+- Broker được phép chấp nhận ID dài hơn hoặc chứa ký tự khác. Thực tế Mosquitto, EMQX, HiveMQ đều chấp nhận ID dài và có dấu `-,` `_`.
+- ID rỗng chỉ được phép khi `Clean Session = 1`. Broker sẽ tự gán một ID ngẫu nhiên. Nếu gửi ID rỗng kèm `Clean Session = 0`, broker từ chối với mã lỗi 0x02 (Identifier rejected).
+
+**MQTT 5.0:**
+
+- ID rỗng được chấp nhận rộng rãi hơn. Broker tự tạo ID và gửi lại cho client qua thuộc tính Assigned Client Identifier trong `CONNACK`.
+
+**Khuyến nghị thực tế:** giữ ID ngắn, chỉ gồm chữ không dấu, số, - hoặc _. Nếu phải làm việc với broker lạ hoặc broker cũ, giữ trong khoảng 23 ký tự là an toàn nhất.
+
+#### 3.6.3. Client ID phải duy nhất
+
+Khi một client kết nối với Client ID đã có người đang dùng, broker sẽ đóng kết nối cũ và chấp nhận kết nối mới. Cơ chế này gọi là session takeover, và nó có lý do chính đáng: khi thiết bị bị mất kết nối kiểu half-open rồi kết nối lại, broker cần đá kết nối ma cũ đi ngay thay vì chờ hết Keep Alive.
+
+Nhưng nếu hai thiết bị khác nhau dùng chung một ID, cơ chế này biến thành thảm họa:
+
+```
+t=0s   Thiết bị A kết nối (ID="esp32")          -> OK
+t=3s   Thiết bị B kết nối (ID="esp32")          -> broker đá A
+t=5s   A phát hiện mất kết nối, kết nối lại     -> broker đá B
+t=8s   B phát hiện mất kết nối, kết nối lại     -> broker đá A
+...    lặp lại mãi mãi
+```
+
+Đây là lỗi cực kỳ phổ biến khi ta viết firmware có ID cố định trong code.
+
+Triệu chứng nhận biết:
+- Các thiết bị liên tục kết nối lại sau vài giây, dù WiFi rất ổn định.
+- Topic status nhảy liên tục giữa online và offline (mỗi lần bị đá, LWT lại được publish).
+- Lệnh gửi xuống lúc đến thiết bị này, lúc đến thiết bị kia, lúc mất hẳn.
+- Log của Mosquitto có các dòng kiểu:
+
+```
+Client esp32 already connected, closing old connection.
+New client connected from 192.168.1.25 as esp32 (p2, c1, k15).
+Client esp32 already connected, closing old connection.
+New client connected from 192.168.1.31 as esp32 (p2, c1, k15).
+```
+
+Lỗi này cũng xảy ra ở phía server: chạy hai bản của cùng một chương trình backend với cùng ID cấu hình sẵn, hoặc mở cùng một trang dashboard web trên hai tab mà ID được viết cứng trong JavaScript.
+
 
 Cách đặt Client ID:
 - Dùng giá trị duy nhất của phần cứng: MAC address, serial number, chip ID. Ví dụ `esp32-a4cf12b3c4d5`.
 - Client ID cố định giữa các lần khởi động, nếu không persistent session sẽ vô nghĩa.
-- MQTT 3.1.1 chỉ bắt buộc broker hỗ trợ Client ID dài 1-23 ký tự gồm `[0-9a-zA-Z]`. Đa số broker chấp nhận dài hơn, nhưng nên giữ ngắn gọn để tương thích.
-- Client ID rỗng: broker tự sinh ID ngẫu nhiên, chỉ được phép khi Clean Session = 1.
+
+#### 3.6.4. Sinh Client ID từ phần cứng
+
+Mỗi vi điều khiển thường có một mã định danh duy nhất từ nhà sản xuất:
+
+| Phần cứng | Nguồn ID duy nhất |
+| --- | --- |
+| ESP32 / ESP8266 | Địa chỉ MAC (6 byte, lưu trong eFuse) |
+| STM32 | Unique ID 96 bit trong vùng nhớ hệ thống |
+| Raspberry Pi | Số serial CPU (trong /proc/cpuinfo) hoặc MAC |
+| Module 4G	| Số IMEI |
+
+Quy ước đặt tên gợi ý:
+
+```
+<tiền_tố_dự_án>-<loại_thiết_bị>-<mã_phần_cứng>
+```
+
+Ví dụ:
+
+```
+gh-esp32-a1b2c3          thiết bị nhà kính, 3 byte cuối của MAC
+gh-gw-rpi-00000000abcd   gateway Raspberry Pi
+gh-svc-ingest-01         dịch vụ backend nhận dữ liệu, bản số 1
+gh-dash-k7f2x9           dashboard web, phần cuối ngẫu nhiên
+```
+
+Nên dùng cùng mã định danh này làm `device_id` trong topic. Khi đó Client ID, topic và log đều thống nhất, debug rất dễ.
 
 ## 4. Cấu trúc gói tin
 
