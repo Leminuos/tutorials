@@ -138,12 +138,20 @@ Nếu lớp cha có constructor mặc định, ta có thể không gọi, compil
 
 ## Thứ tự tạo và hủy trong kế thừa
 
-Ở Bài 4, ta đã thấy thành viên được tạo trước thân constructor. Với kế thừa, lớp cha còn được tạo trước cả thành viên. Thứ tự đầy đủ là:
+Khi class có thành viên là đối tượng, thành viên được tạo trước khi thân constructor chạy, và bị hủy sau khi thân destructor chạy xong. Với kế thừa, lớp cha còn được tạo trước cả thành viên. Thứ tự đầy đủ là:
 
 - **Khi tạo**: lớp cha → các thành viên của lớp con → thân constructor lớp con.
 - **Khi hủy**: ngược lại hoàn toàn: thân destructor lớp con → các thành viên → lớp cha.
 
-Dùng lại class `Tracer` từ Bài 4:
+Để quan sát, ta cho lớp con `TemperatureSensor` một thành viên là bộ lọc `Filter`, class này in ra thông báo khi được tạo và bị hủy:
+
+```cpp
+class Filter {
+public:
+    Filter()  { std::cout << "Create filter\n"; }
+    ~Filter() { std::cout << "Destroy filter\n"; }
+};
+```
 
 ```cpp
 class Sensor {
@@ -154,7 +162,7 @@ public:
 
 class TemperatureSensor : public Sensor {
 public:
-    TemperatureSensor() : m_filter("filter")
+    TemperatureSensor()
     {
         std::cout << "Constructor TemperatureSensor\n";
     }
@@ -165,7 +173,7 @@ public:
     }
 
 private:
-    Tracer m_filter;
+    Filter m_filter;
 };
 
 int main()
@@ -182,7 +190,7 @@ int main()
 // Destructor Sensor
 ```
 
-Vẫn là hình ảnh lắp ráp ở Bài C4: nền móng (lớp cha) có trước rồi đến linh kiện (thành viên), cuối cùng là phần hoàn thiện (thân constructor). Nhờ vậy, trong constructor và destructor của lớp con, ta luôn dùng được phần lớp cha một cách an toàn.
+Có thể hình dung như xây nhà: nền móng (lớp cha) có trước, rồi đến các bộ phận (thành viên), cuối cùng là phần hoàn thiện (thân constructor). Khi phá thì làm theo chiều ngược lại. Nhờ vậy, trong constructor và destructor của lớp con, ta luôn dùng được phần lớp cha một cách an toàn.
 
 ## Định nghĩa lại hàm của lớp cha
 
@@ -263,7 +271,7 @@ r.print();         // hợp lệ, nhưng gọi Sensor::print(), không phải Te
 // in ra: Sensor: Engine   (mất dòng "Overheat threshold")
 ```
 
-Dòng cuối là một hạn chế lớn. Ta muốn gọi `r.print()` thì mỗi loại cảm biến tự in theo cách của nó, nhưng compiler chỉ nhìn kiểu của `r` là `Sensor&` nên gọi `Sensor::print()`. Bài C6 sẽ giải quyết đúng vấn đề này bằng hàm ảo.
+Dòng cuối là một hạn chế lớn. Ta muốn gọi `r.print()` thì mỗi loại cảm biến tự in theo cách của nó, nhưng compiler chỉ nhìn kiểu của `r` là `Sensor&` nên gọi `Sensor::print()`. [Bài C6](../06-virtual-polymorphism/README.md) sẽ giải quyết đúng vấn đề này bằng hàm ảo.
 
 :::warning Object slicing
 Chỉ con trỏ và tham chiếu mới giữ được đối tượng lớp con nguyên vẹn. Nếu sao chép đối tượng lớp con vào một biến kiểu lớp cha, phần riêng của lớp con bị cắt bỏ. Hiện tượng này gọi là **object slicing**.
@@ -277,7 +285,7 @@ Vì vậy, hàm nhận đối tượng lớp cha nên khai báo tham số là `c
 
 ## Kế thừa hay thành phần
 
-Ở Bài C4, class `Device` chứa `m_uart` và `m_led` làm thành viên. Đó là quan hệ "has a" (**thành phần**, composition): thiết bị có một cổng UART. Còn kế thừa là quan hệ "is a".
+Ở mục thứ tự tạo và hủy, `TemperatureSensor` chứa `m_filter` làm thành viên. Đó là quan hệ "has a" (**thành phần**, composition): cảm biến có một bộ lọc, chứ không phải cảm biến là một bộ lọc. Còn kế thừa là quan hệ "is a".
 
 | Câu hỏi | Trả lời | Dùng |
 |---|---|---|
@@ -341,7 +349,7 @@ p.setOffset(0.5f);   // mong gọi bản float của lớp cha
                      // thực tế gọi bản int của lớp con: 0.5f bị cắt thành 0
 ```
 
-Không có lỗi hay cảnh báo nào với các tùy chọn `-Wall -Wextra`. Khi lớp con khai báo một hàm tên `setOffset`, mọi hàm `setOffset` của lớp cha bị che khuất, dù khác tham số. Nạp chồng hàm (Bài C1) không hoạt động xuyên qua lớp cha và lớp con. Cách sửa là đưa các hàm của lớp cha vào phạm vi lớp con bằng `using`:
+Không có lỗi hay cảnh báo nào với các tùy chọn `-Wall -Wextra`. Khi lớp con khai báo một hàm tên `setOffset`, mọi hàm `setOffset` của lớp cha bị che khuất, dù khác tham số. Nạp chồng hàm không hoạt động xuyên qua lớp cha và lớp con. Cách sửa là đưa các hàm của lớp cha vào phạm vi lớp con bằng `using`:
 
 ```cpp
 class PressureSensor : public Sensor {
@@ -364,4 +372,4 @@ void printSensor(Sensor s)   // truyền theo giá trị
 printSensor(temp);   // temp bị cắt thành Sensor, mất phần riêng của TemperatureSensor
 ```
 
-Đây là object slicing đã nhắc ở trên. Cách sửa là khai báo tham số `const Sensor& s`. Kết hợp với hàm ảo ở Bài C6, khi đó `s.print()` mới gọi đúng phiên bản của từng loại cảm biến.
+Đây là object slicing đã nhắc ở trên. Cách sửa là khai báo tham số `const Sensor& s`.

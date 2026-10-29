@@ -38,7 +38,7 @@ Tuy nhiên, lambda hiếm khi được gán vào biến như vậy. Cách dùng 
 
 ## Dùng lambda với thuật toán
 
-Các thuật toán trong `<algorithm>` ở Bài C8 đều nhận được lambda để tùy biến cách xử lý. Ví dụ sắp xếp giảm dần, tương đương đoạn `qsort()` ở phần mở đầu:
+Các thuật toán trong `<algorithm>` đều nhận được lambda để tùy biến cách xử lý. Ví dụ sắp xếp giảm dần, tương đương đoạn `qsort()` ở phần mở đầu:
 
 ```cpp
 std::vector<float> r = {25.1f, 82.4f, 24.8f, 86.0f};
@@ -73,7 +73,7 @@ if (it != list.end()) {
 }
 ```
 
-Và đây là cách viết gọn đã hứa ở Bài C8 để xóa các phần tử thỏa điều kiện, ví dụ loại bỏ các giá trị lỗi `-999` do cảm biến trả về khi mất kết nối:
+Lambda cũng giúp xóa các phần tử thỏa điều kiện khỏi `vector` mà không cần tự viết vòng lặp, ví dụ loại bỏ các giá trị lỗi `-999` do cảm biến trả về khi mất kết nối:
 
 ```cpp
 std::vector<float> data = {25.1f, -999.0f, 24.8f, -999.0f, 26.0f};
@@ -99,7 +99,7 @@ auto isOver = [](float v) { return v > threshold; };
 Để dùng, ta phải liệt kê biến trong cặp ngoặc vuông, gọi là **capture**. Có hai cách capture:
 
 - **Capture theo giá trị** (`[threshold]`): lambda lưu một bản sao của biến tại thời điểm tạo lambda.
-- **Capture theo tham chiếu** (`[&threshold]`): lambda truy cập chính biến gốc, giống tham chiếu ở Bài C2.
+- **Capture theo tham chiếu** (`[&threshold]`): lambda truy cập chính biến gốc, giống tham chiếu thông thường.
 
 Khác biệt thể hiện rõ khi biến gốc thay đổi sau khi tạo lambda:
 
@@ -232,14 +232,14 @@ private:
 };
 ```
 
-Nơi sử dụng gắn xử lý bằng lambda, và có thể capture bất kỳ dữ liệu nào cần thiết. Ví dụ đưa byte nhận được vào bộ đệm vòng `RingBuffer` từ Bài C8:
+Nơi sử dụng gắn xử lý bằng lambda, và có thể capture bất kỳ dữ liệu nào cần thiết. Ví dụ đưa byte nhận được vào một `std::vector` làm bộ đệm nhận:
 
 ```cpp
-RingBuffer<uint8_t, 64> rxBuffer;
+std::vector<uint8_t> rxBuffer;
 UartReceiver uart;
 
 uart.setOnByteReceived([&rxBuffer](uint8_t b) {
-    rxBuffer.push(b);
+    rxBuffer.push_back(b);
 });
 
 uart.simulateReceive(0xAA);
@@ -281,7 +281,7 @@ setup();
 uart.simulateReceive(0x01);   // lambda ghi vào biến đã bị hủy: hành vi không xác định
 ```
 
-Đây chính là lỗi tham chiếu treo ở Bài C2, chỉ là khó phát hiện hơn vì lỗi xảy ra ở nơi khác, vào thời điểm khác. Quy tắc: lambda được lưu lại để gọi sau thì không capture biến cục bộ theo tham chiếu. Hoặc capture theo giá trị, hoặc đảm bảo đối tượng được tham chiếu sống lâu hơn lambda.
+Đây là lỗi dangling reference: tham chiếu trỏ tới biến cục bộ đã bị hủy, chỉ là khó phát hiện hơn vì lỗi xảy ra ở nơi khác, vào thời điểm khác. Quy tắc: lambda được lưu lại để gọi sau thì không capture biến cục bộ theo tham chiếu. Hoặc capture theo giá trị, hoặc đảm bảo đối tượng được tham chiếu sống lâu hơn lambda.
 
 ## Lỗi thường gặp
 

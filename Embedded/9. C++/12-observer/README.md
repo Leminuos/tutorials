@@ -54,7 +54,7 @@ Observer đảo ngược sự phụ thuộc. Thay vì cảm biến biết hết 
 
 ## Observer bằng interface
 
-Trước hết, ta định nghĩa một interface chung cho mọi observer, dùng hàm thuần ảo đã học ở Bài C6:
+Trước hết, ta định nghĩa một interface chung cho mọi observer, dùng hàm thuần ảo:
 
 ```cpp
 class ITemperatureObserver {
@@ -79,7 +79,7 @@ public:
 
     void detach(ITemperatureObserver* observer)
     {
-        // xóa observer khỏi danh sách (cách dùng erase kết hợp remove xem ở Bài C9)
+        // xóa observer khỏi danh sách
         observers_.erase(
             std::remove(observers_.begin(), observers_.end(), observer),
             observers_.end());
@@ -176,7 +176,7 @@ TemperatureSensor sensor;
 sensor.update(25.0f);       // gọi hàm trên đối tượng đã bị hủy: hành vi không xác định
 ```
 
-Áp dụng RAII từ Bài C4, ta để observer tự đăng ký trong constructor và tự hủy đăng ký trong destructor. Như vậy không thể quên được nữa:
+Áp dụng RAII, ta để observer tự đăng ký trong constructor và tự hủy đăng ký trong destructor. Như vậy không thể quên được nữa:
 
 ```cpp
 class Display : public ITemperatureObserver {
@@ -191,7 +191,7 @@ public:
         sensor_.detach(this);
     }
 
-    // cấm sao chép (Bài C7): bản sao sẽ không được đăng ký đúng cách
+    // cấm sao chép: bản sao sẽ không được đăng ký đúng cách
     Display(const Display&) = delete;
     Display& operator=(const Display&) = delete;
 
@@ -218,7 +218,7 @@ Display display(sensor);       // bị hủy trước sensor
 
 ## Observer bằng lambda và std::function
 
-Cách dùng interface buộc mọi observer phải là một class kế thừa. Với những việc nhỏ như "in ra màn hình" hay "lưu giá trị lớn nhất", viết hẳn một class là quá cồng kềnh. Cách thứ hai cho phép đăng ký bất kỳ hàm nào có đúng chữ ký, kể cả lambda (Bài C9):
+Cách dùng interface buộc mọi observer phải là một class kế thừa. Với những việc nhỏ như "in ra màn hình" hay "lưu giá trị lớn nhất", viết hẳn một class là quá cồng kềnh. Cách thứ hai cho phép đăng ký bất kỳ hàm nào có đúng chữ ký, kể cả lambda:
 
 ```cpp
 #include <functional>
@@ -302,7 +302,7 @@ Lambda capture theo tham chiếu (`[&maxTemp]`, `[&alarm]`) mang đúng vấn đ
 
 ### Hủy đăng ký tự động bằng đối tượng Subscription
 
-Để giải quyết vấn đề vòng đời cho cách 2, ta kết hợp RAII với di chuyển (Bài C7): thay vì trả về mã số, `subscribe` trả về một đối tượng `Subscription`. Khi đối tượng này bị hủy, nó tự động hủy đăng ký.
+Để giải quyết vấn đề vòng đời cho cách 2, ta kết hợp RAII với di chuyển: thay vì trả về mã số, `subscribe` trả về một đối tượng `Subscription`. Khi đối tượng này bị hủy, nó tự động hủy đăng ký.
 
 ```cpp
 class TemperatureSensor;   // khai báo trước
@@ -397,9 +397,9 @@ void update(float celsius)
 
 Cách này tốn thêm một lần sao chép mỗi lần thông báo, chấp nhận được khi số observer nhỏ. Với tần suất thông báo cao, ta có thể đánh dấu observer cần xóa rồi mới xóa thật sau khi vòng lặp kết thúc.
 
-**Callback chạy chậm làm chậm subject.** Mọi callback chạy tuần tự trong hàm `update` của cảm biến. Nếu bộ ghi nhật ký mất 50 ms để ghi thẻ nhớ, cảm biến cũng bị chậm theo. Observer nên xử lý nhanh; việc nặng nên được đẩy vào hàng đợi để luồng khác xử lý (Bài C15).
+**Callback chạy chậm làm chậm subject.** Mọi callback chạy tuần tự trong hàm `update` của cảm biến. Nếu bộ ghi nhật ký mất 50 ms để ghi thẻ nhớ, cảm biến cũng bị chậm theo. Observer nên xử lý nhanh; việc nặng nên được đẩy vào hàng đợi để luồng khác xử lý.
 
-**Thông báo từ luồng khác.** Nếu cảm biến được đọc ở một luồng riêng, các callback cũng chạy trên luồng đó. Observer nào truy cập dữ liệu dùng chung với luồng chính phải được bảo vệ bằng mutex (Bài C18), và danh sách observer cũng vậy nếu có đăng ký hoặc hủy đăng ký từ luồng khác.
+**Thông báo từ luồng khác.** Nếu cảm biến được đọc ở một luồng riêng, các callback cũng chạy trên luồng đó. Observer nào truy cập dữ liệu dùng chung với luồng chính phải được bảo vệ bằng `std::mutex`, và danh sách observer cũng vậy nếu có đăng ký hoặc hủy đăng ký từ luồng khác.
 
 ## Khi nào không nên dùng
 

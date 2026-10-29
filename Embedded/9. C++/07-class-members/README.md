@@ -1,6 +1,6 @@
 Bài này gom ba chủ đề nhỏ, đều là những chỗ C++ sửa các điểm yếu quen thuộc của C.
 
-Thứ nhất, trong C, khi cần dữ liệu dùng chung cho mọi đối tượng cùng loại như đếm số cảm biến đang mở, ta dùng biến toàn cục và biến này tách rời khỏi struct mà nó phục vụ. Thứ hai, `enum` của C đưa mọi tên hằng ra phạm vi chung nên hai enum không thể cùng có giá trị `OFF` và giá trị enum tự chuyển thành số nguyên mà không cảnh báo. Thứ ba, khi gán struct cho nhau, C sao chép từng byte và nếu struct chứa con trỏ thì hai struct cùng trỏ tới một vùng nhớ, đúng như lỗi xóa hai lần ta đã gặp ở Bài C4.
+Thứ nhất, trong C, khi cần dữ liệu dùng chung cho mọi đối tượng cùng loại như đếm số cảm biến đang mở, ta dùng biến toàn cục và biến này tách rời khỏi struct mà nó phục vụ. Thứ hai, `enum` của C đưa mọi tên hằng ra phạm vi chung nên hai enum không thể cùng có giá trị `OFF` và giá trị enum tự chuyển thành số nguyên mà không cảnh báo. Thứ ba, khi gán struct cho nhau, C sao chép từng byte và nếu struct chứa con trỏ thì hai struct cùng trỏ tới một vùng nhớ, và cả hai cùng giải phóng vùng nhớ đó (double free).
 
 ## Biến thành viên static
 
@@ -213,7 +213,7 @@ Cách phân biệt đơn giản: đối tượng đang được tạo thì gọi
 
 ## Sao chép nông và sao chép sâu
 
-Quay lại lỗi ở Bài C4. Class `Buffer` sở hữu một vùng nhớ cấp phát bằng `new[]`. Copy constructor mặc định chỉ sao chép giá trị con trỏ, gọi là **sao chép nông** (shallow copy), khiến hai đối tượng cùng trỏ tới một vùng nhớ:
+Xét class `Buffer` sở hữu một vùng nhớ cấp phát bằng `new[]`. Copy constructor mặc định chỉ sao chép giá trị con trỏ, gọi là **sao chép nông** (shallow copy), khiến hai đối tượng cùng trỏ tới một vùng nhớ:
 
 ```
 Sao chép nông:                    Sao chép sâu:
@@ -386,7 +386,7 @@ Riêng câu lệnh `return frame;` trong hàm `makeFrame()` ở đầu mục, co
 Sau `Buffer b = std::move(a);`, `a` vẫn tồn tại nhưng đã rỗng. Ta chỉ nên hủy nó hoặc gán giá trị mới cho nó, không đọc dữ liệu của nó. Lỗi này compiler không cảnh báo.
 :::
 
-Cả hai hàm move đều được đánh dấu `noexcept`, nghĩa là không bao giờ ném exception. Điều này quan trọng với `std::vector` (Bài C8): khi mở rộng, `vector` chỉ move các phần tử sang vùng nhớ mới nếu move constructor là `noexcept`, nếu không nó sẽ sao chép từng phần tử. Hàm move chỉ gán lại con trỏ nên luôn có thể đánh dấu `noexcept`.
+Cả hai hàm move đều được đánh dấu `noexcept`, nghĩa là không bao giờ ném exception. Điều này quan trọng với `std::vector`: khi mở rộng, `vector` chỉ move các phần tử sang vùng nhớ mới nếu move constructor là `noexcept`, nếu không nó sẽ sao chép từng phần tử. Hàm move chỉ gán lại con trỏ nên luôn có thể đánh dấu `noexcept`.
 
 ## Quy tắc năm và quy tắc không
 
@@ -402,13 +402,13 @@ Lý do: class cần destructor riêng thường là vì nó sở hữu tài nguy
 
 Compiler chỉ tự tạo move constructor và move assignment khi class không tự khai báo destructor, copy constructor hay copy assignment. Vì vậy class `Buffer` có destructor riêng mà không viết hàm move thì không bị lỗi, nhưng mọi lần "di chuyển" thực chất đều là sao chép.
 
-Cách tốt hơn nữa là tránh phải viết cả năm hàm, bằng cách để các thành viên tự quản lý tài nguyên theo RAII. Ví dụ nếu `Buffer` dùng `std::vector<uint8_t>` (Bài C8) thay vì con trỏ thô, sao chép sâu và di chuyển đều diễn ra tự động, và ta không cần viết hàm nào. Đây gọi là **quy tắc không** (rule of zero), và là cách ta nên ưu tiên.
+Cách tốt hơn nữa là tránh phải viết cả năm hàm, bằng cách để các thành viên tự quản lý tài nguyên theo RAII. Ví dụ nếu `Buffer` dùng `std::vector<uint8_t>` thay vì con trỏ thô, sao chép sâu và di chuyển đều diễn ra tự động, và ta không cần viết hàm nào. Đây gọi là **quy tắc không** (rule of zero), và là cách ta nên ưu tiên.
 
 ## Cấm sao chép với = delete
 
 Có những đối tượng mà việc sao chép không có ý nghĩa: một cổng UART, một file thiết bị GPIO, một kết nối mạng. Hai đối tượng cùng điều khiển `/dev/ttyS1` sẽ gây xung đột, và khi một đối tượng bị hủy, nó đóng cổng mà đối tượng kia vẫn đang dùng.
 
-Với các class này, ta cấm sao chép bằng cách đánh dấu hai hàm sao chép là `= delete`, đúng như đã làm tạm ở Bài C4:
+Với các class này, ta cấm sao chép bằng cách đánh dấu hai hàm sao chép là `= delete`:
 
 ```cpp
 class SerialPort {
@@ -430,9 +430,9 @@ void send(SerialPort& p);   // phải truyền theo tham chiếu
 
 Nhờ vậy, mọi ý định sao chép đều bị phát hiện lúc biên dịch thay vì gây crash lúc chạy.
 
-Không sao chép được không có nghĩa là không di chuyển được. Một cổng UART không thể có hai chủ, nhưng hoàn toàn có thể chuyển từ chủ này sang chủ khác, ví dụ trả về từ một hàm mở cổng. Khi đó ta cấm sao chép và tự viết thêm hai hàm move, theo đúng cách đã làm với `Buffer`. Các class sở hữu tài nguyên trong thư viện chuẩn như `std::unique_ptr` (Bài C10) hay `std::thread` đều được thiết kế theo cách này.
+Không sao chép được không có nghĩa là không di chuyển được. Một cổng UART không thể có hai chủ, nhưng hoàn toàn có thể chuyển từ chủ này sang chủ khác, ví dụ trả về từ một hàm mở cổng. Khi đó ta cấm sao chép và tự viết thêm hai hàm move, theo đúng cách đã làm với `Buffer`. Các class sở hữu tài nguyên trong thư viện chuẩn như `std::unique_ptr` hay `std::thread` đều được thiết kế theo cách này.
 
-Ngược lại với `= delete`, ta có `= default` để yêu cầu compiler tạo hàm mặc định một cách tường minh, như destructor ảo `virtual ~Sensor() = default;` ở Bài C6.
+Ngược lại với `= delete`, ta có `= default` để yêu cầu compiler tạo hàm mặc định một cách tường minh, ví dụ destructor ảo `virtual ~Sensor() = default;`.
 
 ## Lỗi thường gặp
 
@@ -514,4 +514,4 @@ Chương trình có thể chạy bình thường với `a = b;`, nhưng crash ho
 
 **Crash `double free` do class sở hữu tài nguyên nhưng chỉ viết destructor**
 
-Đây chính là lỗi double free ở Bài C4, và là vi phạm quy tắc ba. Khi viết destructor có `delete`, `fclose()` hay `close()`, hãy tự hỏi ngay: đối tượng này có nên sao chép được không? Nếu không, thêm hai dòng `= delete`. Nếu có, viết đủ copy constructor và toán tử gán sao chép sâu.
+Đây là vi phạm quy tắc ba: sao chép nông khiến hai đối tượng cùng giải phóng một tài nguyên. Khi viết destructor có `delete`, `fclose()` hay `close()`, hãy tự hỏi ngay: đối tượng này có nên sao chép được không? Nếu không, thêm hai dòng `= delete`. Nếu có, viết đủ copy constructor và toán tử gán sao chép sâu.

@@ -1,99 +1,196 @@
-Ở Bài C4, ta đã rút ra quy tắc: mỗi đối tượng trên heap có đúng một chủ sở hữu, và chủ sở hữu `delete` nó trong destructor. Nhưng việc tuân thủ quy tắc này vẫn hoàn toàn dựa vào sự cẩn thận của người viết code. Chỉ cần quên một dòng `delete` trong destructor, quên cấm sao chép theo quy tắc ba (Bài C7), hay thêm một nhánh `return` sớm trước khi kịp `delete`, là lỗi bộ nhớ quay trở lại.
+Ở [Bài C4](../04-raii/README.md), ta đã thấy RAII giải quyết memory leak và double free bằng cách gắn việc giải phóng vào destructor. Nhưng với mỗi đối tượng tạo bằng `new`, ta vẫn phải tự viết `delete` trong destructor của chủ sở hữu, tự cấm sao chép và chỉ cần quên một chỗ là lỗi quay trở lại.
 
-Nhìn lại cách `std::string` và `std::vector` tự quản lý bộ nhớ theo RAII, câu hỏi tự nhiên là: tại sao không có một class làm điều tương tự cho bất kỳ đối tượng nào tạo bằng `new`? Đó chính là **smart pointer**: một đối tượng nhỏ giữ con trỏ tới đối tượng trên heap, và tự `delete` đối tượng đó khi bản thân nó bị hủy.
+Thư viện chuẩn có sẵn các class làm việc này thay ta, gọi là **smart pointer**. Bài này trình bày smart pointer là gì, các loại smart pointer, nó dùng để làm gì và khi nào chọn loại nào.
 
-Các smart pointer nằm trong thư viện `<memory>`. Trong bài, ta tiếp tục dùng class `Tracer` từ Bài C4 để quan sát khi nào đối tượng được tạo và hủy.
+Để quan sát khi nào đối tượng được tạo và hủy, trong bài ta dùng một class nhỏ in ra thông báo:
+
+```cpp
+#include <iostream>
+#include <string>
+
+class Tracer {
+public:
+    Tracer(const std::string& name) : m_name(name) { std::cout << "Create " << m_name << "\n"; }
+    ~Tracer() { std::cout << "Destroy " << m_name << "\n"; }
+
+private:
+    std::string m_name;
+};
+```
+
+## Smart pointer là gì
+
+**Smart pointer** là một class RAII bọc lấy con trỏ thô: nó giữ con trỏ tới đối tượng trên heap và tự `delete` đối tượng đó khi bị destructor. Bên ngoài, ta dùng nó giống hệt con trỏ thường với `->` và `*`.
+
+Để thấy rõ cách hoạt động của smart pointer thì ta tự viết một phiên bản tối giản như sau:
+
+```cpp
+template <typename T>
+class SimplePtr {
+public:
+    explicit SimplePtr(T* p) : m_ptr(p) {}
+    ~SimplePtr() { delete m_ptr; }                 // destructor: tự delete
+
+    SimplePtr(const SimplePtr&) = delete;          // cấm sao chép
+    SimplePtr& operator=(const SimplePtr&) = delete;
+
+    T* operator->() const { return m_ptr; }        // cho phép viết p->...
+    T& operator*() const { return *m_ptr; }        // cho phép viết *p
+
+private:
+    T* m_ptr;
+};
+```
+
+Đó chính là một class RAII, chỉ khác là dùng được cho mọi kiểu `T` nhờ template. Smart pointer của thư viện chuẩn hoàn thiện hơn nhiều nhưng ý tưởng cốt lõi là vậy.
+
+So với con trỏ thô, smart pointer mang lại ba tác dụng:
+
+| Tác dụng | Giải quyết vấn đề |
+|---|---|
+| Tự `delete` khi bị destructor, ở mọi đường thoát | Memory leak |
+| Kiểu dữ liệu cho biết ai sở hữu đối tượng | Double free, không rõ ai phải `delete` |
+| Biết đối tượng đã bị hủy hay chưa (`weak_ptr`) | Dangling pointer, use-after-free |
+
+Các smart pointer nằm trong thư viện `<memory>`.
+
+## Ba loại smart pointer
+
+| Loại | Ý nghĩa | Sao chép được? | Tự `delete` khi |
+|---|---|---|---|
+| `std::unique_ptr<T>` | Sở hữu duy nhất: chỉ một chủ | Không, chỉ chuyển bằng `std::move` | `unique_ptr` bị hủy |
+| `std::shared_ptr<T>` | Sở hữu chung: nhiều chủ | Có | `shared_ptr` cuối cùng bị hủy |
+| `std::weak_ptr<T>` | Không sở hữu, chỉ quan sát đối tượng của `shared_ptr` | Có | Không bao giờ tự `delete` |
+
+```
+  unique_ptr:   [owner] ------> object
+
+  shared_ptr:   [owner A] --+
+                [owner B] --+--> object   (reference count = 3)
+                [owner C] --+
+
+  weak_ptr:     [observer] - - > object   (không tăng reference count)
+```
 
 ## unique_ptr
 
-`std::unique_ptr` biểu diễn quyền sở hữu duy nhất: tại mỗi thời điểm, chỉ có một `unique_ptr` giữ đối tượng. Khi `unique_ptr` bị hủy, đối tượng bị `delete` theo.
+`std::unique_ptr` dùng khi đối tượng có **đúng một chủ sở hữu**. Đây là loại dùng nhiều nhất và là lựa chọn mặc định.
+
+### Tạo và sử dụng
 
 ```cpp
 #include <memory>
 
-void process()
+void process(bool error)
 {
-    std::unique_ptr<Tracer> sensor = std::make_unique<Tracer>("sensor");
+    auto sensor = std::make_unique<Tracer>("sensor");   // tạo đối tượng trên heap
 
-    // dùng giống hệt con trỏ thường
-    // sensor->..., *sensor
-
-    if (true) {
-        return;        // không cần delete
+    if (error) {
+        return;            // không cần delete
     }
-}   // sensor bị hủy → tự động delete đối tượng Tracer
 
-process();
+}   // sensor bị hủy -> tự delete đối tượng Tracer
+
+process(true);
 // in ra:
 // Create sensor
 // Destroy sensor
 ```
 
-`std::make_unique<Tracer>("sensor")` cấp phát đối tượng trên heap và chuyển tham số cho constructor, tương đương `new Tracer("sensor")` nhưng trả về luôn `unique_ptr`. Ta dùng `make_unique` thay vì viết `new` trực tiếp, để trong code không còn lệnh `new` nào cần tìm lệnh `delete` tương ứng. Kết hợp với `auto`, cách viết gọn hơn nữa:
+`std::make_unique<Tracer>("sensor")` tương đương `new Tracer("sensor")` nhưng trả về loại `unique_ptr`. Ta luôn dùng `make_unique` thay vì `new` để trong code không còn lệnh `new` nào phải cần tìm lệnh `delete` tương ứng.
+
+### Các thao tác
+
+| Thao tác | Ý nghĩa |
+|---|---|
+| `std::make_unique<T>(args...)` | Tạo đối tượng `T` trên heap, `args` được chuyển cho constructor |
+| `p->f()`, `*p` | Dùng đối tượng như con trỏ thường |
+| `if (p)`, `p == nullptr` | Kiểm tra `p` có đang giữ đối tượng không |
+| `p.get()` | Lấy con trỏ thô để dùng tạm, `p` vẫn là chủ sở hữu |
+| `p.reset()` | `delete` đối tượng ngay, `p` trở thành rỗng |
+| `p.reset(new T(...))` | `delete` đối tượng cũ, nhận giữ đối tượng mới |
+| `p.release()` | Trả về con trỏ thô và từ bỏ quyền sở hữu, không `delete`. Người nhận phải tự `delete` |
+| `std::move(p)` | Chuyển quyền sở hữu sang `unique_ptr` khác, `p` trở thành rỗng |
 
 ```cpp
-auto sensor = std::make_unique<Tracer>("sensor");
+auto p = std::make_unique<Tracer>("a");     // in ra: Create a
+
+if (p) {
+    std::cout << "p holds an object\n";      // in ra: p holds an object
+}
+
+Tracer* raw = p.get();          // raw chỉ để dùng tạm, không được delete raw
+
+p.reset(new Tracer("b"));       // in ra: Create b
+                                //        Destroy a   (đối tượng cũ bị delete)
+p.reset();                      // in ra: Destroy b
+std::cout << (p == nullptr);    // in ra: 1
 ```
 
-Một số thao tác thường dùng:
+`release()` hiếm khi cần, chỉ dùng khi phải trao con trỏ cho code cũ hoặc thư viện C sẽ tự giải phóng. Muốn hủy đối tượng sớm thì dùng `reset()`, không dùng `release()`: gọi `p.release();` mà bỏ qua giá trị trả về là memory leak.
+
+Với mảng, `unique_ptr<T[]>` gọi `delete[]` thay vì `delete` và hỗ trợ truy cập phần tử bằng `[]`:
 
 ```cpp
-auto p = std::make_unique<Tracer>("a");
-
-if (p) { }                  // kiểm tra có đang giữ đối tượng không, như con trỏ thường
-Tracer* raw = p.get();      // lấy con trỏ thô để dùng (không chuyển quyền sở hữu)
-p.reset();                  // delete đối tượng ngay bây giờ, p trở thành rỗng
-                            // in ra: Destroy a
+auto buffer = std::make_unique<uint8_t[]>(256);   // mảng 256 byte, khởi tạo bằng 0
+buffer[0] = 0xAA;
 ```
 
-`unique_ptr` với cách xóa mặc định có kích thước đúng bằng một con trỏ thô, và mọi thao tác đều được compiler tối ưu như con trỏ thường. Nghĩa là ta có được an toàn bộ nhớ mà không tốn thêm chi phí, điều rất có giá trị trên thiết bị nhúng.
+Thường thì `std::vector` tiện hơn nhưng `unique_ptr<T[]>` hữu ích khi cần một vùng nhớ kích thước cố định, không cần thay đổi kích thước sau khi tạo.
 
-## Chuyển quyền sở hữu với std::move
+### Không sao chép được, chỉ chuyển được
 
-Vì chỉ có một chủ sở hữu, `unique_ptr` không sao chép được. Nó đã được khai báo `= delete` cho copy constructor và toán tử gán sao chép, đúng như cách ta làm ở Bài C7:
+Nếu `unique_ptr` sao chép được, ta sẽ có hai `unique_ptr` cùng giữ một đối tượng, và khi cả hai bị hủy, đối tượng bị `delete` hai lần (double free). Vì vậy compiler cấm sao chép:
 
 ```cpp
 auto a = std::make_unique<Tracer>("sensor");
-auto b = a;
-// lỗi: use of deleted function 'std::unique_ptr<...>::unique_ptr(const std::unique_ptr<...>&)'
+auto b = a;              // lỗi biên dịch: use of deleted function
 ```
 
-Tuy nhiên, ta có thể chuyển quyền sở hữu sang `unique_ptr` khác bằng `std::move` (trong `<utility>`). Sau khi chuyển, `unique_ptr` nguồn trở thành rỗng:
+Thay vào đó, ta **chuyển** (move) quyền sở hữu. Hình dung `unique_ptr` như chiếc chìa khóa duy nhất của một căn nhà: không thể đánh thêm chìa nhưng có thể trao chìa cho người khác. Sau khi trao, người cũ không còn chìa nữa:
 
 ```cpp
 auto a = std::make_unique<Tracer>("sensor");
-auto b = std::move(a);      // b sở hữu đối tượng, a trở thành rỗng
+auto c = std::move(a);   // c nhận đối tượng, a trở thành rỗng
 
 std::cout << (a == nullptr);   // in ra: 1
-std::cout << (b != nullptr);   // in ra: 1
 ```
 
-`std::move(a)` đánh dấu rằng ta cho phép lấy tài nguyên đi khỏi `a`. Nó không tự di chuyển gì cả; chính `unique_ptr` nhận được sẽ lấy con trỏ và đặt `a` về rỗng.
-
-Nhờ vậy, khai báo hàm cho biết rõ ý định về quyền sở hữu:
-
-```cpp
-void use(Tracer& t);                        // chỉ dùng, không sở hữu
-void take(std::unique_ptr<Tracer> t);       // nhận quyền sở hữu
-std::unique_ptr<Tracer> create();           // trao quyền sở hữu cho nơi gọi
-
-auto p = create();       // nhận từ hàm: không cần std::move
-use(*p);                 // cho mượn
-take(std::move(p));      // trao hẳn, sau dòng này p rỗng
+```
+  trước:   a ----> [sensor]        c = (rỗng)
+  sau:     a = (rỗng)              c ----> [sensor]
 ```
 
-Chỉ nhìn vào khai báo, người đọc biết ngay ai chịu trách nhiệm hủy đối tượng. Với con trỏ thô `Tracer*`, không có cách nào biết điều đó nếu không đọc tài liệu hoặc đọc code bên trong.
+Đối tượng `sensor` không bị tạo lại hay sao chép, nó vẫn nằm nguyên trên heap, chỉ có người giữ nó thay đổi. Tại mọi thời điểm, đối tượng luôn có đúng một chủ.
 
-## unique_ptr làm thành viên class
+Move là cơ chế chung của C++, không riêng gì smart pointer. Mọi class sở hữu tài nguyên trong thư viện chuẩn như `std::vector`, `std::string` đều hỗ trợ move và lợi ích ở đây là tránh sao chép dữ liệu lớn.
 
-Đây là cách dùng `unique_ptr` quan trọng nhất. Viết lại class `Controller` ở Bài C4:
+Ví dụ ghi âm 1 giây với tần số lấy mẫu 48 kHz, được 48000 mẫu 16-bit, khoảng 96 KB:
 
 ```cpp
-class Controller {
+std::vector<int16_t> samples(48000);
+
+std::vector<int16_t> copied = samples;             // sao chép: cấp phát 96 KB mới và chép từng mẫu
+std::vector<int16_t> moved  = std::move(samples);  // di chuyển: chỉ chuyển con trỏ tới vùng nhớ
+```
+
+```
+  sao chép:   samples --> [96 KB]            di chuyển:   samples --> (rỗng)
+              copied  --> [96 KB bản sao]                 moved   --> [96 KB]  (vẫn vùng nhớ cũ)
+```
+
+Bên trong, `std::vector` chỉ là một con trỏ tới vùng nhớ trên heap cùng với kích thước. Sao chép phải cấp phát vùng nhớ mới và chép toàn bộ dữ liệu; di chuyển chỉ trao con trỏ đó cho `vector` mới rồi đặt `vector` cũ về rỗng, nhanh như nhau dù dữ liệu lớn bao nhiêu.
+
+### Ví dụ: thành viên class
+
+Đây là cách dùng `unique_ptr` quan trọng nhất. Một gateway IoT sở hữu hai module: modem 4G và GPS. Nếu giữ bằng con trỏ thô `Tracer*`, class phải tự `delete` chúng trong destructor và tự cấm sao chép. Với `unique_ptr`:
+
+```cpp
+class Gateway {
 public:
-    Controller()
-        : m_sensor(std::make_unique<Tracer>("sensor")),
-          m_display(std::make_unique<Tracer>("display"))
+    Gateway()
+        : m_modem(std::make_unique<Tracer>("modem")),
+          m_gps(std::make_unique<Tracer>("gps"))
     {
     }
 
@@ -101,80 +198,98 @@ public:
     // không cần cấm sao chép: unique_ptr đã không sao chép được
 
 private:
-    std::unique_ptr<Tracer> m_sensor;
-    std::unique_ptr<Tracer> m_display;
+    std::unique_ptr<Tracer> m_modem;
+    std::unique_ptr<Tracer> m_gps;
 };
 
 int main()
 {
-    Controller controller;
+    Gateway gateway;
 }
 // in ra:
-// Create sensor
-// Create display
-// Destroy display
-// Destroy sensor
+// Create modem
+// Create gps
+// Destroy gps
+// Destroy modem
 ```
 
-Kết quả giống hệt phiên bản ở Bài C4, nhưng class không còn destructor. Các thành viên `unique_ptr` tự hủy theo thứ tự ngược với khai báo (Bài C4), và mỗi `unique_ptr` tự `delete` đối tượng của mình. Class cũng tự động không sao chép được, vì thành viên của nó không sao chép được. Đây chính là quy tắc không (rule of zero) đã nhắc ở Bài C7.
+Class không có destructor nào. Các thành viên `unique_ptr` tự hủy theo thứ tự ngược với khai báo, mỗi cái tự `delete` đối tượng của mình. Nếu constructor thất bại khi tạo `m_gps`, `m_modem` đã tạo xong vẫn tự được giải phóng. Class tự quản lý tài nguyên mà không cần viết destructor, copy constructor hay toán tử gán nào, gọi là **quy tắc không** (rule of zero).
 
-## Kết hợp với đa hình
+### Ví dụ: hàm tạo đối tượng đa hình
 
-`unique_ptr` kiểu lớp cha giữ được đối tượng lớp con, giống con trỏ thô. Áp dụng vào lớp trừu tượng phần cứng ở Bài C6, ta viết một hàm tạo nguồn dữ liệu phù hợp với môi trường:
-
-```cpp
-std::unique_ptr<TemperatureSource> createSource(bool simulate)
-{
-    if (simulate) {
-        return std::make_unique<SimulatedSource>();
-    }
-    return std::make_unique<Ds18b20Source>("/sys/bus/w1/devices/28-.../w1_slave");
-}
-```
-
-Và `Monitor` giờ sở hữu nguồn dữ liệu, thay vì chỉ giữ tham chiếu như ở Bài C6:
+`unique_ptr` kiểu lớp cha giữ được đối tượng lớp con. Ví dụ thiết bị gửi dữ liệu qua UART hoặc qua TCP tùy cấu hình, hai cách gửi có chung một interface:
 
 ```cpp
-class Monitor {
+class Transport {
 public:
-    Monitor(std::unique_ptr<TemperatureSource> source, float threshold)
-        : m_source(std::move(source)), m_threshold(threshold)
-    {
-    }
-
-    void update() { /* dùng m_source->readCelsius() như Bài C6 */ }
-
-private:
-    std::unique_ptr<TemperatureSource> m_source;
-    float m_threshold;
+    virtual ~Transport() = default;
+    virtual void send(const std::string& data) = 0;
 };
 
-Monitor monitor(createSource(true), 80.0f);
+class UartTransport : public Transport {
+public:
+    void send(const std::string& data) override { std::cout << "UART: " << data << "\n"; }
+};
+
+class TcpTransport : public Transport {
+public:
+    void send(const std::string& data) override { std::cout << "TCP: " << data << "\n"; }
+};
 ```
 
-Cách này an toàn hơn phiên bản dùng tham chiếu ở Bài C6: `Monitor` không thể vô tình sống lâu hơn nguồn dữ liệu của nó. Khi `monitor` bị hủy, nguồn dữ liệu bị hủy theo, và nhờ destructor ảo của `TemperatureSource`, destructor của đúng lớp con được gọi.
-
-### Danh sách đối tượng đa hình
-
-Kết hợp với `std::vector` ở Bài C8, ta có một danh sách sở hữu nhiều loại cảm biến khác nhau:
+Hàm tạo đối tượng trả về `unique_ptr<Transport>`, nơi gọi nhận luôn quyền sở hữu mà không cần biết lớp con cụ thể:
 
 ```cpp
-std::vector<std::unique_ptr<Sensor>> sensors;
-
-sensors.push_back(std::make_unique<TemperatureSensor>("Temperature"));
-sensors.push_back(std::make_unique<HumiditySensor>("Humidity"));
-
-for (const auto& s : sensors) {
-    std::cout << s->name() << ": " << s->read() << "\n";
+std::unique_ptr<Transport> createTransport(bool useTcp)
+{
+    if (useTcp) {
+        return std::make_unique<TcpTransport>();
+    }
+    return std::make_unique<UartTransport>();
 }
-// khi sensors bị hủy, mọi cảm biến đều được delete
 ```
 
-## Custom deleter cho tài nguyên kiểu C
+Class `Reporter` nhận và sở hữu đối tượng `Transport`:
 
-Mặc định, `unique_ptr` gọi `delete` khi hủy. Nhưng ta có thể chỉ định cách giải phóng khác, gọi là **deleter**. Điều này rất tiện khi làm việc với thư viện C, nơi tài nguyên được giải phóng bằng hàm riêng như `fclose()`.
+```cpp
+class Reporter {
+public:
+    Reporter(std::unique_ptr<Transport> transport) : m_transport(std::move(transport)) {}
 
-Deleter là một struct có toán tử gọi hàm `operator()`, nghĩa là đối tượng của struct này có thể được gọi như một hàm (lambda ở Bài C9 thực chất cũng được compiler tạo thành một đối tượng như vậy):
+    void report(float value) { m_transport->send(std::to_string(value)); }
+
+private:
+    std::unique_ptr<Transport> m_transport;
+};
+
+Reporter reporter(createTransport(true));
+reporter.report(25.5f);      // in ra: TCP: 25.500000
+```
+
+`Reporter` không thể vô tình sống lâu hơn đối tượng `Transport` của nó: khi `reporter` bị hủy, `Transport` bị hủy theo, và nhờ destructor ảo, destructor của đúng lớp con được gọi.
+
+Kết hợp với `std::vector`, ta có một danh sách sở hữu nhiều loại đối tượng khác nhau:
+
+```cpp
+std::vector<std::unique_ptr<Transport>> links;
+
+links.push_back(std::make_unique<UartTransport>());
+links.push_back(std::make_unique<TcpTransport>());
+
+for (const auto& link : links) {
+    link->send("hello");
+}
+// in ra:
+// UART: hello
+// TCP: hello
+// khi links bị hủy, mọi đối tượng đều được delete
+```
+
+### Ví dụ: tài nguyên kiểu C với custom deleter
+
+Mặc định `unique_ptr` gọi `delete`, nhưng ta có thể chỉ định cách giải phóng khác, gọi là **deleter**. Rất tiện cho thư viện C, nơi tài nguyên được giải phóng bằng hàm riêng như `fclose()`.
+
+Deleter là một struct có `operator()`, nghĩa là đối tượng của nó gọi được như một hàm:
 
 ```cpp
 #include <cstdio>
@@ -188,59 +303,218 @@ struct FileCloser {
     }
 };
 
-using FilePtr = std::unique_ptr<FILE, FileCloser>;
+using FilePtr = std::unique_ptr<FILE, FileCloser>;   // đặt tên ngắn, như typedef trong C
 ```
 
-Dòng `using FilePtr = ...` tạo một tên gọi khác cho kiểu dữ liệu dài, tương tự `typedef` trong C. Giờ ta có thể viết lại hàm `blink()` ở Bài C4 mà không cần tự viết class `LedFile`:
+Ví dụ đọc thời gian hệ thống đã chạy từ `/proc/uptime`. File luôn được đóng ở mọi đường thoát mà không cần tự viết class bọc `FILE*`:
 
 ```cpp
-bool blink()
+double readUptime()
 {
-    FilePtr led(std::fopen("/sys/class/leds/beaglebone:green:usr0/brightness", "w"));
-    if (!led) {
-        return false;
+    FilePtr file(std::fopen("/proc/uptime", "r"));
+    if (!file) {
+        return -1.0;
     }
 
-    std::fputs("1", led.get());
-    std::fflush(led.get());
-    std::fputs("0", led.get());
-    return true;
-}   // file tự đóng, in ra: File closed
+    double seconds = 0.0;
+    if (std::fscanf(file.get(), "%lf", &seconds) != 1) {
+        return -1.0;        // file tự đóng
+    }
+    return seconds;         // file tự đóng
+}
+
+std::cout << readUptime() << "\n";
+// in ra:
+// File closed
+// 12345.67
 ```
 
-`unique_ptr` không gọi deleter khi đang rỗng, nên nếu `fopen()` thất bại, `fclose()` không bị gọi với `nullptr`.
+`unique_ptr` không gọi deleter khi đang rỗng, nên nếu `fopen()` thất bại, `fclose()` không bị gọi với `nullptr`. Cách này chỉ áp dụng cho tài nguyên biểu diễn bằng con trỏ; tài nguyên dạng số nguyên như file descriptor của `open()` vẫn cần một class RAII tự viết.
 
-Cách này chỉ áp dụng cho tài nguyên được biểu diễn bằng con trỏ. Tài nguyên dạng số nguyên như file descriptor của `open()` thì vẫn cần một class RAII tự viết như `LedFile`.
+### Chi phí
+
+`unique_ptr` với deleter mặc định có kích thước đúng bằng một con trỏ thô, và compiler tối ưu mọi thao tác như con trỏ thường. Ta có được an toàn bộ nhớ mà không tốn thêm RAM hay CPU, điều rất có giá trị trên thiết bị nhúng.
 
 ## shared_ptr
 
-Đôi khi một đối tượng thực sự được nhiều nơi cùng sở hữu, và không nơi nào biết chắc mình là nơi dùng cuối cùng. Khi đó ta dùng `std::shared_ptr`. Nó giữ một **bộ đếm tham chiếu**: mỗi bản sao của `shared_ptr` làm bộ đếm tăng lên, mỗi bản sao bị hủy làm bộ đếm giảm xuống. Khi bộ đếm về 0, đối tượng bị `delete`.
+`std::shared_ptr` dùng khi đối tượng **thực sự có nhiều chủ**, và không chủ nào biết chắc mình là người dùng cuối cùng.
+
+Nó hoạt động nhờ **reference count** (bộ đếm tham chiếu): mỗi bản sao của `shared_ptr` làm bộ đếm tăng 1, mỗi bản sao bị hủy làm bộ đếm giảm 1. Khi bộ đếm về 0, đối tượng bị `delete`.
 
 ```cpp
 auto config = std::make_shared<Tracer>("config");
-std::cout << config.use_count();      // in ra: 1
+std::cout << config.use_count() << "\n";      // in ra: 1
 
 {
-    auto copy = config;               // shared_ptr sao chép được
-    std::cout << config.use_count();  // in ra: 2
-}   // copy bị hủy, bộ đếm giảm
+    auto copy = config;                       // sao chép: bộ đếm tăng
+    std::cout << config.use_count() << "\n";  // in ra: 2
+}                                             // copy bị hủy: bộ đếm giảm
 
-std::cout << config.use_count();      // in ra: 1
-config.reset();                       // bộ đếm về 0
+std::cout << config.use_count() << "\n";      // in ra: 1
+config.reset();                               // bộ đếm về 0 -> delete
+
 // in ra:
 // Create config
+// ...
 // Destroy config
 ```
 
-`shared_ptr` tiện lợi nhưng có chi phí: kích thước gấp đôi con trỏ thường, thêm một vùng nhớ cho bộ đếm, và việc tăng giảm bộ đếm phải an toàn đa luồng nên chậm hơn. Quan trọng hơn, khi đối tượng có nhiều chủ sở hữu, ta khó biết chính xác khi nào nó bị hủy.
+### Các thao tác
+
+| Thao tác | Ý nghĩa |
+|---|---|
+| `std::make_shared<T>(args...)` | Tạo đối tượng và bộ đếm trong cùng một lần cấp phát |
+| `auto q = p;` | Sao chép: thêm một chủ sở hữu, bộ đếm tăng 1 |
+| `p->f()`, `*p`, `if (p)`, `p.get()` | Giống `unique_ptr` |
+| `p.use_count()` | Số `shared_ptr` đang cùng giữ đối tượng, chủ yếu để debug |
+| `p.reset()` | `p` thôi giữ đối tượng, bộ đếm giảm 1; về 0 thì `delete` |
+| `std::move(p)` | Chuyển sang `shared_ptr` khác mà không tăng bộ đếm, `p` trở thành rỗng |
+| `std::shared_ptr<T> s = std::move(u);` | Chuyển một `unique_ptr` thành `shared_ptr` |
+
+```cpp
+auto a = std::make_shared<Tracer>("config");   // in ra: Create config
+auto b = a;                                    // count = 2
+auto c = std::move(b);                         // count vẫn = 2, b trở thành rỗng
+
+std::cout << a.use_count() << "\n";            // in ra: 2
+a.reset();                                     // count = 1, đối tượng vẫn sống
+c.reset();                                     // count = 0, in ra: Destroy config
+
+auto u = std::make_unique<Tracer>("sensor");   // in ra: Create sensor
+std::shared_ptr<Tracer> s = std::move(u);      // u rỗng, s sở hữu, count = 1
+```
+
+Khi truyền `shared_ptr` vào hàm, mỗi lần truyền theo giá trị là một lần tăng giảm bộ đếm. Nếu hàm chỉ dùng đối tượng mà không cần giữ lại, hãy nhận `const T&` hoặc `T*` thay vì `shared_ptr<T>`:
+
+```cpp
+void print(const Tracer& t);                   // chỉ dùng: không đụng tới bộ đếm
+void store(std::shared_ptr<Tracer> t);         // giữ lại lâu dài: trở thành một chủ sở hữu
+
+print(*s);
+store(s);
+```
+
+### Ví dụ: một frame dùng chung cho nhiều luồng
+
+Camera chụp một frame, frame đó được gửi tới hai nơi: luồng hiển thị và luồng gửi qua mạng. Hai luồng xử lý xong vào thời điểm khác nhau, và không ai biết bên nào xong trước. Nếu dùng `unique_ptr`, ta không biết giao quyền sở hữu cho bên nào; nếu dùng con trỏ thô, bên xong trước `delete` sẽ khiến bên kia dùng phải dangling pointer.
+
+Với `shared_ptr`, frame tự được giải phóng khi bên cuối cùng dùng xong:
+
+```cpp
+std::vector<std::shared_ptr<Tracer>> displayQueue;
+std::vector<std::shared_ptr<Tracer>> networkQueue;
+
+void capture()
+{
+    auto frame = std::make_shared<Tracer>("frame");   // count = 1
+    displayQueue.push_back(frame);                    // count = 2
+    networkQueue.push_back(frame);                    // count = 3
+}                                                     // frame cục bộ bị hủy: count = 2
+
+capture();
+displayQueue.clear();    // hiển thị xong: count = 1
+networkQueue.clear();    // gửi xong: count = 0 -> delete
+
+// in ra:
+// Create frame
+// Destroy frame
+```
+
+Bộ đếm của `shared_ptr` được tăng giảm an toàn khi nhiều luồng cùng sao chép hoặc hủy `shared_ptr`. Tuy vậy, việc đọc ghi chính đối tượng `frame` từ nhiều luồng vẫn cần mutex như bình thường.
+
+### Chi phí
+
+`shared_ptr` không miễn phí như `unique_ptr`:
+
+- Kích thước gấp đôi con trỏ thô, và cần thêm một vùng nhớ trên heap cho bộ đếm.
+- Mỗi lần sao chép hay hủy đều phải tăng giảm bộ đếm theo cách an toàn đa luồng, chậm hơn thao tác thường.
+- Khó biết chính xác khi nào đối tượng bị hủy, vì nó phụ thuộc vào việc nhiều nơi khác nhau thả ra.
 
 :::tip Mặc định dùng unique_ptr
-Chỉ dùng `shared_ptr` khi quyền sở hữu chung là thực sự cần thiết.
+Chỉ dùng `shared_ptr` khi thật sự không xác định được một chủ sở hữu duy nhất. Bắt đầu với `unique_ptr` cũng không mất gì: khi cần, nó chuyển được sang `shared_ptr` bằng `std::move`, còn chiều ngược lại thì không.
 :::
 
-## Vòng tham chiếu và weak_ptr
+## weak_ptr
 
-`shared_ptr` có một điểm yếu: nếu hai đối tượng giữ `shared_ptr` trỏ tới nhau, bộ đếm của cả hai không bao giờ về 0, và cả hai bị rò rỉ.
+`std::weak_ptr` trỏ tới một đối tượng do `shared_ptr` quản lý nhưng **không tăng reference count** nên không giữ đối tượng sống. Điểm quan trọng là nó **biết được đối tượng đã bị hủy hay chưa**, điều mà con trỏ thô không làm được.
+
+Muốn dùng đối tượng, ta gọi `lock()`: nếu đối tượng còn sống, nó trả về một `shared_ptr` tạm thời; nếu đã bị hủy, nó trả về rỗng.
+
+### Các thao tác
+
+| Thao tác | Ý nghĩa |
+|---|---|
+| `std::weak_ptr<T> w = sp;` | Tạo từ một `shared_ptr`, bộ đếm không tăng |
+| `w.lock()` | Trả về `shared_ptr` nếu đối tượng còn sống, rỗng nếu đã bị hủy |
+| `w.expired()` | `true` nếu đối tượng đã bị hủy |
+| `w.reset()` | Thôi quan sát đối tượng |
+
+`weak_ptr` không có `->` hay `*`: không thể dùng trực tiếp đối tượng qua nó, bắt buộc phải `lock()` trước. Nhờ vậy không có cách nào vô tình dùng một đối tượng đã bị hủy.
+
+```cpp
+auto sp = std::make_shared<Tracer>("display");   // in ra: Create display
+std::weak_ptr<Tracer> w = sp;
+
+std::cout << sp.use_count() << "\n";              // in ra: 1 (weak_ptr không được tính)
+
+if (auto locked = w.lock()) {                    // đối tượng còn sống
+    // dùng locked->...; trong khối này đối tượng chắc chắn không bị hủy
+}
+
+sp.reset();                                      // in ra: Destroy display
+std::cout << w.expired() << "\n";                 // in ra: 1
+std::cout << (w.lock() == nullptr) << "\n";       // in ra: 1
+```
+
+Nên dùng `lock()` thay vì kiểm tra `expired()` rồi mới dùng: trong môi trường đa luồng, đối tượng có thể bị hủy ngay sau khi `expired()` trả về `false`. `shared_ptr` do `lock()` trả về giữ đối tượng sống cho tới khi dùng xong.
+
+### Ví dụ: listener có thể bị hủy bất cứ lúc nào
+
+Cảm biến thông báo giá trị mới cho màn hình hiển thị. Màn hình có thể bị đóng bất cứ lúc nào, và cảm biến không nên là thứ giữ màn hình sống:
+
+```cpp
+class Display {
+public:
+    void show(float value) { std::cout << "Display: " << value << "\n"; }
+};
+
+class Sensor {
+public:
+    void setListener(std::weak_ptr<Display> display) { m_listener = display; }
+
+    void update(float value)
+    {
+        if (auto display = m_listener.lock()) {   // còn sống thì lấy shared_ptr tạm
+            display->show(value);
+        } else {
+            std::cout << "No listener\n";
+        }
+    }
+
+private:
+    std::weak_ptr<Display> m_listener;
+};
+
+Sensor sensor;
+auto display = std::make_shared<Display>();
+sensor.setListener(display);
+
+sensor.update(25.5f);    // in ra: Display: 25.5
+display.reset();         // màn hình bị đóng, đối tượng Display bị hủy
+sensor.update(26.0f);    // in ra: No listener
+```
+
+So sánh với hai cách khác:
+
+| `Sensor` giữ | Khi `Display` bị hủy |
+|---|---|
+| `Display*` | Con trỏ thành dangling pointer, gọi `show()` là use-after-free |
+| `std::shared_ptr<Display>` | `Display` không bị hủy được vì `Sensor` vẫn giữ |
+| `std::weak_ptr<Display>` | `lock()` trả về rỗng, `Sensor` biết để bỏ qua |
+
+### Ví dụ: phá vòng tham chiếu
+
+Nếu hai đối tượng giữ `shared_ptr` trỏ tới nhau, bộ đếm của cả hai không bao giờ về 0, và cả hai bị memory leak:
 
 ```cpp
 struct Node {
@@ -253,10 +527,18 @@ struct Node {
     auto b = std::make_shared<Node>();
     a->other = b;
     b->other = a;
-}   // không có dòng "Destroy Node" nào được in ra: rò rỉ bộ nhớ
+}   // không có dòng "Destroy Node" nào: memory leak
 ```
 
-Giải pháp là `std::weak_ptr`: một con trỏ quan sát đối tượng do `shared_ptr` quản lý nhưng không tăng bộ đếm. Muốn dùng đối tượng, ta gọi `lock()` để lấy một `shared_ptr` tạm thời; nếu đối tượng đã bị hủy, `lock()` trả về rỗng.
+```
+  a ----> [Node A] --other--> [Node B] <---- b
+            ^                    |
+            +------other---------+
+
+  khi a, b bị hủy: A vẫn được B giữ, B vẫn được A giữ -> bộ đếm không về 0
+```
+
+Đổi một phía thành `weak_ptr` là đủ phá vòng:
 
 ```cpp
 struct Node {
@@ -264,31 +546,49 @@ struct Node {
     ~Node() { std::cout << "Destroy Node\n"; }
 };
 
-// ... gán như trên, khi ra khỏi phạm vi in ra "Destroy Node" hai lần
-
-if (auto p = a->other.lock()) {   // lấy shared_ptr tạm, kiểm tra đối tượng còn tồn tại
-    // dùng p
-}
+// gán như trên, khi ra khỏi phạm vi in ra "Destroy Node" hai lần
 ```
 
-Trong thực tế, nếu thấy cần `weak_ptr` để phá vòng tham chiếu, đó thường là dấu hiệu nên xem lại thiết kế: phần lớn quan hệ có thể biểu diễn bằng một chủ sở hữu rõ ràng với `unique_ptr`.
+Trong thực tế, nếu thấy cần `weak_ptr` để phá vòng tham chiếu, đó thường là dấu hiệu nên xem lại thiết kế: phần lớn quan hệ có thể biểu diễn bằng một chủ sở hữu rõ ràng với `unique_ptr`, phía còn lại chỉ giữ tham chiếu hoặc con trỏ thô.
 
-## Con trỏ thô vẫn có chỗ dùng
+## Chọn loại nào
 
-Smart pointer dùng để biểu diễn quyền sở hữu. Khi một hàm hoặc class chỉ sử dụng đối tượng mà không sở hữu nó, ta vẫn dùng tham chiếu hoặc con trỏ thô:
+Trả lời lần lượt các câu hỏi sau:
+
+```
+  Đối tượng có cần tạo trên heap không?
+    |
+    +-- không --> biến thường / thành viên class (không cần con trỏ)
+    |
+    +-- có --> Nơi này có sở hữu đối tượng không?
+                |
+                +-- không, chỉ dùng --> T& hoặc T*
+                |                       (hoặc weak_ptr nếu đối tượng do shared_ptr quản lý
+                |                        và có thể bị hủy bất cứ lúc nào)
+                |
+                +-- có --> Có đúng một chủ sở hữu không?
+                            |
+                            +-- có    --> unique_ptr
+                            +-- không --> shared_ptr
+```
 
 | Ý định | Kiểu dùng |
 |---|---|
 | Sở hữu duy nhất | `std::unique_ptr<T>` |
-| Sở hữu chung | `std::shared_ptr<T>` |
-| Chỉ sử dụng, đối tượng chắc chắn tồn tại | `T&` hoặc `const T&` |
-| Chỉ sử dụng, đối tượng có thể không có | `T*` (có thể là `nullptr`) |
+| Sở hữu chung, không biết ai dùng cuối | `std::shared_ptr<T>` |
+| Quan sát đối tượng của `shared_ptr`, có thể đã bị hủy | `std::weak_ptr<T>` |
+| Chỉ sử dụng, đối tượng chắc chắn còn sống | `T&` hoặc `const T&` |
+| Chỉ sử dụng, có thể không có đối tượng | `T*` (có thể là `nullptr`) |
 
-Quy ước ngầm: trong code C++ hiện đại, một con trỏ thô không bao giờ sở hữu đối tượng nó trỏ tới, nên không ai được `delete` qua nó. Việc `delete` chỉ do smart pointer thực hiện.
+Smart pointer biểu diễn **quyền sở hữu**, không phải để thay thế mọi con trỏ. Quy ước trong C++ hiện đại: con trỏ thô và tham chiếu không bao giờ sở hữu đối tượng, nên không ai được `delete` qua chúng. Việc `delete` chỉ do smart pointer thực hiện.
+
+:::note Smart pointer trong nhúng
+Smart pointer chỉ quản lý đối tượng trên heap. Nhiều hệ thống nhúng hạn chế cấp phát động lúc đang chạy vì sợ phân mảnh bộ nhớ, và chỉ cấp phát một lần khi khởi động. Khi đó `unique_ptr` vẫn rất hữu ích để giữ các đối tượng tạo lúc khởi động, còn `shared_ptr` nên được dùng hạn chế vì chi phí bộ đếm và vùng nhớ phụ.
+:::
 
 ## Lỗi thường gặp
 
-**Crash `free(): double free detected` do hai smart pointer cùng sở hữu một đối tượng**
+**Double free do hai smart pointer cùng nhận một con trỏ thô: crash với `free(): double free detected`**
 
 ```cpp
 Tracer* raw = new Tracer("sensor");
@@ -297,34 +597,48 @@ std::unique_ptr<Tracer> b(raw);    // compiler không phát hiện được
 // khi ra khỏi phạm vi: b delete, rồi a delete lần nữa
 ```
 
-Mỗi `unique_ptr` đều tin mình là chủ sở hữu duy nhất. Cách phòng tránh là luôn tạo bằng `std::make_unique` / `std::make_shared` thay vì từ con trỏ thô, và chuyển quyền sở hữu bằng `std::move`.
+Mỗi `unique_ptr` đều tin mình là chủ sở hữu duy nhất. Lỗi tương tự xảy ra với hai `shared_ptr` tạo riêng từ cùng một con trỏ thô: chúng có hai bộ đếm riêng. Cách phòng tránh là luôn tạo bằng `std::make_unique` / `std::make_shared`, rồi sao chép `shared_ptr` hoặc `std::move` `unique_ptr` khi cần.
 
 **`Segmentation fault` khi dùng `unique_ptr` sau khi đã chuyển quyền sở hữu**
 
 ```cpp
 auto sensor = std::make_unique<Tracer>("sensor");
-Monitor monitor(std::move(sensor), 80.0f);
+take(std::move(sensor));
 
 sensor->...;    // sensor đã rỗng: truy cập nullptr
 ```
 
-Sau `std::move`, biến nguồn trở thành rỗng. Lỗi này compiler không cảnh báo. Quy tắc: sau khi `std::move` một biến, coi như biến đó không còn dùng được nữa.
+Sau `std::move`, biến nguồn trở thành rỗng, và compiler không cảnh báo. Quy tắc: sau khi `std::move` một biến, coi như biến đó không còn dùng được nữa.
 
-**Rò rỉ bộ nhớ âm thầm do vòng tham chiếu giữa các `shared_ptr`: AddressSanitizer báo `detected memory leaks`**
+**Memory leak âm thầm do vòng tham chiếu giữa các `shared_ptr`: AddressSanitizer báo `detected memory leaks`**
 
-Đã trình bày ở mục "Vòng tham chiếu và weak_ptr". Không có lỗi hay cảnh báo nào lúc biên dịch, và destructor không bao giờ được gọi. Cách sửa là đổi một phía thành `weak_ptr`, hoặc thiết kế lại để có một chủ sở hữu rõ ràng.
+Đã trình bày ở mục "Phá vòng tham chiếu". Không có lỗi hay cảnh báo nào lúc biên dịch, và destructor không bao giờ được gọi. Cách sửa là đổi một phía thành `weak_ptr`, hoặc thiết kế lại để có một chủ sở hữu rõ ràng.
+
+**Giữ con trỏ thô lấy từ `get()` lâu hơn smart pointer: AddressSanitizer báo `heap-use-after-free`**
+
+```cpp
+Tracer* raw = nullptr;
+{
+    auto sensor = std::make_unique<Tracer>("sensor");
+    raw = sensor.get();
+}   // sensor bị hủy -> đối tượng bị delete
+
+// raw giờ là dangling pointer
+```
+
+`get()` chỉ để cho mượn tạm thời, ví dụ truyền vào hàm C cần `FILE*`. Nếu nơi khác cần giữ đối tượng lâu dài, hoặc trao quyền sở hữu bằng `std::move`, hoặc chuyển sang `shared_ptr` / `weak_ptr`.
 
 **Destructor lớp con không được gọi khi `unique_ptr` lớp cha giữ lớp con**
 
 ```cpp
-class Sensor {
+class Transport {
 public:
-    ~Sensor() {}               // không ảo
-    virtual float read() = 0;
+    ~Transport() {}            // không ảo
+    virtual void send(const std::string& data) = 0;
 };
 
-std::unique_ptr<Sensor> s = std::make_unique<TemperatureSensor>();
-// khi s bị hủy: chỉ destructor của Sensor được gọi
+std::unique_ptr<Transport> t = std::make_unique<TcpTransport>();
+// khi t bị hủy: chỉ destructor của Transport được gọi
 ```
 
-Đây chính là lỗi ở Bài C6, và smart pointer không tự khắc phục được, vì `unique_ptr<Sensor>` gọi `delete` qua con trỏ kiểu `Sensor*`. Lớp cha dùng cho đa hình luôn cần `virtual ~Sensor() = default;`.
+`unique_ptr<Transport>` gọi `delete` qua con trỏ kiểu `Transport*`. Nếu destructor của lớp cha không ảo, chỉ destructor lớp cha chạy và phần lớp con, như socket mà `TcpTransport` đang giữ, không được dọn dẹp. Smart pointer không tự khắc phục được lỗi này. Lớp cha dùng cho đa hình luôn cần `virtual ~Transport() = default;`.

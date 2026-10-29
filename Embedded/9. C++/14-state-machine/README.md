@@ -462,9 +462,9 @@ Không có cách nào tốt nhất cho mọi trường hợp. Trong thực tế,
 
 **Mọi thay đổi trạng thái đi qua một hàm duy nhất.** Không bao giờ gán trực tiếp `state_ = ...` ở chỗ khác ngoài `transitionTo()`. Đây là điều kiện để entry/exit action luôn chạy đúng, và là chỗ duy nhất cần đặt log để theo dõi mọi chuyển trạng thái khi debug.
 
-**Không gọi `handle()` từ bên trong hành động.** Nếu `onEnter` của trạng thái A lại gọi `handle()` để chuyển sang B ngay lập tức, ta có các chuyển trạng thái lồng nhau, rất khó theo dõi và dễ sai. Khi cần, hãy đưa sự kiện vào hàng đợi và xử lý sau khi lần chuyển hiện tại kết thúc (Bài C16).
+**Không gọi `handle()` từ bên trong hành động.** Nếu `onEnter` của trạng thái A lại gọi `handle()` để chuyển sang B ngay lập tức, ta có các chuyển trạng thái lồng nhau, rất khó theo dõi và dễ sai. Khi cần, hãy đưa sự kiện vào hàng đợi và xử lý sau khi lần chuyển hiện tại kết thúc.
 
-**Sự kiện từ nhiều luồng phải đi qua hàng đợi.** Nếu timer chạy ở một luồng, driver UART ở luồng khác, cả hai cùng gọi `handle()` thì máy trạng thái bị truy cập đồng thời. Cách an toàn là các luồng chỉ đẩy sự kiện vào hàng đợi, còn máy trạng thái lấy ra xử lý tuần tự trên một luồng duy nhất. Đây chính là mô hình Active Object ở Bài C16.
+**Sự kiện từ nhiều luồng phải đi qua hàng đợi.** Nếu timer chạy ở một luồng, driver UART ở luồng khác, cả hai cùng gọi `handle()` thì máy trạng thái bị truy cập đồng thời. Cách an toàn là các luồng chỉ đẩy sự kiện vào hàng đợi, còn máy trạng thái lấy ra xử lý tuần tự trên một luồng duy nhất. Đây chính là mô hình Active Object ở [Bài C16](../16-active-object/README.md).
 
 ## Khi nào không nên dùng
 

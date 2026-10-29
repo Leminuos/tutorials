@@ -12,7 +12,7 @@ int m = MAX(i++, j);   // i++ bị thực hiện hai lần: m = 6, i = 7
 
 Lựa chọn thứ hai là con trỏ `void*`, như hàm `qsort()` của thư viện chuẩn C. Hàm phải nhận thêm kích thước phần tử và một hàm so sánh tự ép kiểu, và compiler không thể phát hiện nếu ta truyền nhầm kiểu.
 
-Ngoài ra, C không có mảng động sẵn có. Mỗi khi cần một danh sách có thể lớn dần, ta phải tự `malloc()`, `realloc()` và `free()`, với đầy đủ các rủi ro bộ nhớ đã nói ở Bài C4.
+Ngoài ra, C không có mảng động sẵn có. Mỗi khi cần một danh sách có thể lớn dần, ta phải tự `malloc()`, `realloc()` và `free()`, với đầy đủ các rủi ro như memory leak hay double free.
 
 C++ giải quyết bằng **template**, cho phép viết code tổng quát mà vẫn được compiler kiểm tra kiểu đầy đủ. Dựa trên template, thư viện chuẩn (**STL**) cung cấp sẵn các cấu trúc dữ liệu như mảng động, bảng tra cứu, cùng các thuật toán sắp xếp, tìm kiếm.
 
@@ -31,7 +31,7 @@ std::cout << maxValue(3, 7);         // T là int, in ra: 7
 std::cout << maxValue(2.5f, 1.5f);   // T là float, in ra: 2.5
 ```
 
-Dòng `template <typename T>` khai báo `T` là tham số kiểu. Compiler nhìn vào đối số để suy ra `T`, giống cách `auto` suy ra kiểu ở Bài C1. Khác với macro, đối số chỉ được tính một lần và kiểu được kiểm tra chặt chẽ.
+Dòng `template <typename T>` khai báo `T` là tham số kiểu. Compiler nhìn vào đối số để suy ra `T`, giống cách `auto` suy ra kiểu. Khác với macro, đối số chỉ được tính một lần và kiểu được kiểm tra chặt chẽ.
 
 Khi hai đối số khác kiểu, compiler không biết chọn `T` là gì. Ta có thể chỉ định rõ kiểu trong cặp ngoặc nhọn:
 
@@ -123,7 +123,7 @@ Khi truyền vào hàm, `std::array` không bị biến thành con trỏ và m�
 
 ## std::vector: mảng động
 
-`std::vector` là mảng có thể thay đổi kích thước lúc chạy chương trình. Nó tự cấp phát, tự mở rộng và tự giải phóng bộ nhớ theo RAII (Bài C4), nên ta không bao giờ phải gọi `new` hay `delete`.
+`std::vector` là mảng có thể thay đổi kích thước lúc chạy chương trình. Nó tự cấp phát, tự mở rộng và tự giải phóng bộ nhớ theo RAII, nên ta không bao giờ phải gọi `new` hay `delete`.
 
 ```cpp
 #include <vector>
@@ -138,7 +138,7 @@ std::cout << readings.size();  // in ra: 3
 std::cout << readings[0];      // in ra: 25.1
 std::cout << readings.back();  // in ra: 24.8 (phần tử cuối)
 
-for (float r : readings) {     // duyệt bằng range-based for (Bài C2)
+for (float r : readings) {     // duyệt bằng range-based for
     std::cout << r << " ";
 }
 
@@ -280,7 +280,7 @@ if (found != r.end()) {
 }
 ```
 
-Các thuật toán này đã được kiểm chứng kỹ và thường nhanh hơn vòng lặp tự viết. Khi kết hợp với lambda ở Bài C9, ta còn tùy biến được cách so sánh, cách lọc phần tử.
+Các thuật toán này đã được kiểm chứng kỹ và thường nhanh hơn vòng lặp tự viết. Khi kết hợp với lambda, ta còn tùy biến được cách so sánh, cách lọc phần tử.
 
 ## Chọn container nào
 
@@ -368,7 +368,6 @@ for (auto it = readings.begin(); it != readings.end(); ) {
 }
 ```
 
-Bài C9 sẽ giới thiệu cách viết gọn hơn bằng `std::remove_if` kết hợp lambda.
 
 **Cảnh báo `comparison of integer expressions of different signedness`**
 

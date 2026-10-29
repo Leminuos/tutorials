@@ -26,11 +26,11 @@
     "tags": ["cpp"]
   },
 
-  "04-object-lifetime": {
-    "title": "Vòng đời đối tượng và bộ nhớ",
+  "04-raii": {
+    "title": "Quản lý tài nguyên với RAII",
     "date": "30-09-2026",
     "author": "Peizzon",
-    "description": "Đối tượng được tạo và hủy khi nào, và cách gắn việc giải phóng tài nguyên vào vòng đời đó để tránh rò rỉ bộ nhớ.",
+    "description": "Các lỗi như memory leak, double free, deadlock khi tự quản lý tài nguyên và cách RAII loại bỏ chúng.",
     "image": "img/c++.png",
     "tags": ["cpp", "memory"]
   },
@@ -84,7 +84,7 @@
     "title": "Smart pointer",
     "date": "30-09-2026",
     "author": "Peizzon",
-    "description": "Để C++ tự giải phóng đối tượng trên heap, và cách dùng kiểu con trỏ thể hiện rõ ai sở hữu đối tượng.",
+    "description": "Smart pointer là gì, ý nghĩa của unique_ptr, shared_ptr, weak_ptr và cách chọn loại phù hợp.",
     "image": "img/c++.png",
     "tags": ["cpp", "memory"]
   },

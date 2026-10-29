@@ -59,7 +59,7 @@ Hình trên cũng cho thấy một chi tiết quan trọng: khi bộ đệm đ�
 
 ## Cài đặt ring buffer
 
-Ta viết ring buffer dạng template (Bài C8), với kiểu phần tử `T` và kích thước `N` xác định lúc biên dịch. Dữ liệu được lưu trong `std::array` (Bài C8), nên toàn bộ bộ nhớ được cấp phát sẵn, không có cấp phát động:
+Ta viết ring buffer dạng template, với kiểu phần tử `T` và kích thước `N` xác định lúc biên dịch. Dữ liệu được lưu trong `std::array`, nên toàn bộ bộ nhớ được cấp phát sẵn, không có cấp phát động:
 
 ```cpp
 #include <array>
@@ -102,7 +102,7 @@ private:
 };
 ```
 
-Hàm `pop` trả về `bool` báo thành công và ghi kết quả qua tham chiếu, theo mẫu đã học ở Bài C2.
+Hàm `pop` trả về `bool` báo thành công và ghi kết quả qua tham chiếu.
 
 Chạy thử đúng tình huống trong hình:
 
@@ -162,7 +162,7 @@ Chính sách thứ ba, bắt producer chờ, cần đến cơ chế đồng bộ
 
 ## Đưa ring buffer vào môi trường đa luồng
 
-`RingBuffer` ở trên chỉ an toàn khi dùng trong một luồng. Nếu producer gọi `push` đúng lúc consumer gọi `pop`, cả hai cùng đọc và sửa `count_`. Lệnh `count_++` thực chất gồm ba bước đọc, tăng, ghi, và hai luồng có thể xen kẽ nhau, khiến `count_` bị sai. Đây là **race condition** đã học ở Bài C18.
+`RingBuffer` ở trên chỉ an toàn khi dùng trong một luồng. Nếu producer gọi `push` đúng lúc consumer gọi `pop`, cả hai cùng đọc và sửa `count_`. Lệnh `count_++` thực chất gồm ba bước đọc, tăng, ghi, và hai luồng có thể xen kẽ nhau, khiến `count_` bị sai. Lỗi mà kết quả phụ thuộc vào thứ tự chạy xen kẽ của các luồng như vậy gọi là **race condition**.
 
 Ta không sửa `RingBuffer` mà viết một lớp mới bọc bên ngoài, thêm mutex để bảo vệ, và `condition_variable` để luồng có thể chờ:
 
@@ -225,7 +225,7 @@ while (!ring.pop(item)) {
 
 `BlockingQueue` hiện tại có một vấn đề khi chương trình kết thúc: consumer đang ngủ trong `pop()` chờ dữ liệu, mà producer đã dừng nên không bao giờ có dữ liệu nữa. Consumer ngủ mãi, và lệnh `join()` chờ nó kết thúc cũng treo theo.
 
-Ta thêm chức năng đóng hàng đợi. Sau khi đóng, `push` bị từ chối, còn `pop` trả về hết dữ liệu còn lại rồi báo "không còn gì nữa". Để biểu diễn "không có giá trị", `pop` trả về `std::optional<T>` (Bài C11):
+Ta thêm chức năng đóng hàng đợi. Sau khi đóng, `push` bị từ chối, còn `pop` trả về hết dữ liệu còn lại rồi báo "không còn gì nữa". Để biểu diễn "không có giá trị", `pop` trả về `std::optional<T>`:
 
 ```cpp
 #include <optional>
@@ -348,13 +348,13 @@ struct Frame {
 BlockingQueue<Frame, 32> frameQueue;
 ```
 
-Cách 2 thường gọn hơn: luồng đọc UART đảm nhận luôn việc ghép byte thành khung (bằng máy trạng thái ở Bài C14), còn consumer chỉ nhận các khung đã hoàn chỉnh và hợp lệ.
+Cách 2 thường gọn hơn: luồng đọc UART đảm nhận luôn việc ghép byte thành khung (thường bằng một máy trạng thái), còn consumer chỉ nhận các khung đã hoàn chỉnh và hợp lệ.
 
 ## Hàng đợi không khóa cho một producer và một consumer
 
 Mutex an toàn và dễ dùng, nhưng có nhược điểm: một luồng có thể bị chặn khi luồng kia đang giữ khóa. Với các luồng cần phản hồi trong thời gian rất ngắn và ổn định, như luồng lấy mẫu tín hiệu tốc độ cao, ngay cả khoảng chặn ngắn này cũng gây vấn đề.
 
-Khi có đúng một producer và đúng một consumer (**SPSC**: single producer, single consumer), ta có thể bỏ hẳn mutex bằng `std::atomic` (Bài C18):
+Khi có đúng một producer và đúng một consumer (**SPSC**: single producer, single consumer), ta có thể bỏ hẳn mutex bằng `std::atomic`: biến kiểu `std::atomic<T>` được đọc ghi trọn vẹn trong một bước, luồng khác không thể chen vào giữa:
 
 ```cpp
 #include <atomic>

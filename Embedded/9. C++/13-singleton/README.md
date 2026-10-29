@@ -72,7 +72,7 @@ public:
         return logger;
     }
 
-    // cấm sao chép và di chuyển (Bài C7)
+    // cấm sao chép và di chuyển
     Logger(const Logger&) = delete;
     Logger& operator=(const Logger&) = delete;
 
@@ -95,7 +95,7 @@ Biến `static` cục bộ có ba tính chất khiến nó hoàn hảo cho Singl
 - An toàn khi đa luồng. Từ C++11, chuẩn ngôn ngữ đảm bảo nếu nhiều luồng cùng gọi lần đầu, chỉ một luồng khởi tạo, các luồng khác chờ cho tới khi khởi tạo xong.
 - Tự động bị hủy khi chương trình kết thúc bình thường, nên destructor được gọi.
 
-Khi khai báo `delete` cho copy constructor, compiler cũng không tự tạo move constructor (Bài C7), nên `Logger` vừa không sao chép được vừa không di chuyển được.
+Khi khai báo `delete` cho copy constructor, compiler cũng không tự tạo move constructor, nên `Logger` vừa không sao chép được vừa không di chuyển được.
 
 Cách sử dụng:
 
@@ -130,7 +130,7 @@ logger.log("Line 2");
 ```
 
 :::warning Chỉ việc khởi tạo là an toàn đa luồng
-Chuẩn C++ chỉ đảm bảo việc khởi tạo là an toàn khi đa luồng. Các hàm thành viên như `log()` vẫn có thể bị nhiều luồng gọi cùng lúc, nên nếu chúng sửa dữ liệu bên trong (như `count_`, hoặc ghi file), ta vẫn phải tự bảo vệ bằng mutex (Bài C18).
+Chuẩn C++ chỉ đảm bảo việc khởi tạo là an toàn khi đa luồng. Các hàm thành viên như `log()` vẫn có thể bị nhiều luồng gọi cùng lúc, nên nếu chúng sửa dữ liệu bên trong (như `count_`, hoặc ghi file), ta vẫn phải tự bảo vệ bằng `std::mutex` và `std::lock_guard`.
 :::
 
 :::note Destructor không chạy khi chương trình crash
@@ -236,7 +236,7 @@ Cách này giải quyết các nhược điểm ở trên:
 - Khi test, ta truyền vào bản giả lập thay cho bus thật.
 - Board có hai bus I2C thì tạo hai đối tượng `I2cBus` và truyền mỗi cái cho đúng nơi dùng.
 
-Kỹ thuật này gọi là **Dependency Injection**, sẽ được trình bày đầy đủ ở Bài C29 cùng với Factory.
+Kỹ thuật này gọi là **Dependency Injection**: đối tượng không tự đi lấy thứ nó cần, mà được truyền vào từ bên ngoài.
 
 ## Biến thể: điểm truy cập toàn cục có thể thay thế
 

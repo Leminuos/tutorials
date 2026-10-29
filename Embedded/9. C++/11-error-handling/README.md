@@ -9,13 +9,13 @@ if (fd < 0) {
 }
 ```
 
-Cách này có ba nhược điểm. Rất dễ quên kiểm tra giá trị trả về, và compiler không nhắc gì. Giá trị báo lỗi lẫn với giá trị hợp lệ: một hàm đọc nhiệt độ không thể dùng `-1` để báo lỗi, vì -1 độ là nhiệt độ hợp lệ. Và khi lỗi xảy ra ở tầng sâu, mỗi tầng phía trên đều phải kiểm tra rồi chuyển tiếp lên, kèm theo việc dọn dẹp tài nguyên, thường dẫn tới các chuỗi `goto cleanup`.
+Cách này có ba nhược điểm. Rất dễ quên kiểm tra giá trị trả về và compiler không nhắc gì. Giá trị báo lỗi lẫn với giá trị hợp lệ: một hàm đọc nhiệt độ không thể dùng `-1` để báo lỗi vì -1 độ là nhiệt độ hợp lệ. Và khi lỗi xảy ra ở tầng sâu, mỗi tầng phía trên đều phải kiểm tra rồi chuyển tiếp lên, kèm theo việc dọn dẹp tài nguyên, thường dẫn tới các chuỗi `goto cleanup`.
 
-C++ có **exception** để giải quyết các vấn đề này, nhưng exception lại có nhược điểm riêng, khiến nhiều dự án nhúng hạn chế dùng nó. Bài này trình bày cả exception lẫn các cách thay thế, để ta biết chọn cách phù hợp.
+C++ có **exception** để giải quyết các vấn đề này nhưng exception lại có nhược điểm riêng, khiến nhiều dự án nhúng hạn chế dùng nó. Bài này trình bày cả exception lẫn các cách thay thế để ta biết chọn cách phù hợp.
 
 ## Exception
 
-Khi phát hiện lỗi, hàm ném (`throw`) một đối tượng exception. Chương trình lập tức dừng thực hiện các lệnh tiếp theo và nhảy tới khối bắt (`catch`) gần nhất phù hợp với loại exception đó.
+Khi phát hiện lỗi, hàm `throw` một đối tượng exception. Chương trình lập tức dừng thực hiện các lệnh tiếp theo và nhảy tới khối `catch` gần nhất phù hợp với loại exception đó.
 
 ```cpp
 #include <stdexcept>
@@ -37,7 +37,7 @@ try {
 // in ra: Error: Invalid ADC channel
 ```
 
-Khối `try` chứa đoạn code có thể phát sinh lỗi. Khối `catch` xử lý lỗi, với tham số là exception bị ném ra; hàm `what()` trả về thông báo lỗi. Exception luôn được bắt bằng tham chiếu hằng (`const ...&`), vì lý do sẽ nêu ở mục Lỗi thường gặp.
+Khối `try` chứa đoạn code có thể phát sinh lỗi. Khối `catch` xử lý lỗi với tham số là exception bị `throw` ra. Hàm `what()` trả về thông báo lỗi. Exception luôn được bắt bằng tham chiếu hằng (`const ...&`) vì lý do sẽ nêu ở mục Lỗi thường gặp.
 
 ## Các loại exception chuẩn
 
@@ -50,16 +50,16 @@ Thư viện `<stdexcept>` định nghĩa sẵn các loại exception, tất cả
 | `std::out_of_range` | Chỉ số hoặc giá trị nằm ngoài phạm vi |
 | `std::bad_alloc` | `new` không cấp phát được bộ nhớ (trong `<new>`) |
 
-Một số hàm của thư viện chuẩn tự ném exception, và ta cần biết để xử lý:
+Một số hàm của thư viện chuẩn tự throw exception và ta cần biết để xử lý:
 
 ```cpp
 std::vector<int> v = {1, 2, 3};
-v.at(10);                     // ném std::out_of_range (Bài C8)
+v.at(10);                     // throw std::out_of_range
 
-int baud = std::stoi("abc");  // chuyển chuỗi thành số: ném std::invalid_argument
+int baud = std::stoi("abc");  // chuyển chuỗi thành số: throw std::invalid_argument
 ```
 
-Có thể viết nhiều khối `catch` cho nhiều loại exception. Vì các exception kế thừa nhau, khối `catch` bắt lớp cha sẽ bắt được cả lớp con (nhờ đa hình ở Bài C6), nên ta đặt lớp con lên trước:
+Có thể viết nhiều khối `catch` cho nhiều loại exception. Vì các exception kế thừa nhau, khối `catch` bắt lớp cha sẽ bắt được cả lớp con nên ta đặt lớp con lên trước:
 
 ```cpp
 try {
@@ -69,15 +69,24 @@ try {
 } catch (const std::exception& e) {
     // mọi exception chuẩn khác
 } catch (...) {
-    // bất kỳ thứ gì bị ném ra, kể cả không phải exception chuẩn
+    // bất kỳ thứ gì bị throw ra, kể cả không phải exception chuẩn
 }
 ```
 
 ## Exception lan truyền qua nhiều tầng
 
-Nếu hàm ném exception không tự bắt, exception lan lên hàm gọi nó, rồi tiếp tục lên trên cho tới khi gặp khối `catch` phù hợp. Trên đường đi, mọi đối tượng cục bộ ở các tầng đều bị hủy đúng thứ tự, tức là destructor của chúng được gọi. Quá trình này gọi là **stack unwinding**.
+Nếu hàm throw exception không tự bắt, exception lan lên hàm gọi nó, rồi tiếp tục lên trên cho tới khi gặp khối `catch` phù hợp. Trên đường đi, mọi đối tượng cục bộ ở các tầng đều bị hủy đúng thứ tự, tức là destructor của chúng được gọi. Quá trình này gọi là **stack unwinding**.
 
 ```cpp
+class Tracer {
+public:
+    Tracer(const std::string& name) : m_name(name) { std::cout << "Create " << m_name << "\n"; }
+    ~Tracer() { std::cout << "Destroy " << m_name << "\n"; }
+
+private:
+    std::string m_name;
+};
+
 void level2()
 {
     Tracer t("level 2");
@@ -105,7 +114,7 @@ try {
 // Caught: Sensor disconnected
 ```
 
-Đây là lý do RAII (Bài C4) và exception đi đôi với nhau: nếu mọi tài nguyên đều được giữ bởi đối tượng có destructor (smart pointer, class bọc file...), thì dù exception bay qua bao nhiêu tầng, tài nguyên vẫn được giải phóng đúng. Không cần `goto cleanup`.
+Đây là lý do RAII ([Bài C4](../04-raii/README.md)) và exception đi đôi với nhau: nếu mọi tài nguyên đều được giữ bởi đối tượng có destructor (smart pointer, class bọc file...), thì dù exception bay qua bao nhiêu tầng, tài nguyên vẫn được giải phóng đúng. Không cần `goto cleanup`.
 
 Nếu exception lan tới tận `main()` mà không có `catch` nào, chương trình bị dừng ngay:
 
@@ -117,7 +126,7 @@ Aborted (core dumped)
 
 ## noexcept
 
-Từ khóa `noexcept` khai báo rằng hàm không bao giờ ném exception. Nếu hàm vẫn ném, chương trình bị dừng ngay thay vì lan truyền exception.
+Từ khóa `noexcept` khai báo rằng hàm không bao giờ throw exception. Nếu hàm vẫn throw, chương trình bị dừng ngay thay vì lan truyền exception.
 
 ```cpp
 float toVoltage(uint16_t raw) noexcept
@@ -128,25 +137,25 @@ float toVoltage(uint16_t raw) noexcept
 
 `noexcept` giúp người đọc và compiler biết hàm an toàn, đồng thời cho phép compiler tối ưu tốt hơn.
 
-:::warning Destructor không được ném exception
-Destructor mặc định là `noexcept`. Nếu destructor ném exception trong lúc stack unwinding đang xử lý một exception khác, chương trình bị dừng ngay lập tức.
+:::warning Destructor không được throw exception
+Destructor mặc định là `noexcept`. Nếu destructor throw exception trong lúc stack unwinding đang xử lý một exception khác, chương trình bị dừng ngay lập tức.
 :::
 
 ## Vì sao exception bị hạn chế trong nhúng
 
-Exception là cơ chế mạnh, nhưng trong bối cảnh nhúng có nhiều lý do để tránh:
+Exception là cơ chế mạnh nhưng trong bối cảnh nhúng có nhiều lý do để tránh:
 
 - **Tăng kích thước chương trình.** Compiler phải sinh thêm bảng thông tin để thực hiện stack unwinding.
-- **Thời gian xử lý khó đoán trước.** Việc ném và bắt exception chậm hơn nhiều so với trả về mã lỗi, và thời gian phụ thuộc vào số tầng phải đi qua. Với code cần đáp ứng thời gian thực, đây là điểm trừ lớn.
-- **Luồng điều khiển bị ẩn.** Nhìn vào một dòng gọi hàm, ta không biết nó có thể ném exception hay không, nên khó biết chương trình có thể thoát ra ở những điểm nào.
+- **Thời gian xử lý khó đoán trước.** Việc throw và catch exception chậm hơn nhiều so với trả về mã lỗi và thời gian phụ thuộc vào số tầng phải đi qua. Với code cần đáp ứng thời gian thực, đây là điểm trừ lớn.
+- **Luồng điều khiển bị ẩn.** Nhìn vào một dòng gọi hàm, ta không biết nó có thể throw exception hay không nên khó biết chương trình có thể thoát ra ở những điểm nào.
 
-Vì vậy nhiều dự án nhúng biên dịch với tùy chọn `-fno-exceptions`, tắt hẳn exception. Khi đó lệnh `throw` gây lỗi biên dịch, và các hàm thư viện chuẩn lẽ ra ném exception sẽ dừng chương trình thay vào đó.
+Vì vậy nhiều dự án nhúng biên dịch với tùy chọn `-fno-exceptions`, tắt hẳn exception. Khi đó lệnh `throw` gây lỗi biên dịch và các hàm thư viện chuẩn lẽ ra throw exception sẽ dừng chương trình thay vào đó.
 
-Trong chuỗi bài này, ta báo lỗi bằng mã lỗi, `std::optional` hoặc `bool`, như các mục tiếp theo. Exception chỉ xuất hiện khi dùng các hàm thư viện chuẩn có ném exception, và ta bắt nó ngay tại chỗ.
+Trong chuỗi bài này, ta báo lỗi bằng mã lỗi, `std::optional` hoặc `bool` như các mục tiếp theo. Exception chỉ xuất hiện khi dùng các hàm thư viện chuẩn có throw exception và ta catch nó ngay tại chỗ.
 
 ## Mã lỗi với enum class và [[nodiscard]]
 
-Cách thay thế phổ biến nhất là trả về mã lỗi. Kết hợp `enum class` (Bài C7) để có danh sách lỗi rõ ràng, và tham số tham chiếu (Bài C2) để đưa giá trị ra ngoài:
+Cách thay thế phổ biến nhất là trả về mã lỗi. Kết hợp `enum class` để có danh sách lỗi rõ ràng và tham số tham chiếu để đưa giá trị ra ngoài:
 
 ```cpp
 enum class [[nodiscard]] Error {
@@ -181,7 +190,7 @@ if (readTemperature(t) != Error::None) {    // đúng: có kiểm tra
 
 `[[nodiscard]]` cũng có thể đặt trên từng hàm riêng lẻ, ví dụ hàm trả về `bool` báo thành công hay thất bại: `[[nodiscard]] bool open();`.
 
-Để hiện thông báo lỗi dễ đọc, ta viết thêm một hàm chuyển mã lỗi thành chuỗi. Nhờ cảnh báo thiếu trường hợp của `switch` (Bài C7), khi thêm mã lỗi mới, compiler nhắc ta cập nhật hàm này:
+Để hiện thông báo lỗi dễ đọc, ta viết thêm một hàm chuyển mã lỗi thành chuỗi. Nhờ cảnh báo thiếu trường hợp của `switch` với `enum class`, khi thêm mã lỗi mới, compiler nhắc ta cập nhật hàm này:
 
 ```cpp
 const char* toString(Error e)
@@ -196,11 +205,11 @@ const char* toString(Error e)
 }
 ```
 
-## std::optional: có giá trị hoặc không
+## std::optional
 
-Nhiều hàm chỉ cần báo "có kết quả" hoặc "không có kết quả", không cần biết lý do chi tiết. `std::optional<T>` (C++17, trong `<optional>`) biểu diễn đúng điều này: nó hoặc chứa một giá trị kiểu `T`, hoặc rỗng.
+Nhiều hàm chỉ cần báo có kết quả hoặc không có kết quả, không cần biết lý do chi tiết. `std::optional<T>` (C++17, trong `<optional>`) biểu diễn đúng điều này: nó hoặc chứa một giá trị kiểu `T` hoặc rỗng.
 
-Ví dụ phân tích dòng dữ liệu của cảm biến DS18B20 ở Bài C6:
+Ví dụ phân tích dòng dữ liệu của cảm biến nhiệt độ DS18B20. Driver Linux đưa giá trị đo ra file `w1_slave`, dòng thứ hai kết thúc bằng `t=23125`, nghĩa là 23,125 °C. Nếu dòng không có `t=`, hàm trả về rỗng:
 
 ```cpp
 #include <optional>
@@ -217,7 +226,7 @@ std::optional<float> parseTemperature(const std::string& line)
 }
 ```
 
-Nơi gọi kiểm tra như con trỏ, và lấy giá trị bằng `*`:
+Nơi gọi kiểm tra như con trỏ và lấy giá trị bằng `*`:
 
 ```cpp
 auto t = parseTemperature("4b 01 4b 46 7f ff 05 10 e1 t=23125");
@@ -230,7 +239,7 @@ std::cout << bad.has_value();           // in ra: 0
 std::cout << bad.value_or(-999.0f);     // in ra: -999 (giá trị thay thế khi rỗng)
 ```
 
-So với cách trả về `bool` kèm tham số đầu ra, `optional` gọn hơn: kết quả và trạng thái nằm trong cùng một giá trị trả về, nên không thể dùng nhầm giá trị khi hàm thất bại mà không kiểm tra.
+So với cách trả về `bool` kèm tham số đầu ra, `optional` gọn hơn: kết quả và trạng thái nằm trong cùng một giá trị trả về nên không thể dùng nhầm giá trị khi hàm thất bại mà không kiểm tra.
 
 ## Kết hợp giá trị và mã lỗi
 
@@ -330,7 +339,7 @@ try {
 }
 ```
 
-Đây là object slicing ở Bài C5. Exception bị sao chép vào biến kiểu lớp cha, mất phần của lớp con. Luôn bắt bằng `const std::exception& e`.
+Đây là object slicing: exception bị sao chép vào biến kiểu lớp cha, mất phần của lớp con. Luôn bắt bằng `const std::exception& e`.
 
 **Dùng giá trị của `optional` rỗng: ném `std::bad_optional_access` hoặc hành vi không xác định**
 

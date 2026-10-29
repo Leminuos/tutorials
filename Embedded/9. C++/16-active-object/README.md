@@ -1,8 +1,8 @@
-Người viết firmware bằng C thường tổ chức chương trình theo một trong hai cách. Cách thứ nhất là vòng lặp chính `while (1)` lần lượt kiểm tra mọi thứ: có byte UART mới không, nút có được bấm không, đã đến giờ đọc cảm biến chưa. Cách thứ hai là dùng RTOS, mỗi task một vòng lặp riêng, và các task trao đổi với nhau qua hàng đợi thông điệp. Cách thứ hai thực chất chính là **Active Object**: mỗi module có luồng riêng và hàng đợi riêng, chỉ giao tiếp với bên ngoài bằng thông điệp. Bài này cài đặt pattern đó bằng C++, dựa trên `BlockingQueue` của Bài 15 và máy trạng thái của Bài 14.
+Người viết firmware bằng C thường tổ chức chương trình theo một trong hai cách. Cách thứ nhất là vòng lặp chính `while (1)` lần lượt kiểm tra mọi thứ: có byte UART mới không, nút có được bấm không, đã đến giờ đọc cảm biến chưa. Cách thứ hai là dùng RTOS, mỗi task một vòng lặp riêng, và các task trao đổi với nhau qua hàng đợi thông điệp. Cách thứ hai thực chất chính là **Active Object**: mỗi module có luồng riêng và hàng đợi riêng, chỉ giao tiếp với bên ngoài bằng thông điệp. Bài này cài đặt pattern đó bằng C++, dựa trên `BlockingQueue` của [Bài C15](../15-producer-consumer/README.md) và máy trạng thái của [Bài C14](../14-state-machine/README.md).
 
 ## Vấn đề thực tế
 
-Ở Bài 14, ta đã viết máy trạng thái `Connection` quản lý kết nối UART. Trong ứng dụng thật, sự kiện đến với nó từ nhiều luồng khác nhau:
+Ở [Bài C14](../14-state-machine/README.md), ta đã viết máy trạng thái `Connection` quản lý kết nối UART. Trong ứng dụng thật, sự kiện đến với nó từ nhiều luồng khác nhau:
 
 - Luồng giao diện gửi `Connect` khi người dùng bấm nút.
 - Luồng đọc UART gửi `Success` hoặc `Failure` khi nhận được phản hồi.
@@ -55,7 +55,7 @@ Nhờ vậy, mọi vấn đề ở phần trên đều được giải quyết. 
 
 ## Cài đặt vòng lặp sự kiện
 
-Ta viết một lớp `EventLoop` dùng chung, gói hàng đợi và luồng xử lý lại với nhau. Lớp này nhận vào một hàm xử lý, và gọi hàm đó cho từng sự kiện lấy ra từ hàng đợi:
+Ta viết một lớp `EventLoop` dùng chung, gói hàng đợi và luồng xử lý lại với nhau. Hàng đợi là `BlockingQueue` ở [Bài C15](../15-producer-consumer/README.md): `push()` đặt phần tử vào, `pop()` chờ tới khi có phần tử và trả về `std::optional<T>`, còn `close()` đóng hàng đợi để `pop()` trả về rỗng sau khi lấy hết phần tử còn lại. Lớp này nhận vào một hàm xử lý, và gọi hàm đó cho từng sự kiện lấy ra từ hàng đợi:
 
 ```cpp
 #include <functional>
@@ -99,18 +99,18 @@ private:
     }
 
     Handler                  handler_;
-    BlockingQueue<EventT, N> queue_;   // từ Bài C15
+    BlockingQueue<EventT, N> queue_;
     std::thread              thread_;
 };
 ```
 
-Hàm `run()` chính là vòng lặp sự kiện. Nó ngủ khi hàng đợi rỗng, thức dậy khi có sự kiện, xử lý xong thì quay lại chờ. Khi `stop()` được gọi, hàng đợi bị đóng; nhờ cách cài đặt `pop()` ở Bài C15, vòng lặp vẫn xử lý hết các sự kiện còn tồn đọng rồi mới kết thúc.
+Hàm `run()` chính là vòng lặp sự kiện. Nó ngủ khi hàng đợi rỗng, thức dậy khi có sự kiện, xử lý xong thì quay lại chờ. Khi `stop()` được gọi, hàng đợi bị đóng; nhờ cách `pop()` hoạt động như mô tả ở trên, vòng lặp vẫn xử lý hết các sự kiện còn tồn đọng rồi mới kết thúc.
 
-`EventLoop` bị cấm sao chép (Bài C7) vì nó sở hữu một luồng. Gọi `stop()` nhiều lần vẫn an toàn: lần thứ hai, hàng đợi đã đóng sẵn và luồng không còn `joinable`.
+`EventLoop` bị cấm sao chép vì nó sở hữu một luồng. Gọi `stop()` nhiều lần vẫn an toàn: lần thứ hai, hàng đợi đã đóng sẵn và luồng không còn `joinable`.
 
 ## Biến máy trạng thái thành Active Object
 
-Giờ ta bọc máy trạng thái của Bài C14 thành một Active Object. Phần logic `handle()` và `transitionTo()` giữ nguyên, chỉ thay đổi cách sự kiện đi vào:
+Giờ ta bọc máy trạng thái của [Bài C14](../14-state-machine/README.md) thành một Active Object. Phần logic `handle()` và `transitionTo()` giữ nguyên, chỉ thay đổi cách sự kiện đi vào:
 
 ```cpp
 class ConnectionManager {
@@ -133,7 +133,7 @@ public:
     void onTimeout()          { loop_.post(Event::Timeout); }
 
 private:
-    // máy trạng thái từ Bài C14: chỉ chạy trên luồng của loop_, không cần mutex
+    // máy trạng thái: chỉ chạy trên luồng của loop_, không cần mutex
     void handle(Event e);
     void transitionTo(State next);
     void onEnter(State s);
@@ -176,7 +176,7 @@ Connecting -> Connected
   Start reading data
 ```
 
-Dòng của `main` xuất hiện trước, vì ba lời gọi chỉ đặt sự kiện vào hàng đợi rồi trả về ngay. Các sự kiện được xử lý sau đó, trên luồng riêng của `ConnectionManager`, đúng thứ tự đã gửi. Kết quả xử lý giống hệt phiên bản ở Bài C14, nhưng giờ `connect()`, `onResponse()`, `onTimeout()` gọi được từ bất kỳ luồng nào mà không cần một mutex nào trong máy trạng thái.
+Dòng của `main` xuất hiện trước, vì ba lời gọi chỉ đặt sự kiện vào hàng đợi rồi trả về ngay. Các sự kiện được xử lý sau đó, trên luồng riêng của `ConnectionManager`, đúng thứ tự đã gửi. Kết quả xử lý giống hệt khi gọi trực tiếp máy trạng thái, nhưng giờ `connect()`, `onResponse()`, `onTimeout()` gọi được từ bất kỳ luồng nào mà không cần một mutex nào trong máy trạng thái.
 
 Các nguồn sự kiện bên ngoài chỉ cần gọi đúng hàm công khai. Ví dụ một luồng timer đơn giản:
 
@@ -294,7 +294,7 @@ So sánh hai cách:
 
 Vì hàm công khai trả về ngay, bên gọi không nhận được kết quả trực tiếp. Có hai cách để lấy kết quả.
 
-**Cách thứ nhất: thông báo ngược lại bằng Observer** (Bài C12). Active Object phát thông báo khi có kết quả, ví dụ `ConnectionManager` thông báo mỗi khi trạng thái thay đổi.
+**Cách thứ nhất: thông báo ngược lại bằng Observer**. Active Object phát thông báo khi có kết quả, ví dụ `ConnectionManager` thông báo mỗi khi trạng thái thay đổi.
 
 :::note Callback chạy trên luồng của Active Object
 Callback của Observer chạy trên luồng của Active Object, không phải luồng của bên nhận. Nếu bên nhận cũng là một Active Object, callback chỉ nên làm một việc là đặt sự kiện vào hàng đợi của chính bên nhận.
@@ -326,7 +326,7 @@ std::future<float> Heater::currentTarget()
 float t = heater.currentTarget().get();   // chờ tới khi luồng Heater trả lời
 ```
 
-`std::promise` chỉ di chuyển được mà không sao chép được, trong khi `std::function` yêu cầu lambda sao chép được, nên ta bọc `promise` trong `std::shared_ptr` (Bài C10).
+`std::promise` chỉ di chuyển được mà không sao chép được, trong khi `std::function` yêu cầu lambda sao chép được, nên ta bọc `promise` trong `std::shared_ptr`.
 
 Cách chờ đồng bộ này phải dùng hết sức hạn chế. Nếu chính luồng của `Heater` gọi `currentTarget().get()`, nó sẽ chờ một sự kiện mà chỉ chính nó mới xử lý được, và treo vĩnh viễn. Hai Active Object chờ đồng bộ lẫn nhau cũng gây deadlock tương tự. Nguyên tắc chung là ưu tiên giao tiếp bất đồng bộ cả hai chiều.
 
@@ -369,7 +369,7 @@ void handle(Event e)
 }
 ```
 
-Trong 2 giây này, mọi sự kiện khác, kể cả lệnh `Disconnect` của người dùng, đều nằm chờ trong hàng đợi. Đây chính là nguyên tắc "hàm xử lý sự kiện không được chờ" của Bài C14: việc chờ phải được biến thành sự kiện, như một timer gửi `Timeout` sau 2 giây.
+Trong 2 giây này, mọi sự kiện khác, kể cả lệnh `Disconnect` của người dùng, đều nằm chờ trong hàng đợi. Đây chính là nguyên tắc "hàm xử lý sự kiện không được chờ" của máy trạng thái: việc chờ phải được biến thành sự kiện, như một timer gửi `Timeout` sau 2 giây.
 
 **Exception `Resource deadlock avoided` do gọi `stop()` từ bên trong hàm xử lý**
 
@@ -401,4 +401,4 @@ Khi đối tượng bị hủy, `state_` bị hủy trước trong khi luồng c
 
 ## Ứng dụng trong nhúng
 
-Active Object là kiến trúc phổ biến cho phần mềm nhúng hướng sự kiện, từ firmware chạy RTOS tới ứng dụng trên Linux nhúng. Máy trạng thái quản lý kết nối, bộ điều khiển chính của thiết bị, bộ ghi nhật ký, module giao tiếp mạng đều có thể là Active Object, nhận sự kiện từ driver, timer và giao diện mà không cần quan tâm sự kiện đến từ luồng nào. Kết hợp với máy trạng thái (Bài C14) và hàng đợi (Bài C15), đây là bộ khung vững chắc cho phần lớn ứng dụng điều khiển và giám sát.
+Active Object là kiến trúc phổ biến cho phần mềm nhúng hướng sự kiện, từ firmware chạy RTOS tới ứng dụng trên Linux nhúng. Máy trạng thái quản lý kết nối, bộ điều khiển chính của thiết bị, bộ ghi nhật ký, module giao tiếp mạng đều có thể là Active Object, nhận sự kiện từ driver, timer và giao diện mà không cần quan tâm sự kiện đến từ luồng nào. Kết hợp với máy trạng thái và hàng đợi, đây là bộ khung vững chắc cho phần lớn ứng dụng điều khiển và giám sát.

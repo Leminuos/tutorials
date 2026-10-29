@@ -1,4 +1,4 @@
-Ở cuối Bài C5, ta gặp một hạn chế: khi gọi `print()` qua tham chiếu `Sensor&` trỏ tới một `TemperatureSensor`, compiler vẫn gọi `Sensor::print()` vì nó chỉ nhìn vào kiểu của tham chiếu, không nhìn vào đối tượng thật.
+Ở cuối [Bài C5](../05-inheritance/README.md), ta gặp một hạn chế: khi gọi `print()` qua tham chiếu `Sensor&` trỏ tới một `TemperatureSensor`, compiler vẫn gọi `Sensor::print()` vì nó chỉ nhìn vào kiểu của tham chiếu, không nhìn vào đối tượng thật.
 
 Người làm nhúng bằng C thường giải quyết vấn đề này bằng con trỏ hàm đặt trong struct. Mỗi loại thiết bị gán các con trỏ hàm tới cài đặt riêng của mình và code dùng chung chỉ việc gọi qua con trỏ. Nhân Linux dùng đúng kỹ thuật này cho driver, với các struct như `file_operations`:
 
@@ -63,9 +63,9 @@ r.print();
 //   Overheat threshold: 85
 ```
 
-So với Bài C5, ta chỉ thêm `virtual` ở lớp cha và `override` ở lớp con nhưng giờ `r.print()` đã gọi đúng `TemperatureSensor::print()`.
+Ta chỉ thêm `virtual` ở lớp cha và `override` ở lớp con nhưng giờ `r.print()` đã gọi đúng `TemperatureSensor::print()`.
 
-Việc định nghĩa lại một hàm ảo ở lớp con gọi là **ghi đè** (override). Còn việc định nghĩa lại hàm không ảo như ở Bài C5 chỉ là **che khuất** (hide): hàm lớp con chỉ được gọi khi gọi trực tiếp qua đối tượng hoặc con trỏ lớp con.
+Việc định nghĩa lại một hàm ảo ở lớp con gọi là **ghi đè** (override). Còn việc định nghĩa lại hàm không ảo chỉ là **che khuất** (hide): hàm lớp con chỉ được gọi khi gọi trực tiếp qua đối tượng hoặc con trỏ lớp con.
 
 ## Đa hình
 
@@ -170,9 +170,14 @@ Chi phí của hàm ảo là thêm một con trỏ cho mỗi đối tượng và
 
 Khi đối tượng lớp con được tạo bằng `new` và bị `delete` qua con trỏ lớp cha, destructor nào được gọi? Nếu destructor của lớp cha không ảo, chỉ destructor lớp cha được gọi và phần lớp con không bao giờ được dọn dẹp.
 
-Dùng lại class `Tracer` từ Bài C4:
+Để thấy destructor nào được gọi, lớp con có một thành viên `Filter` in ra thông báo khi bị hủy:
 
 ```cpp
+class Filter {
+public:
+    ~Filter() { std::cout << "Destroy filter\n"; }
+};
+
 class Sensor {
 public:
     ~Sensor() { std::cout << "Destructor Sensor\n"; }   // không ảo
@@ -181,14 +186,13 @@ public:
 
 class TemperatureSensor : public Sensor {
 public:
-    TemperatureSensor() : m_filter("filter") {}
     ~TemperatureSensor() { std::cout << "Destructor TemperatureSensor\n"; }
 
 private:
-    Tracer m_filter;
+    Filter m_filter;
 };
 
-Sensor* s = new TemperatureSensor();   // in ra: Create filter
+Sensor* s = new TemperatureSensor();
 delete s;
 // cảnh báo: deleting object of polymorphic class type 'Sensor'
 //           which has non-virtual destructor might cause undefined behavior
@@ -366,7 +370,7 @@ public:
     }
 
 private:
-    TemperatureSource& m_source;   // thành viên tham chiếu: bắt buộc khởi tạo trong danh sách (Bài C3)
+    TemperatureSource& m_source;   // thành viên tham chiếu: bắt buộc khởi tạo trong danh sách
     float m_threshold;
     bool m_checked = false;
 };
@@ -391,7 +395,7 @@ int main()
 // Temperature: 82  -> OVERHEAT
 ```
 
-Lớp `Monitor` được viết và thử hoàn toàn trên máy tính. Khi lên board, ta chỉ đổi dòng tạo `source`. Bài C14 sẽ hướng dẫn dùng `#ifdef` để việc chọn này diễn ra tự động theo nơi biên dịch. Cách tổ chức này áp dụng được cho mọi ngoại vi như GPIO, I2C, SPI.
+Lớp `Monitor` được viết và thử hoàn toàn trên máy tính. Khi lên board, ta chỉ đổi dòng tạo `source`, hoặc dùng `#ifdef` để việc chọn này diễn ra tự động theo nơi biên dịch. Cách tổ chức này áp dụng được cho mọi ngoại vi như GPIO, I2C, SPI.
 
 ## Lỗi thường gặp
 
@@ -453,13 +457,13 @@ public:
 TemperatureSensor t;   // in ra: Sensor::init
 ```
 
-Theo thứ tự tạo ở Bài C5, khi constructor của `Sensor` chạy, phần `TemperatureSensor` chưa được tạo, nên C++ không cho gọi xuống hàm của lớp con. Destructor cũng tương tự theo chiều ngược lại. Nếu `init()` là hàm thuần ảo, chương trình thậm chí crash với thông báo `pure virtual method called`. Cách sửa là không gọi hàm ảo trong constructor/destructor; nếu cần bước khởi tạo riêng cho từng loại, hãy làm nó trong constructor của chính lớp con.
+Lớp cha được tạo trước lớp con, nên khi constructor của `Sensor` chạy, phần `TemperatureSensor` chưa được tạo, nên C++ không cho gọi xuống hàm của lớp con. Destructor cũng tương tự theo chiều ngược lại. Nếu `init()` là hàm thuần ảo, chương trình thậm chí crash với thông báo `pure virtual method called`. Cách sửa là không gọi hàm ảo trong constructor/destructor; nếu cần bước khởi tạo riêng cho từng loại, hãy làm nó trong constructor của chính lớp con.
 
 **Truyền đối tượng theo giá trị làm mất tính đa hình**
 
 ```cpp
 void printSensor(Sensor s) { s.print(); }   // với Sensor trừu tượng: lỗi biên dịch
-                                            // với Sensor thường: object slicing (Bài C5)
+                                            // với Sensor thường: object slicing
 ```
 
 Đa hình chỉ hoạt động qua con trỏ hoặc tham chiếu. Cách sửa là dùng `const Sensor&` hoặc `Sensor*`.

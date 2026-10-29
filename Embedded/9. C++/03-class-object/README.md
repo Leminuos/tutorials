@@ -97,7 +97,7 @@ class B {
 };
 ```
 
-Theo quy ước chung, ta dùng `struct` cho dữ liệu đơn giản không cần bảo vệ (như khung dữ liệu `Frame` ở Bài C2), và dùng `class` khi có dữ liệu cần đóng gói cùng các hàm xử lý.
+Theo quy ước chung, ta dùng `struct` cho dữ liệu đơn giản không cần bảo vệ như một khung dữ liệu chỉ gồm vài trường số và dùng `class` khi có dữ liệu cần đóng gói cùng các hàm xử lý.
 
 ## Constructor
 
@@ -241,7 +241,7 @@ Nhờ quy ước đặt tiền tố `m_` cho biến thành viên, ta hiếm khi 
 
 ## Hàm thành viên const
 
-Ở Bài 2, ta đã thấy tham chiếu hằng `const&` là cách truyền đối tượng lớn hiệu quả. Nhưng khi truyền đối tượng class theo `const&`, ta gặp vấn đề:
+Tham chiếu hằng `const&` là cách truyền đối tượng lớn hiệu quả. Nhưng khi truyền đối tượng class theo `const&`, ta gặp vấn đề:
 
 ```cpp
 void printSensor(const TemperatureSensor& s)
@@ -290,7 +290,7 @@ private:
 };
 ```
 ::: explain [Giải thích chi tiết]
-- `threshold = 70.0f`: tham số mặc định chỉ ghi ở file `.h`, như quy tắc ở Bài C1.
+- `threshold = 70.0f`: tham số mặc định chỉ ghi ở file `.h`.
 - `bool isOverheat() const`: từ khóa `const` của hàm thành viên phải ghi ở cả hai file.
 :::
 
@@ -321,7 +321,7 @@ bool TemperatureSensor::isOverheat() const
 }
 ```
 ::: explain [Giải thích chi tiết]
-- `TemperatureSensor::`: khi cài đặt hàm bên ngoài class, tên hàm phải có tiền tố này để compiler biết hàm thuộc class nào. Toán tử `::` chính là toán tử ta đã dùng với namespace ở Bài C1.
+- `TemperatureSensor::`: khi cài đặt hàm bên ngoài class, tên hàm phải có tiền tố này để compiler biết hàm thuộc class nào. Đây cũng là toán tử `::` dùng với namespace.
 - `: m_channel(channel), m_threshold(threshold)`: danh sách khởi tạo chỉ ghi ở file `.cpp`.
 :::
 
