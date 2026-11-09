@@ -540,8 +540,7 @@ Giống message queue, tên bắt đầu bằng `/`. `shm_open()` trả về fil
 **Bước 2 - Ánh xạ vào address space (mmap):**
 
 ```c
-void *ptr = mmap(NULL, 4096, PROT_READ | PROT_WRITE,
-                 MAP_SHARED, shm_fd, 0);
+void *ptr = mmap(NULL, 4096, PROT_READ | PROT_WRITE, MAP_SHARED, shm_fd, 0);
 ```
 
 Đây mới là bước quan trọng. `mmap()` yêu cầu kernel chỉnh page table để vùng nhớ vật lý được ánh xạ vào address space của process hiện tại. Sau bước này, `ptr` trỏ thẳng vào vùng nhớ chung - đọc/ghi qua `ptr` chính là đọc/ghi vào shared memory.
@@ -1072,8 +1071,7 @@ static int my_mmap(struct file *f, struct vm_area_struct *vma) {
 ```c
 int fd = open("/dev/mysensor", O_RDWR);
 
-uint8_t *frame = mmap(NULL, FRAME_SIZE, PROT_READ,
-                      MAP_SHARED, fd, 0);
+uint8_t *frame = mmap(NULL, FRAME_SIZE, PROT_READ, MAP_SHARED, fd, 0);
 
 process_frame(frame, FRAME_SIZE);  // đọc trực tiếp - không có copy nào
 

@@ -91,6 +91,8 @@ systemctl edit nginx.service
 # -> tạo /etc/systemd/system/nginx.service.d/override.conf
 ```
 
+File `override.conf` này gọi là drop-in, xem chi tiết ở mục 3.8.
+
 ### 3.2. Cấu trúc unit file
 
 Cấu trúc một unit file gồm các section, mỗi section phục vụ một vai trò rõ ràng:
@@ -278,6 +280,7 @@ WantedBy=local-fs.target
 Ý nghĩa từng trường trong section mount:
 
 | Trường | Ý nghĩa |
+| --- | --- |
 | `What=` | Thiết bị hoặc nguồn cần mount. Ví dụ: `/dev/sdb1`, `UUID=xxxx-xxxx`, `192.168.1.10:/share` |
 | `Where=` | Mount point, phải khớp tên file unit |
 | `Type=` | Loại filesystem. Ví dụ: `ext4`, `nfs`, `tmpfs`, `vfat`... |
@@ -454,6 +457,648 @@ After=network.target
 Dòng 1: đảm bảo `network.target` phải được kéo vào
 
 Dòng 2: đảm bảo `network.target` chạy xong trước
+
+### 3.6. Tự động restart khi process chết
+
+Mọi service do systemd start đều là process con của systemd (PID 1) và nằm trong cgroup riêng. Khi main process thoát hoặc bị kill, systemd nhận `SIGCHLD`, đọc exit code/signal rồi dựa vào `Restart=` để quyết định có start lại hay không.
+
+```
+ main process thoát / bị kill
+          |
+          v
+ systemd nhận SIGCHLD, đọc exit code / signal
+          |
+          v
+ Restart= cho phép? ---- không ----> inactive / failed
+          | có
+          v
+ chờ RestartSec
+          |
+          v
+ vượt StartLimitBurst? -- có ----> failed (ngừng restart)
+          | không
+          v
+ start lại service
+```
+
+:::tip Stop bằng tay không bị restart
+`systemctl stop` là hành động có chủ đích nên systemd không restart service dù `Restart=always`.
+:::
+
+**Các giá trị của `Restart=`** (`x` = có restart):
+
+| `Restart=` | Exit 0 | Exit khác 0 | Bị kill bởi signal | Watchdog timeout |
+| --- | --- | --- | --- | --- |
+| `no` (mặc định) | | | | |
+| `always` | x | x | x | x |
+| `on-success` | x | | | |
+| `on-failure` | | x | x | x |
+| `on-abnormal` | | | x | x |
+| `on-abort` | | | x | |
+| `on-watchdog` | | | | x |
+
+Thực tế hay dùng nhất là `on-failure` (thoát lỗi thì chạy lại, thoát bình thường thì thôi) và `always` (daemon phải luôn chạy).
+
+**Các option đi kèm**
+
+`Restart=` chỉ quyết định có restart hay không. Các option còn lại trả lời những câu hỏi tiếp theo:
+
+```
+ crash --> (1) chờ bao lâu? --> restart --> crash --> ... (2) tối đa mấy lần?
+                                                                 |
+                                                           vượt giới hạn
+                                                                 v
+                                                       (3) bỏ cuộc rồi làm gì?
+
+ (4) Trường hợp nào thì không restart?
+```
+
+**(1) `RestartSec=` - chờ bao lâu trước khi restart**
+
+```ini
+[Service]
+Restart=on-failure
+RestartSec=5
+```
+
+App crash -> systemd chờ 5s rồi mới start lại. Mặc định chỉ chờ 100ms. Nếu app crash vì thứ nó cần chưa sẵn sàng (network chưa lên, thiết bị chưa sẵn sàng...) thì restart ngay lập tức sẽ crash tiếp nên thường đặt vài giây.
+
+**(2) `StartLimitIntervalSec=` + `StartLimitBurst=` - tối đa mấy lần**
+
+Hai option này đi cùng nhau, đọc là: *"trong `StartLimitIntervalSec` giây, chỉ được start tối đa `StartLimitBurst` lần"*.
+
+```ini
+[Unit]
+StartLimitIntervalSec=60
+StartLimitBurst=3
+```
+
+Nghĩa là trong 60s chỉ được start tối đa 3 lần. Lần thứ 4 bị từ chối, service chuyển sang `failed` và systemd không restart nữa. Mặc định là 5 lần / 10s.
+
+Mục đích: nếu app hỏng nặng (ví dụ file config sai) thì restart bao nhiêu lần cũng crash. Không nên để nó lặp vô hạn, vừa tốn CPU vừa làm đầy log.
+
+Lưu ý: hai option này nằm trong `[Unit]`, không phải `[Service]`.
+
+**(3) Bỏ cuộc rồi làm gì? - `StartLimitAction=` và `OnFailure=`**
+
+`StartLimitAction=` - tác động lên **cả hệ thống** khi vượt giới hạn ở (2). Mặc định là `none` (không làm gì). Hay dùng nhất là `reboot`:
+
+```ini
+[Unit]
+StartLimitIntervalSec=60
+StartLimitBurst=3
+StartLimitAction=reboot
+```
+
+Trên board embedded, nếu app chính restart 3 lần trong 60s vẫn chết thì reboot cả board, hy vọng trạng thái sạch sau khi khởi động lại sẽ hết lỗi.
+
+`OnFailure=` - start **một unit khác** khi service chuyển sang `failed`. Ví dụ dùng để gửi cảnh báo:
+
+```ini
+# /etc/systemd/system/myapp.service
+[Unit]
+OnFailure=alert.service
+```
+
+```ini
+# /etc/systemd/system/alert.service
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'echo "myapp failed" >> /var/log/alert.log'
+```
+
+Khi `myapp` bị `failed` (ví dụ vượt giới hạn ở (2)), systemd tự start `alert.service`. Unit này không chạy ở mỗi lần auto restart, chỉ chạy khi systemd đã bỏ cuộc.
+
+**(4) `RestartPreventExitStatus=` - ngoại lệ không restart**
+
+App có thể tự quy ước exit code. Ví dụ `exit(2)` nghĩa là "config sai" - trường hợp này restart cũng vô ích.
+
+```ini
+[Service]
+Restart=on-failure
+RestartPreventExitStatus=2
+```
+
+- App `exit(1)` -> restart như bình thường.
+- App `exit(2)` -> không restart, chuyển thẳng sang `failed`.
+
+**Tóm tắt:**
+
+| Option | Trả lời câu hỏi | Ví dụ |
+| --- | --- | --- |
+| `RestartSec=` | Chờ bao lâu rồi restart? | `5` -> chờ 5s |
+| `StartLimitIntervalSec=` + `StartLimitBurst=` | Tối đa mấy lần? | `60` + `3` -> 3 lần / 60s |
+| `StartLimitAction=` | Bỏ cuộc thì hệ thống làm gì? | `reboot` -> reboot máy |
+| `OnFailure=` | Bỏ cuộc thì chạy unit nào? | `alert.service` |
+| `RestartPreventExitStatus=` | Exit code nào không restart? | `2` -> lỗi config |
+
+**Ví dụ:** một service cứ 3 giây lại crash.
+
+```ini
+# /etc/systemd/system/crashy.service
+[Unit]
+Description=Crash demo
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+ExecStart=/bin/sh -c 'echo "Started"; sleep 3; exit 1'
+Restart=on-failure
+RestartSec=2
+```
+
+Diễn biến theo thời gian:
+
+```
+t=0s   start lần 1  -> t=3s  exit 1 -> chờ 2s
+t=5s   start lần 2  -> t=8s  exit 1 -> chờ 2s
+t=10s  start lần 3  -> t=13s exit 1 -> chờ 2s
+t=15s  start lần 4  -> vượt 3 lần / 60s -> failed, ngừng restart
+```
+
+Log khi xem bằng `journalctl -u crashy`:
+
+```
+crashy.service: Main process exited, code=exited, status=1/FAILURE
+crashy.service: Scheduled restart job, restart counter is at 1.
+...
+crashy.service: Start request repeated too quickly.
+crashy.service: Failed with result 'exit-code'.
+```
+
+Muốn chạy lại sau khi đã `failed` vì vượt giới hạn:
+
+```bash
+systemctl reset-failed crashy.service
+systemctl start crashy.service
+```
+
+:::warning Bẫy hay gặp
+Với giá trị mặc định (5 lần / 10s), nếu đặt `RestartSec=5s` thì trong 10s chỉ start được tối đa 2-3 lần -> **không bao giờ** chạm giới hạn, service sẽ restart vô hạn. Muốn giới hạn có tác dụng thì phải tăng `StartLimitIntervalSec` sao cho lớn hơn `StartLimitBurst x RestartSec`.
+:::
+
+`Restart=` chỉ phát hiện được process **chết**. Nếu process vẫn sống nhưng bị treo (deadlock, vòng lặp vô hạn), systemd không biết gì cả -> cần đến watchdog ở mục tiếp theo.
+
+### 3.7. Type=notify và software watchdog
+
+#### 3.7.1. Vấn đề của Type=simple
+
+Với `Type=simple`, systemd chỉ biết process còn sống hay đã chết:
+- Ngay khi `exec()` xong, systemd coi service là `active` dù app chưa khởi tạo xong (chưa mở socket, chưa load config...).
+- Nếu app bị treo nhưng không chết, systemd vẫn báo `active (running)`.
+
+`Type=notify` giải quyết cả hai: app **chủ động báo** trạng thái cho systemd.
+
+#### 3.7.2. Cơ chế hoạt động
+
+Khi start service `Type=notify`, systemd tạo một unix datagram socket và truyền đường dẫn của nó cho app qua biến môi trường `NOTIFY_SOCKET`. App gửi các chuỗi text ngắn vào socket này, thường qua hàm `sd_notify()` của libsystemd.
+
+| Message | Ý nghĩa |
+| --- | --- |
+| `READY=1` | Khởi tạo xong, service chuyển sang `active` |
+| `WATCHDOG=1` | Heartbeat cho watchdog |
+| `STATUS=<text>` | Chuỗi hiển thị trong `systemctl status` |
+| `STOPPING=1` | App đang tự dừng |
+
+Khi có `WatchdogSec=`, systemd truyền thêm biến `WATCHDOG_USEC` cho app rồi bật một bộ đếm thời gian. Mỗi lần nhận `WATCHDOG=1`, bộ đếm được reset. Nếu hết thời gian mà không có ping, systemd coi service bị treo.
+
+```
+ systemd (PID 1)                              myapp
+       |                                        |
+       | fork + exec, set env:                  |
+       |   NOTIFY_SOCKET=/run/systemd/notify    |
+       |   WATCHDOG_USEC=3000000                |
+       |--------------------------------------->|
+       | state: activating                      | khởi tạo...
+       |                                        |
+       |<------------ "READY=1" ----------------|
+       | state: active (running)                |
+       | -> start các unit After=myapp          |
+       |                                        |
+       |<------------ "WATCHDOG=1" -------------| mỗi 1s
+       | reset timer 3s                         |
+       |<------------ "WATCHDOG=1" -------------|
+       | reset timer 3s                         |
+       |                                        | bị treo, không ping nữa
+       |        ... 3s không có ping ...        |
+       |                                        |
+       | Watchdog timeout -> gửi SIGABRT ------>| chết (core dump)
+       | Restart=on-failure -> start lại        |
+```
+
+Một số điểm quan trọng:
+- systemd kiểm tra PID người gửi (qua `SCM_CREDENTIALS` của unix socket). Mặc định `NotifyAccess=main` - chỉ nhận message từ main process, message từ process khác bị bỏ qua.
+- Nếu không nhận `READY=1` trong `TimeoutStartSec` (mặc định 90s), service bị coi là start thất bại.
+- Hết `WatchdogSec`, systemd gửi `WatchdogSignal` (mặc định `SIGABRT` để có core dump debug). Watchdog chỉ **kill**, còn có restart hay không là do `Restart=`.
+- Quy tắc: ping với chu kỳ nhỏ hơn một nửa `WatchdogSec`.
+
+#### 3.7.3. Ví dụ
+
+App đơn giản: in `Working...` mỗi giây và ping watchdog. Đến lần thứ 10 thì giả lập bị treo.
+
+```c
+// myapp.c
+// Build: gcc myapp.c -o myapp -lsystemd   (cần gói libsystemd-dev)
+#include <stdio.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <systemd/sd-daemon.h>
+
+int main(void)
+{
+    uint64_t usec = 0;
+
+    /* Tắt buffer để log hiện ngay trong journal */
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    /* Đọc WatchdogSec mà systemd truyền qua biến WATCHDOG_USEC */
+    if (sd_watchdog_enabled(0, &usec) <= 0) usec = 0;
+
+    /* Khởi tạo xong -> báo systemd service đã sẵn sàng */
+    sd_notify(0, "READY=1\nSTATUS=Running");
+    printf("Ready, watchdog = %llu us\n", (unsigned long long)usec);
+
+    for (int count = 1; ; count++) {
+        printf("Working... %d\n", count);
+
+        if (count == 10) {
+            printf("Simulate hang\n");
+            for (;;)
+                pause();    /* giả lập bị treo: không ping nữa */
+        }
+
+        /* Ping watchdog sau khi làm xong 1 vòng công việc */
+        sd_notify(0, "WATCHDOG=1");
+        sleep(1);
+    }
+}
+```
+
+Unit file:
+
+```ini
+# /etc/systemd/system/myapp.service
+[Unit]
+Description=Watchdog demo
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/myapp
+WatchdogSec=3
+Restart=on-failure
+RestartSec=2
+```
+
+Chạy thử:
+
+```bash
+gcc myapp.c -o myapp -lsystemd
+sudo cp myapp /usr/local/bin/
+sudo systemctl daemon-reload
+sudo systemctl start myapp
+journalctl -u myapp -f
+```
+
+Log:
+
+```
+myapp[1234]: Ready, watchdog = 3000000 us
+systemd[1]: Started Watchdog demo.
+myapp[1234]: Working... 1
+...
+myapp[1234]: Working... 10
+myapp[1234]: Simulate hang
+systemd[1]: myapp.service: Watchdog timeout (limit 3s)!
+systemd[1]: myapp.service: Killing process 1234 (myapp) with signal SIGABRT.
+systemd[1]: myapp.service: Main process exited, code=dumped, status=6/ABRT
+systemd[1]: myapp.service: Failed with result 'watchdog'.
+systemd[1]: myapp.service: Scheduled restart job, restart counter is at 1.
+systemd[1]: Started Watchdog demo.
+myapp[1250]: Ready, watchdog = 3000000 us
+```
+
+Giải thích:
+- `Started` chỉ xuất hiện sau khi app gửi `READY=1`, không phải ngay khi `exec()`.
+- Từ lần 1 đến 9, app ping mỗi 1s (< 3s/2), bộ đếm luôn được reset.
+- Lần 10 app treo, 3s sau systemd báo `Watchdog timeout`, kill bằng `SIGABRT`, kết quả `'watchdog'`.
+- Vì `Restart=on-failure` có bao gồm watchdog timeout, service được start lại với PID mới.
+
+:::warning Đặt ping ở đâu?
+Ping phải nằm trong vòng lặp làm việc chính, ngay sau khi xong một vòng công việc. Không nên tạo một thread riêng chỉ để ping theo timer - nếu main loop deadlock thì thread đó vẫn ping đều, watchdog trở nên vô dụng.
+:::
+
+:::tip Không dùng C?
+Script shell có thể dùng lệnh `systemd-notify --ready` và `systemd-notify WATCHDOG=1`. Vì `systemd-notify` là process con của script (không phải main process), cần đặt `NotifyAccess=all`.
+:::
+
+:::tip Chuỗi watchdog trên embedded
+systemd cũng có thể ping hardware watchdog (`/dev/watchdog`) qua `RuntimeWatchdogSec=` trong `/etc/systemd/system.conf`. Ta có chuỗi: app -> systemd -> hardware watchdog. App treo thì systemd restart app, systemd treo thì hardware reset cả board.
+:::
+
+### 3.8. Drop-in
+
+#### 3.8.1. Drop-in là gì?
+
+Drop-in là các file `.conf` nhỏ đặt trong thư mục `<tên-unit>.d/`, chứa một phần cấu hình để ghi đè hoặc bổ sung vào unit file gốc. systemd đọc file gốc trước, sau đó merge lần lượt các drop-in lên trên.
+
+Tại sao không sửa thẳng file gốc?
+- File trong `/lib/systemd/system/` thuộc về package, update package là bị ghi đè mất.
+- Drop-in chỉ chứa phần thay đổi -> nhìn vào biết ngay mình đã sửa gì.
+- Xoá drop-in là quay về cấu hình gốc.
+
+```
+/lib/systemd/system/mosquitto.service              <- file gốc (của distro)
+/etc/systemd/system/mosquitto.service.d/
+            +-- override.conf                      <- drop-in (của ta)
+            +-- 10-watchdog.conf                   <- drop-in khác
+
+                         |
+                         v
+          cấu hình cuối cùng = file gốc + drop-in
+```
+
+Drop-in có thể nằm ở `/lib/systemd/system/`, `/run/systemd/system/` hoặc `/etc/systemd/system/` (thêm `.d/` sau tên unit). Các file được đọc theo **thứ tự tên file** (alphabet), file đọc sau ghi đè file đọc trước. Vì vậy người ta hay đặt tên có số đứng đầu: `10-restart.conf`, `20-watchdog.conf`.
+
+#### 3.8.2. Quy tắc merge
+
+| Loại option | Ví dụ | Khi drop-in khai báo lại |
+| --- | --- | --- |
+| Một giá trị | `Restart=`, `User=`, `RestartSec=` | Giá trị mới thay thế giá trị cũ |
+| Danh sách | `After=`, `Wants=`, `Environment=`, `ExecStartPre=`, `ExecStart=` | Giá trị mới được cộng thêm vào |
+
+Muốn thay thế một option dạng danh sách, phải gán rỗng trước để xoá giá trị cũ:
+
+```ini
+[Service]
+ExecStart=
+ExecStart=/usr/sbin/mosquitto -c /etc/mosquitto/custom.conf -v
+```
+
+- Dòng 1: `ExecStart=` rỗng -> xoá `ExecStart` của file gốc.
+- Dòng 2: khai báo `ExecStart` mới.
+
+Nếu quên dòng rỗng, service (không phải `oneshot`) sẽ có 2 `ExecStart` và systemd báo lỗi: `Service has more than one ExecStart= setting`.
+
+#### 3.8.3. Ví dụ: thêm auto restart cho mosquitto
+
+Mosquitto của distro không có `Restart=`. Ta muốn nó tự chạy lại khi crash mà không đụng vào file gốc.
+
+**Cách 1 - dùng `systemctl edit` (khuyên dùng):**
+
+```bash
+sudo systemctl edit mosquitto.service
+```
+
+Editor mở ra, nhập nội dung:
+
+```ini
+[Service]
+Restart=always
+RestartSec=3
+Environment=LOG_LEVEL=debug
+```
+
+Lưu lại, systemd tự tạo file `/etc/systemd/system/mosquitto.service.d/override.conf` và tự chạy `daemon-reload`.
+
+**Cách 2 - tạo file thủ công** (hay dùng trong script hoặc khi build image Yocto):
+
+```bash
+sudo mkdir -p /etc/systemd/system/mosquitto.service.d
+sudo tee /etc/systemd/system/mosquitto.service.d/10-restart.conf <<EOF
+[Service]
+Restart=always
+RestartSec=3
+EOF
+sudo systemctl daemon-reload     # bắt buộc khi tạo file thủ công
+sudo systemctl restart mosquitto
+```
+
+**Kiểm tra kết quả:**
+
+```bash
+systemctl cat mosquitto.service
+```
+
+```
+# /lib/systemd/system/mosquitto.service
+[Unit]
+Description=Mosquitto MQTT Broker
+...
+[Service]
+Type=notify
+ExecStart=/usr/sbin/mosquitto -c /etc/mosquitto/mosquitto.conf
+...
+
+# /etc/systemd/system/mosquitto.service.d/10-restart.conf
+[Service]
+Restart=always
+RestartSec=3
+```
+
+`systemctl cat` in file gốc rồi đến từng drop-in, kèm đường dẫn. Để xem giá trị **sau khi merge**:
+
+```bash
+systemctl show mosquitto.service -p Restart -p RestartUSec
+# Restart=always
+# RestartUSec=3s
+```
+
+`systemctl status` cũng hiện dòng `Drop-In:` để biết service đang có drop-in:
+
+```
+● mosquitto.service - Mosquitto MQTT Broker
+     Loaded: loaded (/lib/systemd/system/mosquitto.service; enabled; ...)
+    Drop-In: /etc/systemd/system/mosquitto.service.d
+             `-10-restart.conf
+```
+
+**Các lệnh hữu ích:**
+
+```bash
+# Liệt kê tất cả unit đang bị override / có drop-in trên hệ thống
+systemd-delta --type=extended,overridden
+
+# Xoá toàn bộ drop-in trong /etc, quay về cấu hình gốc
+sudo systemctl revert mosquitto.service
+```
+
+**So sánh các cách tuỳ chỉnh unit:**
+
+| Cách | File tạo ra | Khi nào dùng |
+| --- | --- | --- |
+| `systemctl edit` | `/etc/.../xxx.service.d/override.conf` | Sửa vài option (cách nên dùng) |
+| `systemctl edit --full` | `/etc/.../xxx.service` (bản copy toàn bộ) | Thay đổi gần như toàn bộ unit. Nhược điểm: không nhận được thay đổi khi package update file gốc |
+| Sửa thẳng `/lib/...` | Không | Không nên - mất khi update package |
+
+### 3.9. cgroups
+
+#### 3.9.1. cgroups là gì?
+
+cgroups (control groups) là tính năng của kernel cho phép gom các process thành từng nhóm rồi làm 3 việc sau trên cả nhóm:
+- **Theo dõi**: biết chính xác process nào thuộc nhóm nào.
+- **Giới hạn tài nguyên**: CPU, RAM, số process, IO... cho cả nhóm.
+- **Thống kê**: nhóm đang dùng bao nhiêu RAM, bao nhiêu CPU.
+
+Kernel đưa cgroups ra userspace dưới dạng một filesystem ảo tại `/sys/fs/cgroup/`. Mỗi nhóm là một thư mục, mỗi thông số là một file:
+
+```
+/sys/fs/cgroup/system.slice/myapp.service/
+|-- cgroup.procs      <- danh sách PID trong nhóm
+|-- memory.current    <- RAM đang dùng (byte)
+|-- memory.max        <- giới hạn RAM
+|-- cpu.max           <- giới hạn CPU
+`-- pids.max          <- số process/thread tối đa
+```
+
+Đây là cgroups **v2**, mặc định trên các distro mới. Kiểm tra bằng:
+
+```bash
+stat -fc %T /sys/fs/cgroup
+# cgroup2fs -> v2
+```
+
+Một đặc điểm rất quan trọng: **process con luôn được sinh ra trong cùng cgroup với cha** và process thường không tự rời khỏi cgroup được.
+
+#### 3.9.2. systemd dùng cgroups như thế nào?
+
+**Mỗi unit là một cgroup.** systemd tạo cây cgroup theo slice -> service:
+
+```
+-.slice (root)
+|-- system.slice                   <- các service hệ thống
+|   |-- ssh.service
+|   |-- mosquitto.service
+|   `-- myapp.service
+|       |-- 1234 /usr/local/bin/myapp
+|       `-- 1240 /usr/local/bin/myapp --worker
+`-- user.slice                     <- các phiên đăng nhập của user
+    `-- user-1000.slice
+        `-- session-2.scope
+            `-- 2001 -bash
+```
+
+Xem cây thật trên máy bằng `systemd-cgls`. Xem một process thuộc cgroup nào:
+
+```bash
+cat /proc/1240/cgroup
+# 0::/system.slice/myapp.service
+```
+
+**Tại sao systemd cần cgroups?**
+
+Trước đây, init system theo dõi service bằng PID (file PID trong `/var/run/`). Cách này có vấn đề:
+
+```
+Theo dõi bằng PID                      Theo dõi bằng cgroup
+------------------                     --------------------
+myapp (1234) fork -> 1240              myapp (1234) fork -> 1240
+myapp (1234) exit                      myapp (1234) exit
+-> init chỉ biết 1234 đã chết          -> 1240 vẫn nằm trong myapp.service
+-> 1240 thành mồ côi, không ai quản    -> systemd vẫn biết 1240 thuộc myapp
+```
+
+Nhờ cgroups:
+- `Type=forking` hoạt động đúng: daemon fork bao nhiêu lần thì các process con vẫn nằm trong cgroup của service.
+- `systemctl stop` kill toàn bộ process trong cgroup, không còn process sót lại.
+- `systemctl status` hiện được dòng `CGroup:` liệt kê mọi process của service.
+
+Cách systemd kill khi stop được điều khiển bởi `KillMode=`:
+
+| `KillMode=` | Khi stop |
+| --- | --- |
+| `control-group` (mặc định) | Kill tất cả process trong cgroup |
+| `mixed` | Gửi `SIGTERM` cho main process, sau đó `SIGKILL` cho các process còn lại |
+| `process` | Chỉ kill main process, các process con còn sống |
+| `none` | Không kill gì, chỉ chạy `ExecStop` |
+
+#### 3.9.3. Giới hạn tài nguyên cho service
+
+Ta không cần ghi trực tiếp vào `/sys/fs/cgroup/`, chỉ cần khai báo trong `[Service]`, systemd sẽ ghi vào file cgroup tương ứng:
+
+| Option | Ghi vào file | Ví dụ | Ý nghĩa |
+| --- | --- | --- | --- |
+| `MemoryMax=` | `memory.max` | `50M` | Vượt 50MB -> OOM killer kill process |
+| `MemoryHigh=` | `memory.high` | `40M` | Vượt 40MB -> kernel ép thu hồi bộ nhớ, app chạy chậm lại nhưng không bị kill |
+| `CPUQuota=` | `cpu.max` | `20%` | Tối đa 20% của 1 core |
+| `TasksMax=` | `pids.max` | `10` | Tối đa 10 process/thread, `fork()` thứ 11 bị lỗi |
+| `IOWeight=` | `io.weight` | `50` | Độ ưu tiên đọc/ghi disk (1-10000, mặc định 100) |
+
+Trên embedded, các giới hạn này rất hữu ích: một app bị memory leak sẽ chỉ làm chết chính nó, không kéo theo cả hệ thống.
+
+**Ví dụ:** service ăn RAM liên tục, giới hạn 50MB.
+
+```ini
+# /etc/systemd/system/memhog.service
+[Unit]
+Description=Memory limit demo
+
+[Service]
+# Chuỗi x tăng gấp đôi mỗi vòng -> RAM tăng liên tục
+ExecStart=/bin/sh -c 'x=a; while true; do x=$x$x; sleep 1; done'
+MemoryMax=50M
+MemorySwapMax=0
+```
+
+`MemorySwapMax=0` để không cho dùng swap, nếu không process sẽ bị đẩy sang swap thay vì bị kill.
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl start memhog
+
+# Xem giới hạn systemd đã ghi vào cgroup
+cat /sys/fs/cgroup/system.slice/memhog.service/memory.max
+# 52428800
+
+# Theo dõi RAM đang dùng
+watch cat /sys/fs/cgroup/system.slice/memhog.service/memory.current
+```
+
+Khoảng 25 giây sau (khi chuỗi vượt 50MB), log:
+
+```
+systemd[1]: memhog.service: A process of this unit has been killed by the OOM killer.
+systemd[1]: memhog.service: Main process exited, code=killed, status=9/KILL
+systemd[1]: memhog.service: Failed with result 'oom-kill'.
+```
+
+Chỉ `memhog` bị kill, các service khác không bị ảnh hưởng. Nếu thêm `Restart=on-failure` thì service sẽ được restart (mục 3.6).
+
+**Thay đổi giới hạn lúc runtime**, không cần sửa unit file:
+
+```bash
+sudo systemctl set-property myapp.service MemoryMax=100M CPUQuota=50%
+```
+
+Lệnh này áp dụng ngay và tự tạo drop-in (mục 3.8) trong `/etc/systemd/system.control/myapp.service.d/` để giữ lại sau reboot. Thêm `--runtime` nếu chỉ muốn áp dụng tạm thời.
+
+**Giới hạn chung cho một nhóm service bằng slice:**
+
+```ini
+# /etc/systemd/system/apps.slice
+[Slice]
+MemoryMax=200M
+```
+
+```ini
+# Trong app1.service và app2.service
+[Service]
+Slice=apps.slice
+```
+
+`app1` và `app2` nằm chung `apps.slice`, **tổng** RAM của cả hai không vượt quá 200MB.
+
+#### 3.9.4. Các lệnh theo dõi
+
+```bash
+# Cây cgroup và process
+systemd-cgls
+
+# Giống top nhưng theo cgroup: CPU, RAM, IO của từng service
+systemd-cgtop
+
+# Thống kê tài nguyên của một service
+systemctl show myapp.service -p MemoryCurrent -p CPUUsageNSec -p TasksCurrent
+```
 
 ## 4. Systemctl
 
@@ -833,7 +1478,7 @@ systemd-tmpfiles --create --prefix /var/log/journal
 systemctl restart systemd-journald
 ```
 
-### 5.4. journaldctl - Công cụ đọc log
+### 5.4. journalctl - Công cụ đọc log
 
 #### 5.4.1. Lọc theo nguồn cụ thể
 
@@ -922,7 +1567,7 @@ journalctl -u myapp -f
 journalctl -u myapp -f -p err
 ```
 
-#### 5.4.6. Lọc theo số dòng
+#### 5.4.5. Lọc theo số dòng
 
 ```bash
 # N dòng cuối cùng
@@ -932,7 +1577,7 @@ journalctl -n 100 -u myapp
 # Mặc định nếu không chỉ định -n là 10 dòng khi dùng với -f
 ```
 
-#### 5.4.7. Các lệnh quản lý journald
+#### 5.4.6. Các lệnh quản lý journald
 
 ```bash
 # Xem journal đang dùng bao nhiêu disk
@@ -951,3 +1596,282 @@ journalctl --vacuum-files=5      # chỉ giữ 5 file journal gần nhất
 # Verify tính toàn vẹn của journal
 journalctl --verify
 ```
+
+### 5.5. Cách journald lưu log
+
+#### 5.5.1. Mỗi log là một tập field
+
+Với syslog truyền thống, mỗi log là một dòng text:
+
+```
+Nov  9 18:18:02 nguyen-bui NetworkManager[741]: dhcp4 (ens33): state changed new lease
+```
+
+Muốn biết log đến từ service nào, PID nào thì phải parse chuỗi text.
+
+Với journald, mỗi log (gọi là một **entry**) là một tập các cặp `FIELD=value`. Xem đầy đủ bằng `journalctl -o verbose` (output thật, đã rút gọn):
+
+```
+Mon 2026-11-09 18:18:02.259271 +07 [s=237f...;i=89c2;b=9607...]
+    PRIORITY=6
+    MESSAGE=dhcp4 (ens33): state changed new lease, address=192.168.68.128
+    SYSLOG_IDENTIFIER=NetworkManager
+    CODE_FILE=src/core/dhcp/nm-dhcp-client.c
+    CODE_LINE=359
+    NM_DEVICE=ens33
+    _PID=741
+    _UID=0
+    _COMM=NetworkManager
+    _EXE=/usr/sbin/NetworkManager
+    _SYSTEMD_UNIT=NetworkManager.service
+    _BOOT_ID=960756616ac04d2e96cbf29871e82be4
+    _TRANSPORT=journal
+```
+
+Các field chia làm 3 loại:
+
+| Loại | Ví dụ | Ai ghi |
+| --- | --- | --- |
+| Field của app (không có `_` đầu) | `MESSAGE`, `PRIORITY`, `CODE_FILE`, `NM_DEVICE` | App tự gửi, có thể tự đặt tên field (như `NM_DEVICE` của NetworkManager) |
+| Trusted field (bắt đầu bằng `_`) | `_PID`, `_UID`, `_EXE`, `_SYSTEMD_UNIT`, `_BOOT_ID` | journald tự thêm, lấy từ kernel (credentials của socket, `/proc`, cgroup) -> app **không giả mạo được** |
+| Address field (bắt đầu bằng `__`) | `__REALTIME_TIMESTAMP`, `__CURSOR` | Thời gian và vị trí của entry trong journal |
+
+Mọi field đều dùng để lọc được:
+
+```bash
+# -u myapp chỉ là cách viết tắt của field _SYSTEMD_UNIT
+journalctl _SYSTEMD_UNIT=NetworkManager.service
+
+# Lọc theo field do app tự đặt
+journalctl NM_DEVICE=ens33
+
+# Liệt kê mọi giá trị đang có của một field
+journalctl -F _SYSTEMD_UNIT
+
+# Khác field -> AND, cùng field -> OR, dấu + -> OR giữa 2 nhóm
+journalctl _SYSTEMD_UNIT=ssh.service _PID=1234
+journalctl _PID=1234 _PID=5678
+```
+
+Lưu ý: `_SYSTEMD_UNIT` được journald suy ra từ cgroup của process gửi log (mục 3.9). Đó là lý do `journalctl -u` luôn đúng, kể cả log của process con.
+
+#### 5.5.2. File journal trên disk
+
+```
+/var/log/journal/<machine-id>/
+|-- system.journal                    <- file đang ghi (log hệ thống)
+|-- user-1000.journal                 <- log của user 1000
+|-- system@<id>-<seqnum>-<time>.journal   <- file cũ đã rotate (archived)
+`-- system@<...>.journal~             <- file không được đóng sạch (crash, mất điện)
+```
+
+File journal là **file binary**, `cat` ra sẽ không đọc được, phải dùng `journalctl`. Cấu trúc bên trong (đơn giản hoá):
+
+```
+system.journal
++-------------------------------------------------+
+| Header: số entry, vị trí các bảng, ...          |
++-------------------------------------------------+
+| DATA "_SYSTEMD_UNIT=myapp.service"              | <- mỗi cặp field=value
+| DATA "PRIORITY=6"                               |    chỉ lưu MỘT lần
+| DATA "MESSAGE=Door 1 is open"                   |
+| DATA "MESSAGE=Door 1 is closed"                 |
++-------------------------------------------------+
+| ENTRY #1: time -> [unit, prio, "is open"]       | <- entry chỉ chứa
+| ENTRY #2: time -> [unit, prio, "is closed"]     |    con trỏ tới DATA
++-------------------------------------------------+
+| Hash table: DATA -> danh sách entry chứa nó     | <- index để lọc nhanh
++-------------------------------------------------+
+```
+
+Thiết kế này mang lại:
+- **Tiết kiệm dung lượng**: `_SYSTEMD_UNIT=myapp.service` xuất hiện trong 1 triệu entry nhưng chỉ lưu một lần.
+- **Lọc nhanh**: `journalctl -u myapp` tra hash table để lấy danh sách entry, không phải đọc tuần tự toàn bộ file như `grep`.
+- **Append-only**: entry mới chỉ được ghi thêm vào cuối, entry cũ không bao giờ bị sửa.
+
+**Rotate:** khi `system.journal` đạt `SystemMaxFileSize` (mục 5.3), journald đổi tên nó thành `system@....journal` (archived) và tạo file mới. Khi tổng dung lượng vượt `SystemMaxUse`, các file archived cũ nhất bị xoá trước. Với `Storage=volatile`, cấu trúc giống hệt nhưng nằm trong `/run/log/journal/` (RAM).
+
+**Cursor:** mỗi entry có một `__CURSOR` duy nhất. Chương trình đọc log có thể lưu cursor lại, lần sau đọc tiếp từ đó mà không bị trùng hay mất log:
+
+```bash
+journalctl -u myapp --show-cursor -n 1
+# -- cursor: s=b873...;i=89c3;b=9607...
+journalctl -u myapp --after-cursor="s=b873...;i=89c3;b=9607..."
+```
+
+### 5.6. Viết chương trình ghi log vào journald
+
+App có 3 đường để gửi log vào journald:
+
+```
+             printf() ra stdout/stderr --> pipe do systemd tạo ---------+
+                                                                        |
+ app ------- syslog() -------------------> /dev/log --------------------+--> journald --> file journal
+                                                                        |
+             sd_journal_send() ----------> /run/systemd/journal/socket -+
+```
+
+| Cách | `_TRANSPORT` | Field tự đặt | Cần thư viện | Khi nào dùng |
+| --- | --- | --- | --- | --- |
+| stdout/stderr | `stdout` | Không | Không | App chạy dưới systemd, cần đơn giản |
+| `syslog()` | `syslog` | Không | Không (có sẵn trong libc) | Code cần chạy cả trên hệ thống không có systemd |
+| `sd_journal_send()` | `journal` | Có | `libsystemd` | Cần log có cấu trúc để lọc theo field |
+
+#### 5.6.1. Ghi ra stdout
+
+Service chạy dưới systemd mặc định có stdout/stderr nối vào journald (`StandardOutput=journal`). Mỗi dòng là một entry, priority mặc định là `6` (info).
+
+Muốn đặt priority, thêm prefix `<N>` ở đầu dòng (N là số priority ở mục 5.4.3). journald sẽ bỏ prefix này khỏi `MESSAGE`:
+
+```c
+// hello.c
+#include <stdio.h>
+
+int main(void)
+{
+    /* Tắt buffer: khi stdout là pipe, printf mặc định buffer cả khối -> log bị trễ */
+    setvbuf(stdout, NULL, _IONBF, 0);
+
+    printf("<6>Door opened\n");       /* info    */
+    printf("<4>Door left open\n");    /* warning */
+    printf("<3>Door lock failed\n");  /* err     */
+    return 0;
+}
+```
+
+`<systemd/sd-daemon.h>` có sẵn các macro `SD_INFO`, `SD_WARNING`, `SD_ERR`... tương ứng với `"<6>"`, `"<4>"`, `"<3>"`.
+
+Để thử mà không cần tạo service, dùng `systemd-cat` để nối stdout của chương trình vào journald:
+
+```bash
+systemd-cat -t hello ./hello
+journalctl -t hello -p warning
+# ... hello[5562]: Door left open
+# ... hello[5562]: Door lock failed
+```
+
+#### 5.6.2. Log có cấu trúc với `sd_journal_send()`
+
+Mỗi tham số là một chuỗi format `"FIELD=..."` kèm giá trị của nó, kết thúc bằng `NULL`:
+
+```c
+// door.c
+// Build: gcc door.c -o door -lsystemd   (cần gói libsystemd-dev)
+#include <syslog.h>               /* LOG_INFO, LOG_ERR... */
+#include <systemd/sd-journal.h>
+
+static void log_door(int id, const char *state)
+{
+    sd_journal_send("MESSAGE=Door %d is %s", id, state,
+                    "PRIORITY=%i", LOG_INFO,
+                    "DOOR_ID=%d", id,
+                    "DOOR_STATE=%s", state,
+                    NULL);        /* bắt buộc kết thúc bằng NULL */
+}
+
+int main(void)
+{
+    log_door(1, "open");
+    log_door(2, "closed");
+    log_door(1, "locked");
+
+    /* Giống printf, chỉ có MESSAGE và PRIORITY */
+    sd_journal_print(LOG_ERR, "Door %d lock failed", 2);
+    return 0;
+}
+```
+
+Lọc theo field tự đặt:
+
+```bash
+./door
+
+journalctl DOOR_ID=1
+# ... door[3001]: Door 1 is open
+# ... door[3001]: Door 1 is locked
+
+journalctl DOOR_ID=1 DOOR_STATE=locked    # AND 2 điều kiện
+journalctl -F DOOR_STATE                  # -> open, closed, locked
+```
+
+`journalctl DOOR_ID=1 -o verbose` sẽ thấy, ngoài field của ta, `sd_journal_send()` còn tự thêm `CODE_FILE`, `CODE_LINE`, `CODE_FUNC` (vị trí gọi log trong source), còn journald thêm các trusted field:
+
+```
+    MESSAGE=Door 1 is locked
+    PRIORITY=6
+    DOOR_ID=1
+    DOOR_STATE=locked
+    CODE_FILE=door.c
+    CODE_FUNC=log_door
+    _TRANSPORT=journal
+    _PID=3001
+    _COMM=door
+    ...
+```
+
+Quy tắc đặt tên field: chỉ gồm chữ **in hoa**, số và `_`, không bắt đầu bằng `_` (dành cho trusted field, journald sẽ bỏ qua).
+
+#### 5.6.3. Không có libsystemd: tự gửi vào socket
+
+`sd_journal_send()` thực chất chỉ gửi một datagram vào unix socket `/run/systemd/journal/socket`. Nội dung datagram là các dòng `FIELD=value`. Vì vậy ngôn ngữ nào cũng ghi log có cấu trúc được, kể cả khi không có libsystemd:
+
+```c
+// rawlog.c
+// Build: gcc rawlog.c -o rawlog
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+
+int main(void)
+{
+    struct sockaddr_un addr = {
+        .sun_family = AF_UNIX,
+        .sun_path   = "/run/systemd/journal/socket",
+    };
+
+    /* Mỗi field một dòng: FIELD=value */
+    const char *entry =
+        "MESSAGE=Door 1 is open\n"
+        "PRIORITY=6\n"
+        "DOOR_ID=1\n"
+        "DOOR_STATE=open\n";
+
+    int fd = socket(AF_UNIX, SOCK_DGRAM, 0);
+    if (fd < 0) {
+        perror("socket");
+        return 1;
+    }
+
+    /* Mỗi datagram = một entry */
+    if (sendto(fd, entry, strlen(entry), 0,
+               (struct sockaddr *)&addr, sizeof(addr)) < 0)
+        perror("sendto");
+
+    close(fd);
+    return 0;
+}
+```
+
+```bash
+./rawlog
+journalctl DOOR_ID=1
+# Nov 09 18:20:24 nguyen-bui rawlog[5547]: Door 1 is open
+```
+
+Từ shell cũng làm được tương tự bằng `logger --journald`:
+
+```bash
+printf 'MESSAGE=Door 3 is open\nPRIORITY=6\nDOOR_ID=3\n' | logger --journald
+```
+
+Cách tự gửi này đủ cho log ngắn. Còn giá trị chứa ký tự xuống dòng hoặc message rất lớn thì cần cách mã hoá khác, libsystemd đã xử lý sẵn những trường hợp này - nên dùng libsystemd khi có thể.
+
+#### 5.6.4. Lưu ý khi viết chương trình logging
+
+- **Không tự thêm timestamp, PID, tên app vào `MESSAGE`** - journald đã có sẵn trong trusted field.
+- **Thông tin cần lọc thì đưa vào field riêng** (`DOOR_ID=1`) thay vì nhét vào `MESSAGE` rồi `grep`.
+- **Đặt `PRIORITY` đúng mức**: log debug để `LOG_DEBUG`, khi cần thì lọc bằng `-p`.
+- **Rate limit**: service ghi log quá nhanh sẽ bị journald bỏ bớt, kèm log `Suppressed N messages from myapp.service`. Có thể nới giới hạn cho riêng service bằng `LogRateLimitIntervalSec=` và `LogRateLimitBurst=` trong `[Service]`.
+- **Buffer stdout**: nếu ghi log bằng `printf`, nhớ tắt buffer hoặc `fflush()`, nếu không log sẽ xuất hiện trễ hoặc mất khi app crash.
