@@ -4,9 +4,9 @@
 
 Init system là chương trình đầu tiên được kernel chạy sau khi kernel hoàn tất quá trình boot, luôn mang PID 1. Nó đóng vai trò là cha của mọi process trong hệ thống.
 
-Init system không bị kill bởi các signal thông thường, và mọi process chết mà không có parent thì kernel sẽ chuyển về cho init system xử lý. Nếu init system chết, hệ thống sẽ kernel panic - tức là sập hoàn toàn.
+Init system không bị kill bởi các signal thông thường và mọi process chết mà không có parent thì kernel sẽ chuyển về cho init system xử lý. Nếu init system chết, hệ thống sẽ kernel panic - tức là sập hoàn toàn.
 
-Nói đơn giản, init system giống như một quản lý tòa nhà - nó mở cửa mọi thứ khi bắt đầu, đảm bảo mọi dịch vụ hoạt động, xử lý sự cố, và đóng cửa mọi thứ đúng trình tự khi kết thúc.
+Nói đơn giản, init system giống như một quản lý tòa nhà - nó mở cửa mọi thứ khi bắt đầu, đảm bảo mọi dịch vụ hoạt động, xử lý sự cố và đóng cửa mọi thứ đúng trình tự khi kết thúc.
 
 Một số init system phổ biến: SysInit, systemd,...
 
@@ -20,7 +20,7 @@ Khởi tạo userspace - tức là đưa hệ thống từ trạng thái kernel 
 - Xử lý shutdown/reboot - khi ta tắt máy, init system chịu trách nhiệm dừng các service theo đúng thứ tự, unmount filesystem, và tắt hệ thống an toàn.
 
 :::tip Orphan process
-Mọi process chết mà không có parent thì kernel sẽ chuyển về cho init system xử lý.
+Một process chết mà không có parent thì được gọi là Orphan Process. Kernel sẽ chuyển process này về cho init system xử lý.
 :::
 
 :::tip Kernel tìm init system
@@ -35,7 +35,7 @@ Daemon là một background process được tách khỏi terminal, thường ho
 
 Daemon không có terminal điều khiển. Khi ta mở terminal chạy một lệnh thông thường, lệnh đó gắn với terminal - đóng terminal thì lệnh chết. Daemon thì khác, nó tách hoàn toàn khỏi terminal nên cứ chạy mãi cho đến khi bị dừng hoặc hệ thống tắt.
 
-Daemon thường chạy từ lúc boot đến lúc shutdown. Ví dụ quen thuộc là `sshd` (lắng nghe kết nối SSH), `nginx` hay `httpd` (phục vụ web),...Ta sẽ thấy hầu hết daemon có tên kết thúc bằng chữ "d" - đó là quy ước đặt tên trong Unix/Linux để nhận biết daemon.
+Daemon thường chạy từ lúc boot đến lúc shutdown. Ví dụ quen thuộc là `sshd` (lắng nghe kết nối SSH), `nginx` hay `httpd` (phục vụ web),...Ta sẽ thấy hầu hết daemon có tên kết thúc bằng chữ `d` - đó là quy ước đặt tên trong Unix/Linux để nhận biết daemon.
 
 Một số init system như systemd sẽ chịu trách nhiệm quản lý vòng đời của daemon.
 
@@ -53,7 +53,7 @@ Trong cách làm cổ điển trước thời systemd, một daemon được t�
 
 ### 3.1. Unit là gì?
 
-Unit là đơn vị quản lý cơ bản của systemd - mọi thứ systemd quản lý đều được trừu tượng hóa thành một unit.
+Unit là đơn vị quản lý cơ bản của systemd, mọi thứ systemd quản lý đều được trừu tượng hóa thành một unit.
 
 Mỗi unit được mô tả bằng một unit file (file văn bản kiểu `INI`).
 
@@ -80,9 +80,7 @@ Một unit file thường nằm ở:
 /run/systemd/system/  <- Runtime, tạm thời, mất sau reboot
 ```
 
-:::warning Nguyên tắc quan trọng
-Muốn custom service của distro -> tạo file override trong `/etc/systemd/system/` thay vì sửa trực tiếp `/lib/systemd/system/`
-:::
+Muốn custom service thì cần tạo file override trong `/etc/systemd/system/` thay vì sửa trực tiếp trong `/lib/systemd/system/`.
 
 Cách tạo override an toàn:
 
@@ -150,7 +148,7 @@ Các option dưới đây quy định **phụ thuộc** (A là unit đang viết
 | `Requisite=B` | Không, B phải đang chạy sẵn | A không start | Giống `Requires` |
 | `BindsTo=B` | Có | A không start | A luôn stop theo, kể cả khi B tự chết (ví dụ thiết bị bị rút ra) |
 | `PartOf=B` | Không | - | B stop/restart -> A stop/restart theo |
-| `Conflicts=B` | - | - | A start thì B bị stop, và ngược lại |
+| `Conflicts=B` | - | - | A start thì B bị stop và ngược lại |
 
 `Requires`, `Requisite`, `BindsTo` thường phải đi kèm `After=` cùng unit, nếu không A và B start song song và B start lỗi không chặn được A.
 
