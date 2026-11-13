@@ -118,46 +118,232 @@ RestartSec=5s
 WantedBy=multi-user.target
 ```
 
-**Ý nghĩa từng section:**
+Mỗi section trả lời một câu hỏi:
 
-`[Unit]` - Section này cho biết unit này tồn tại trong hệ thống với vai trò gì và phụ thuộc vào những unit nào.
+```
+[Unit]     -> Unit này là gì? Phụ thuộc vào ai? Chạy khi nào?
+[Service]  -> Chạy chương trình nào? Với quyền gì? Được phép làm gì?
+[Install]  -> Khi enable, unit được gắn vào đâu để tự chạy lúc boot?
+```
 
-| Cấu hình | Ý nghĩa |
-| --- | --- |
-| `Description` | Mô tả ngắn, hiển thị trong `systemctl status` |
-| `Documentation` | Trỏ tới man page hoặc URL docs |
-| `After`/`Before` | Quan hệ thứ tự, không bắt buộc service đó phải tồn tại.<br>- `After` : Khởi động sau unit nào<br>- `Before` : Khởi động trước unit nào |
-| `Requires` | Quan hệ phụ thuộc (cứng) - nếu unit kia chết thì unit này cũng chết. |
-| `Wants` | Quan hệ phụ thuộc (mềm) - nếu unit kia chết thì unit này vẫn chạy. |
-| `BindsTo` | Chặt hơn `Requires` - unit kia stop là stop ngay lập tức. |
+#### 3.2.1. Section [Unit]
 
-`[Service]` - Cấu hình riêng cho service (chỉ có ở unit `.service`)
+Có trong mọi loại unit (service, mount, timer...).
 
-| Cấu hình | Ý nghĩa |
-| --- | --- |
-| `Type` | Quyết định cách systemd theo dõi process (xem bên dưới) |
-| `ExecStart` | Lệnh gọi chương trình khi start. |
-| `ExecStop` | Lệnh gọi chương trình khi stop. |
-| `ExecReload` | Lệnh gọi chương trình khi reload. |
-| `Restart` | Khi nào tự restart. |
-
-`[Install]` - Cấu hình khi enable/disable
+**Mô tả**
 
 | Cấu hình | Ý nghĩa |
 | --- | --- |
-| `WantedBy` | Unit này sẽ được kéo vào khi target nào được kích hoạt |
-| `RequiredBy` | Tương tự nhưng là phụ thuộc cứng |
+| `Description=` | Mô tả ngắn, hiển thị trong `systemctl status` và log `Started ...` |
+| `Documentation=` | Link tới man page hoặc URL docs, ví dụ `man:sshd(8)` |
 
-**Một số service type như sau:**
+**Thứ tự và phụ thuộc** (vì sao cần cả hai loại, xem mục 3.5)
+
+`After=B` / `Before=B` chỉ quy định **thứ tự**: nếu cả A và B cùng được start thì B start trước A (với `After=B`). Hai option này không kéo B vào.
+
+Các option dưới đây quy định **phụ thuộc** (A là unit đang viết, B là unit được khai báo):
+
+| Trong A khai báo | A start có kéo B vào không? | B start lỗi | B bị stop / chết sau đó |
+| --- | --- | --- | --- |
+| `Wants=B` | Có | A vẫn chạy | A vẫn chạy |
+| `Requires=B` | Có | A không start | B bị stop bằng tay -> A stop theo. B tự crash -> A vẫn chạy |
+| `Requisite=B` | Không, B phải đang chạy sẵn | A không start | Giống `Requires` |
+| `BindsTo=B` | Có | A không start | A luôn stop theo, kể cả khi B tự chết (ví dụ thiết bị bị rút ra) |
+| `PartOf=B` | Không | - | B stop/restart -> A stop/restart theo |
+| `Conflicts=B` | - | - | A start thì B bị stop, và ngược lại |
+
+`Requires`, `Requisite`, `BindsTo` thường phải đi kèm `After=` cùng unit, nếu không A và B start song song và B start lỗi không chặn được A.
+
+**Phụ thuộc vào đường dẫn: `RequiresMountsFor=`**
+
+App ghi dữ liệu vào thẻ SD mount ở `/mnt/data`. Nếu app start trước khi thẻ được mount, nó sẽ ghi vào thư mục rỗng trên rootfs.
+
+```ini
+[Unit]
+RequiresMountsFor=/mnt/data/logs
+```
+
+systemd tự tìm các mount unit cần thiết để đường dẫn này dùng được (ở đây là `mnt-data.mount` và `-.mount` cho `/`) rồi thêm `Requires=` + `After=` cho chúng. Tương đương viết tay:
+
+```ini
+[Unit]
+Requires=mnt-data.mount
+After=mnt-data.mount
+```
+
+Ưu điểm: không cần biết tên mount unit và không cần biết `/mnt/data` là partition riêng hay chỉ là thư mục thường. Sau này đổi cách mount thì unit vẫn đúng.
+
+**Điều kiện chạy: `Condition...=` và `Assert...=`**
+
+Kiểm tra điều kiện ngay trước khi start:
+
+| Cấu hình | Đúng khi |
+| --- | --- |
+| `ConditionPathExists=/path` | Đường dẫn tồn tại. Thêm `!` để phủ định: `=!/path` |
+| `ConditionFileNotEmpty=/path` | File tồn tại và không rỗng |
+| `ConditionKernelCommandLine=debug` | Kernel cmdline có tham số `debug` |
+| `ConditionVirtualization=no` | Không chạy trong VM/container |
+| `ConditionFirstBoot=yes` | Đây là lần boot đầu tiên của hệ thống |
+
+- `Condition...` sai -> unit bị **bỏ qua** (skip), không tính là lỗi.
+- `Assert...` (cùng các biến thể: `AssertPathExists=`...) sai -> unit **failed**.
+
+Ví dụ: service chỉ chạy một lần để khởi tạo dữ liệu, chạy xong thì tạo file đánh dấu:
+
+```ini
+[Unit]
+ConditionPathExists=!/var/lib/myapp/initialized
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/myapp-init
+ExecStartPost=/bin/touch /var/lib/myapp/initialized
+```
+
+Lần boot sau file đã có, `systemctl status` sẽ báo:
+
+```
+Condition: start condition failed at ...
+           `- ConditionPathExists=!/var/lib/myapp/initialized was not met
+```
+
+**Khi service lỗi**: `OnFailure=`, `StartLimitIntervalSec=`, `StartLimitBurst=`, `StartLimitAction=` - xem mục 3.6.
+
+#### 3.2.2. Section [Service]
+
+**Type và các lệnh chạy**
 
 | Type | Ý nghĩa |
 | --- | --- |
 | `simple` | ExecStart là tiến trình chính, systemd theo dõi PID này (mặc định, dùng cho hầu hết các service hiện đại) |
-| `forking` | Process sẽ fork rồi exit process cha (dành cho daemon kiểu cũ như Apache, Nginx) |
+| `forking` | Process sẽ fork rồi exit process cha (dành cho daemon kiểu cũ) |
 | `oneshot` | Process chạy một lần rồi thoát (dùng cho script khởi tạo) |
-| `notify` | Process phải thông báo cho systemd khi đã sẵn sàng qua `sd_notify()` |
+| `notify` | Process phải thông báo cho systemd khi đã sẵn sàng qua `sd_notify()` (xem mục 3.7) |
 | `dbus` | Sẵn sàng khi đã đăng ký tên trên D-Bus |
 | `idle` | Chờ tất cả job khác xong mới chạy |
+
+Các lệnh `Exec...` được gọi theo vòng đời:
+
+```
+systemctl start  : ExecStartPre -> ExecStart -> ExecStartPost
+systemctl reload : ExecReload
+systemctl stop   : ExecStop -> gửi KillSignal cho các process còn lại -> ExecStopPost
+```
+
+`ExecStopPost=` chạy cả khi service crash nên hay dùng để dọn dẹp.
+
+Một số prefix đặt trước đường dẫn lệnh:
+
+| Prefix | Ý nghĩa | Ví dụ |
+| --- | --- | --- |
+| `-` | Lệnh lỗi cũng bỏ qua, không làm service failed | `ExecStartPre=-/bin/rm /tmp/myapp.lock` |
+| `+` | Chạy với quyền root, bỏ qua `User=` và sandbox | `ExecStartPre=+/bin/chown myapp /dev/ttyS1` |
+
+:::warning ExecStart không chạy qua shell
+`ExecStart=/usr/bin/myapp > /tmp/log` **không** redirect được: `>` và `/tmp/log` được truyền vào như tham số của `myapp`. Các ký tự `|`, `>`, `&&` chỉ dùng được khi gọi shell.
+:::
+
+**User và môi trường**
+
+| Cấu hình | Ý nghĩa |
+| --- | --- |
+| `User=`, `Group=` | Chạy với user/group nào (mặc định root) |
+| `WorkingDirectory=` | Thư mục làm việc hiện tại của process |
+| `Environment=` | Đặt biến môi trường: `Environment="PORT=8080" "LOG_LEVEL=info"` |
+| `EnvironmentFile=` | Đọc biến môi trường từ file, thường là `/etc/default/<tên>` (xem mục 3.10) |
+
+**Thư mục do systemd quản lý**
+
+Thay vì tự `mkdir` + `chown` trong `ExecStartPre` (như mosquitto ở mục 4.2), ta chỉ cần khai báo tên thư mục. systemd tự tạo trước khi start và chown cho `User=`:
+
+| Cấu hình | Thư mục tạo ra | Khi service stop | Dùng cho |
+| --- | --- | --- | --- |
+| `RuntimeDirectory=myapp` | `/run/myapp` | Bị xoá | Socket, file PID |
+| `StateDirectory=myapp` | `/var/lib/myapp` | Giữ lại | Dữ liệu cần lưu lâu dài |
+| `CacheDirectory=myapp` | `/var/cache/myapp` | Giữ lại | Cache, xoá đi không sao |
+| `LogsDirectory=myapp` | `/var/log/myapp` | Giữ lại | File log riêng |
+| `ConfigurationDirectory=myapp` | `/etc/myapp` | Giữ lại | File config |
+
+**Sandbox - giới hạn những gì service được phép đụng tới**
+
+Khi có các option dưới đây, systemd tạo một **mount namespace** riêng cho service: service nhìn thấy filesystem khác với phần còn lại của hệ thống (một số thư mục bị mount lại thành read-only hoặc bị ẩn). Nếu app có bug ghi bừa hoặc bị tấn công, thiệt hại chỉ nằm trong phạm vi được cho phép.
+
+| Cấu hình | Ý nghĩa |
+| --- | --- |
+| `ProtectSystem=yes` | `/usr`, `/boot` thành read-only |
+| `ProtectSystem=full` | Như `yes`, thêm `/etc` read-only |
+| `ProtectSystem=strict` | **Toàn bộ** filesystem read-only, trừ `/dev`, `/proc`, `/sys` |
+| `ReadWritePaths=` | Ngoại lệ: các đường dẫn này vẫn ghi được |
+| `ReadOnlyPaths=` | Các đường dẫn này chỉ đọc được |
+| `InaccessiblePaths=` | Các đường dẫn này bị ẩn hoàn toàn |
+| `ProtectHome=yes` | Không truy cập được `/home`, `/root`, `/run/user` |
+| `PrivateTmp=yes` | Service có `/tmp` riêng, bị xoá khi service stop |
+| `NoNewPrivileges=yes` | Process và các con không thể tăng quyền (qua setuid, `sudo`...) |
+
+Ví dụ: app chỉ cần ghi vào thẻ SD và thư mục dữ liệu của nó.
+
+```ini
+[Service]
+User=myapp
+ExecStart=/usr/local/bin/myapp
+ProtectSystem=strict
+ReadWritePaths=/mnt/data/logs
+StateDirectory=myapp
+PrivateTmp=yes
+ProtectHome=yes
+```
+
+Filesystem mà `myapp` nhìn thấy:
+
+```
+Đường dẫn              Quyền với myapp
+---------------------  -------------------------------------------
+/usr, /etc, /opt, ...  read-only           (ProtectSystem=strict)
+/mnt/data/logs         read-write          (ReadWritePaths)
+/var/lib/myapp         read-write          (StateDirectory tự được mở)
+/tmp                   read-write, nhưng là /tmp riêng (PrivateTmp)
+/home, /root           không truy cập được (ProtectHome)
+```
+
+Nếu app thử ghi `/etc/test`, `open()` sẽ trả về lỗi `EROFS` (`Read-only file system`), kể cả khi service chạy bằng root.
+
+Lưu ý:
+- `ReadWritePaths=` chỉ gỡ bỏ chặn read-only, không cấp thêm quyền Unix: user `myapp` vẫn phải có quyền ghi vào `/mnt/data/logs`.
+- Đường dẫn trong `ReadWritePaths=` phải tồn tại, nếu không service sẽ không start được. Thêm `-` phía trước để bỏ qua nếu không có: `ReadWritePaths=-/mnt/data/logs`.
+- `systemd-analyze security myapp.service` chấm điểm mức độ sandbox của service và gợi ý option còn thiếu.
+
+**Các option đã nói ở mục khác**
+
+| Cấu hình | Xem mục |
+| --- | --- |
+| `Restart=`, `RestartSec=` | 3.6 |
+| `WatchdogSec=`, `NotifyAccess=` | 3.7 |
+| `MemoryMax=`, `CPUQuota=`, `TasksMax=`, `KillMode=` | 3.9 |
+| `StandardOutput=`, `StandardError=` (mặc định `journal`) | 5.6 |
+| `TimeoutStartSec=`, `TimeoutStopSec=` | Thời gian chờ start/stop tối đa (mặc định 90s), quá thì kill |
+
+#### 3.2.3. Section [Install]
+
+Section này chỉ được đọc khi chạy `systemctl enable/disable`, systemd không dùng nó lúc đang chạy. `enable` thực chất chỉ là tạo symlink:
+
+```bash
+systemctl enable myapp.service
+# Created symlink /etc/systemd/system/multi-user.target.wants/myapp.service
+#              -> /etc/systemd/system/myapp.service.
+```
+
+Khi boot, `multi-user.target` được kích hoạt. systemd thấy `myapp.service` nằm trong thư mục `multi-user.target.wants/`, coi như `multi-user.target` có `Wants=myapp.service` nên kéo nó vào. `disable` chỉ là xoá symlink này.
+
+| Cấu hình | Khi enable sẽ | Ví dụ |
+| --- | --- | --- |
+| `WantedBy=` | Tạo symlink trong `<target>.wants/` | `WantedBy=multi-user.target` |
+| `RequiredBy=` | Tạo symlink trong `<target>.requires/` (phụ thuộc cứng) | Ít dùng |
+| `Alias=` | Tạo thêm một tên khác cho unit | `ssh.service` có `Alias=sshd.service`, nên `systemctl status sshd` cũng chạy |
+| `Also=` | Enable luôn các unit khác cùng lúc | `Also=myapp.socket` |
+
+Giá trị `WantedBy=` hay dùng: `multi-user.target` cho service thông thường, `graphical.target` cho app cần GUI, `timers.target` cho `.timer`, `sockets.target` cho `.socket`.
+
+Unit không có `[Install]` thì không enable được (`systemctl is-enabled` báo `static`). Nó chỉ chạy khi được unit khác kéo vào qua `Wants=`/`Requires=`.
 
 ### 3.3. Target unit
 
@@ -1100,6 +1286,509 @@ systemd-cgtop
 systemctl show myapp.service -p MemoryCurrent -p CPUUsageNSec -p TasksCurrent
 ```
 
+### 3.10. File default và file rules
+
+Ngoài unit file và drop-in, một service thường còn đi kèm một số loại file khác:
+
+```
+/lib/systemd/system/myapp.service            <- unit file: chạy như thế nào
+/etc/systemd/system/myapp.service.d/*.conf   <- drop-in: sửa cấu hình unit
+/etc/default/myapp                           <- file default: tham số / biến môi trường cho app
+/etc/udev/rules.d/99-myapp.rules             <- file rules: phản ứng khi cắm/rút thiết bị
+/etc/tmpfiles.d/myapp.conf                   <- tmpfiles: tạo thư mục, sửa quyền lúc boot (mục 3.11)
+```
+
+Trong source code hoặc recipe Yocto, file default thường được đặt tên `myapp.default`, khi cài đặt sẽ được copy thành `/etc/default/myapp` (không có đuôi).
+
+#### 3.10.1. File default (`/etc/default/<tên>`)
+
+File default chứa các biến môi trường dạng `KEY=value`. Unit file đọc nó qua `EnvironmentFile=` rồi dùng các biến đó trong `ExecStart=`.
+
+Ví dụ thật trên Ubuntu với `ssh.service`:
+
+```ini
+# /lib/systemd/system/ssh.service
+[Service]
+EnvironmentFile=-/etc/default/ssh
+ExecStart=/usr/sbin/sshd -D $SSHD_OPTS
+```
+
+```bash
+# /etc/default/ssh
+# Options to pass to sshd
+SSHD_OPTS=
+```
+
+Muốn thêm tham số cho `sshd` thì chỉ cần sửa `SSHD_OPTS` trong `/etc/default/ssh`, không đụng tới unit file.
+
+**Tại sao cần file default khi đã có drop-in?**
+
+| | Drop-in | File default |
+| --- | --- | --- |
+| Thay đổi cái gì | Cấu hình của unit (`Restart=`, `User=`, `ExecStart=`...) | Chỉ giá trị biến môi trường / tham số của app |
+| Người sửa cần biết | Cú pháp systemd | Chỉ cần sửa `KEY=value` |
+| Sau khi sửa | `daemon-reload` + `restart` | Chỉ cần `restart` |
+
+Thư mục `/etc/default/` có từ thời SysV init: các init script dùng lệnh `source /etc/default/xxx` để đọc tham số. systemd giữ lại cách này để tương thích.
+
+**Ví dụ:**
+
+```bash
+# /etc/default/myapp
+# Port lắng nghe
+MYAPP_PORT=8080
+# Các tham số thêm cho myapp
+MYAPP_OPTS="--verbose --log-level debug"
+```
+
+```ini
+# /etc/systemd/system/myapp.service
+[Service]
+EnvironmentFile=-/etc/default/myapp
+ExecStart=/usr/local/bin/myapp --port ${MYAPP_PORT} $MYAPP_OPTS
+```
+
+Lệnh thực tế được chạy:
+
+```
+/usr/local/bin/myapp --port 8080 --verbose --log-level debug
+```
+
+Giải thích:
+- Dấu `-` trước đường dẫn: file không tồn tại cũng không lỗi, app chạy với giá trị mặc định.
+- `${MYAPP_PORT}`: thay bằng đúng 1 tham số, kể cả khi giá trị có dấu cách.
+- `$MYAPP_OPTS`: giá trị được tách theo dấu cách thành nhiều tham số (`--verbose`, `--log-level`, `debug`). Dùng cách này cho biến chứa nhiều option.
+- App cũng đọc được các biến này bằng `getenv("MYAPP_PORT")`.
+
+:::warning File default không phải shell script
+systemd chỉ đọc các dòng `KEY=value` và comment `#`, không chạy shell. Thử với systemd 249:
+
+| Dòng trong file | Giá trị app nhận được |
+| --- | --- |
+| `export EXP=1` | `EXP` không được đặt (dòng bị bỏ qua) |
+| `CMD=$(date)` | Chuỗi `$(date)`, không chạy lệnh `date` |
+| `REF=$MYAPP_PORT` | Chuỗi `$MYAPP_PORT`, không lấy giá trị của biến khác |
+:::
+
+#### 3.10.2. File rules của udev (`*.rules`)
+
+`systemd-udevd` là daemon nhận sự kiện (uevent) từ kernel khi thiết bị được cắm hoặc rút. Với mỗi sự kiện, nó đọc các file `.rules` để quyết định làm gì: đặt tên, đổi quyền, tạo symlink, hoặc start một service.
+
+```
+cắm USB --> kernel gửi uevent --> systemd-udevd --> đọc *.rules
+                                                       |
+                                       +---------------+---------------+
+                                       v               v               v
+                                 tạo symlink     đổi quyền       start service
+                                 /dev/mydevice   MODE="0666"     (qua systemd)
+```
+
+File rules nằm ở:
+
+```
+/lib/udev/rules.d/   <- của distro / package (không sửa)
+/etc/udev/rules.d/   <- của ta, file cùng tên sẽ ghi đè file trong /lib
+```
+
+Các file được đọc theo thứ tự tên file nên tên thường có số đứng đầu: `50-xxx.rules`, `99-myapp.rules` (số lớn chạy sau, ghi đè được rule trước).
+
+**Cấu trúc một rule**
+
+Mỗi rule là một dòng (dòng dài có thể ngắt bằng `\` ở cuối), gồm các cặp `KEY` + toán tử + giá trị, cách nhau bằng dấu phẩy. Có 2 loại key:
+
+```
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", SYMLINK+="mydevice", MODE="0666"
+ ----------------- điều kiện -----------    --------- hành động --------
+         (key so khớp: ==, !=)                    (key gán: =, +=)
+```
+
+| Toán tử | Loại | Ý nghĩa |
+| --- | --- | --- |
+| `==` | So khớp | Bằng |
+| `!=` | So khớp | Khác |
+| `=` | Gán | Gán giá trị, ghi đè giá trị cũ |
+| `+=` | Gán | Thêm vào danh sách (`SYMLINK`, `TAG`, `RUN`...) |
+| `-=` | Gán | Xoá khỏi danh sách |
+| `:=` | Gán | Gán và khoá giá trị, rule sau không đổi được nữa |
+
+Giá trị so khớp dùng được ký tự đại diện:
+
+| Ký tự | Ý nghĩa | Ví dụ |
+| --- | --- | --- |
+| `*` | Chuỗi bất kỳ | `KERNEL=="ttyUSB*"` |
+| `?` | Một ký tự bất kỳ | `KERNEL=="sd?"` |
+| `[...]` | Một ký tự trong tập | `KERNEL=="ttyS[0-3]"` |
+| `\|` | Hoặc | `ACTION=="add\|change"` |
+
+**Các key so khớp hay dùng**
+
+| Key | So khớp với | Ví dụ |
+| --- | --- | --- |
+| `ACTION` | Loại sự kiện: `add`, `remove`, `change`, `bind`, `unbind` | `ACTION=="add"` |
+| `KERNEL` | Tên kernel đặt cho thiết bị | `KERNEL=="ttyUSB*"` |
+| `SUBSYSTEM` | Nhóm thiết bị: `tty`, `net`, `block`, `usb`, `input`, `gpio`, `i2c-dev`... | `SUBSYSTEM=="net"` |
+| `DRIVER` | Tên driver đang quản lý thiết bị | `DRIVER=="ftdi_sio"` |
+| `ATTR{file}` | Nội dung file `file` trong thư mục `/sys` của thiết bị | `ATTR{address}=="00:11:22:33:44:55"` |
+| `ENV{key}` | Biến của sự kiện (do kernel hoặc rule trước đặt) | `ENV{ID_VENDOR_ID}=="0403"` |
+| `KERNELS`, `SUBSYSTEMS`, `DRIVERS`, `ATTRS{file}` | Giống 4 key trên nhưng tìm cả ở các thiết bị cha | `ATTRS{idVendor}=="0403"` |
+| `TAG` | Thiết bị đã được gắn tag này | `TAG=="systemd"` |
+
+**Key có chữ `S` và thiết bị cha**
+
+Trong `/sys`, mỗi thiết bị nằm trong một chuỗi cha - con. Với USB-serial, `/dev/ttyUSB0` chỉ là thiết bị cuối của chuỗi:
+
+```
+usb device 1-1              <- ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001"
+ `- usb interface 1-1:1.0   <- DRIVERS=="ftdi_sio"
+     `- ttyUSB0             <- KERNEL=="ttyUSB0", SUBSYSTEM=="tty"  (thiết bị phát ra sự kiện)
+```
+
+`idVendor` thuộc về USB device (cha), không phải `ttyUSB0`. Vì vậy:
+- `ATTR{idVendor}=="0403"` -> không khớp vì key không có `S` chỉ xét bản thân `ttyUSB0`.
+- `ATTRS{idVendor}=="0403"` -> khớp vì key có `S` tìm ngược lên các thiết bị cha.
+
+Lưu ý: tất cả key có `S` trong cùng một rule phải khớp trên cùng một thiết bị cha.
+
+`udevadm info -a` in ra toàn bộ chuỗi, sẵn đúng cú pháp rule để copy. Thiết bị đầu tiên dùng key không `S`, các thiết bị cha dùng key có `S`:
+
+```bash
+udevadm info -a -n /dev/ttyUSB0
+```
+
+```
+  looking at device '/devices/pci0000:00/.../1-1/1-1:1.0/ttyUSB0/tty/ttyUSB0':
+    KERNEL=="ttyUSB0"
+    SUBSYSTEM=="tty"
+    DRIVER==""
+
+  looking at parent device '/devices/pci0000:00/.../1-1/1-1:1.0':
+    KERNELS=="1-1:1.0"
+    SUBSYSTEMS=="usb"
+    DRIVERS=="ftdi_sio"
+
+  looking at parent device '/devices/pci0000:00/.../1-1':
+    KERNELS=="1-1"
+    SUBSYSTEMS=="usb"
+    DRIVERS=="usb"
+    ATTRS{idProduct}=="6001"
+    ATTRS{idVendor}=="0403"
+    ATTRS{serial}=="A50285BI"
+```
+
+Nếu có 2 thiết bị cùng loại, thêm `ATTRS{serial}==` để phân biệt từng con.
+
+**Các key gán hay dùng**
+
+| Key | Tác dụng | Ví dụ |
+| --- | --- | --- |
+| `SYMLINK+=` | Tạo thêm symlink trong `/dev` | `SYMLINK+="mydevice"` |
+| `OWNER=`, `GROUP=`, `MODE=` | Owner, group, quyền của file trong `/dev` | `GROUP="dialout", MODE="0660"` |
+| `NAME=` | Đổi tên. **Chỉ dùng được cho network interface** | `NAME="lan0"` |
+| `ENV{key}=` | Đặt biến cho sự kiện, rule sau kiểm tra bằng `ENV{key}==` | `ENV{MY_SENSOR}="1"` |
+| `TAG+=` | Gắn tag. Tag `systemd` -> systemd tạo device unit | `TAG+="systemd"` |
+| `ENV{SYSTEMD_WANTS}+=` | Start unit khi thiết bị xuất hiện (cần `TAG+="systemd"`) | `ENV{SYSTEMD_WANTS}+="reader.service"` |
+| `ATTR{file}=` | **Ghi** giá trị vào file trong `/sys` của thiết bị | `ATTR{power/control}="on"` |
+| `RUN+=` | Chạy lệnh ngắn sau khi xử lý xong, dùng đường dẫn tuyệt đối | `RUN+="/usr/bin/logger hello"` |
+| `GOTO=`, `LABEL=` | Nhảy tới dòng có `LABEL` tương ứng, bỏ qua các rule ở giữa | `GOTO="my_end"` ... `LABEL="my_end"` |
+
+**Biến thay thế** dùng trong giá trị của key gán:
+
+| Biến | Giá trị (với `/dev/ttyUSB0`) |
+| --- | --- |
+| `%k` hoặc `$kernel` | `ttyUSB0` |
+| `%n` hoặc `$number` | `0` (số ở cuối tên kernel) |
+| `$devnode` | `/dev/ttyUSB0` |
+| `$attr{file}` | Nội dung của file `/sys/.../file` |
+| `$env{key}` | Giá trị của biến `key` |
+
+Ví dụ `SYMLINK+="sensor%n"`: cắm 2 con thì có `/dev/sensor0` và `/dev/sensor1`.
+
+**Ví dụ 1:** cắm USB-serial (chip FTDI) thì tạo tên cố định `/dev/mydevice` và tự start service đọc dữ liệu.
+
+```bash
+# /etc/udev/rules.d/99-mydevice.rules
+SUBSYSTEM=="tty", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6001", \
+    SYMLINK+="mydevice", MODE="0666", \
+    TAG+="systemd", ENV{SYSTEMD_WANTS}+="mydevice-reader.service"
+```
+
+| Phần | Ý nghĩa |
+| --- | --- |
+| `SUBSYSTEM=="tty"` | Chỉ áp dụng cho thiết bị serial |
+| `ATTRS{idVendor}=="0403"`, `ATTRS{idProduct}=="6001"` | Đúng loại chip FTDI này (tìm ở USB device cha) |
+| `SYMLINK+="mydevice"` | Tạo `/dev/mydevice` -> `/dev/ttyUSB0`. App luôn dùng `/dev/mydevice`, không phụ thuộc thứ tự cắm (`ttyUSB0`, `ttyUSB1`...) |
+| `MODE="0666"` | Mọi user đều đọc/ghi được |
+| `TAG+="systemd"` | Báo cho systemd biết thiết bị này, systemd tạo device unit `dev-mydevice.device` |
+| `ENV{SYSTEMD_WANTS}+="..."` | Khi thiết bị xuất hiện, start `mydevice-reader.service` |
+
+Service đi kèm, tự stop khi rút thiết bị nhờ `BindsTo=` (mục 3.2.1):
+
+```ini
+# /etc/systemd/system/mydevice-reader.service
+[Unit]
+Description=Read data from mydevice
+BindsTo=dev-mydevice.device
+After=dev-mydevice.device
+
+[Service]
+ExecStart=/usr/local/bin/reader /dev/mydevice
+```
+
+**Ví dụ 2:** cho user thường dùng I2C mà không cần root.
+
+```bash
+# /etc/udev/rules.d/60-i2c.rules
+SUBSYSTEM=="i2c-dev", GROUP="i2c", MODE="0660"
+```
+
+Mọi `/dev/i2c-*` thuộc group `i2c`. Thêm user vào group (`usermod -aG i2c sensornode`) là dùng được.
+
+**Ví dụ 3:** đặt tên cố định cho card mạng theo địa chỉ MAC.
+
+```bash
+# /etc/udev/rules.d/70-net-name.rules
+SUBSYSTEM=="net", ACTION=="add", ATTR{address}=="00:11:22:33:44:55", NAME="lan0"
+```
+
+**Ví dụ 4:** ghi log khi rút USB-serial.
+
+```bash
+# /etc/udev/rules.d/99-mydevice-remove.rules
+ACTION=="remove", SUBSYSTEM=="tty", ENV{ID_VENDOR_ID}=="0403", \
+    RUN+="/usr/bin/logger -t udev 'FTDI removed: %k'"
+```
+
+Khi `remove`, thiết bị đã biến mất khỏi `/sys` nên `ATTRS{...}` không đọc được nữa. Phải dùng `ENV{...}`, vì udev vẫn giữ lại các biến của thiết bị. Xem các biến này bằng `udevadm info -q property -n /dev/ttyUSB0`.
+
+**Áp dụng và debug**
+
+```bash
+# Đọc lại các file rules (sau khi sửa)
+sudo udevadm control --reload
+# Phát lại sự kiện cho các thiết bị đang cắm để rule mới có hiệu lực
+sudo udevadm trigger
+
+# Xem chuỗi thiết bị + attribute để viết rule
+udevadm info -a -n /dev/ttyUSB0
+# Xem các biến ENV{...} của thiết bị
+udevadm info -q property -n /dev/ttyUSB0
+
+# Chạy thử toàn bộ rules cho thiết bị, in ra rule nào (file:dòng) được áp dụng
+sudo udevadm test $(udevadm info -q path -n /dev/ttyUSB0)
+
+# Xem sự kiện realtime khi cắm/rút
+udevadm monitor --udev --property
+```
+
+:::warning Không dùng RUN+= để chạy chương trình lâu dài
+`RUN+=` bị kill sau vài giây và chạy trong sandbox hạn chế (không có mạng, không ghi được nhiều nơi). Chỉ dùng `RUN+=` cho lệnh rất ngắn. Chương trình chạy lâu dài phải được start qua `SYSTEMD_WANTS` như ví dụ 1.
+:::
+
+:::tip File .rules của polkit
+Đuôi `.rules` còn được dùng bởi polkit (`/etc/polkit-1/rules.d/*.rules`, viết bằng JavaScript) - dùng để cho phép user thường thực hiện thao tác cần quyền root, ví dụ `systemctl restart myapp` mà không cần `sudo`. Đây là cơ chế khác hoàn toàn với udev rules.
+:::
+
+### 3.11. tmpfiles.d - tạo file và thư mục lúc boot
+
+#### 3.11.1. Vấn đề cần giải quyết
+
+Giả sử app `myapp` chạy bằng user `myapp` và cần:
+
+```
+/run/myapp/        <- chứa socket. /run là tmpfs (nằm trên RAM), reboot là mất sạch
+/var/lib/myapp/    <- chứa dữ liệu, phải thuộc user myapp thì app mới ghi được
+/var/cache/myapp/  <- chứa cache, file cũ quá 7 ngày nên bị xoá
+```
+
+Nếu không có công cụ hỗ trợ, ta phải tự viết script tạo, xoá và chỉnh owner, quyền cho nó chạy mỗi lần boot.
+
+**systemd-tmpfiles** làm thay việc này. Ta chỉ cần mô tả trạng thái mong muốn trong một file `.conf`, mỗi dòng là một file hoặc thư mục. Mỗi lần boot, systemd-tmpfiles đọc file và làm cho hệ thống khớp với mô tả đó:
+
+```
+/etc/tmpfiles.d/myapp.conf  -->  systemd-tmpfiles  -->  tạo / sửa quyền / ghi / xoá
+   (mô tả mong muốn)              (chạy lúc boot)        file và thư mục thật
+```
+
+Tên tmpfiles có từ lúc nó chỉ dùng để quản lý `/tmp`, `/run`. Hiện nay nó dùng được cho bất kỳ đường dẫn nào.
+
+#### 3.11.2. File nằm ở đâu?
+
+```
+/usr/lib/tmpfiles.d/*.conf   <- của distro / package (không sửa)
+/etc/tmpfiles.d/*.conf       <- của ta. Cùng tên với file trong /usr/lib thì ghi đè file đó
+/run/tmpfiles.d/*.conf       <- tạm thời, mất sau reboot
+```
+
+:::warning Không nhầm với drop-in
+Cả hai đều có đuôi `.conf` nhưng khác thư mục và khác hoàn toàn cú pháp:
+
+```
+/etc/systemd/system/myapp.service.d/override.conf   <- drop-in (mục 3.8)
+    [Service]
+    Restart=always
+
+/etc/tmpfiles.d/myapp.conf                          <- tmpfiles
+    d /run/myapp 0755 myapp myapp -
+```
+:::
+
+#### 3.11.3. Khi nào được chạy?
+
+| Lúc nào | Unit | Làm gì |
+| --- | --- | --- |
+| Mỗi lần boot, sau khi mount xong filesystem (`After=local-fs.target`), trước các service thường | `systemd-tmpfiles-setup.service` | Tạo, ghi, sửa quyền, xoá theo cấu hình |
+| 15 phút sau boot, sau đó mỗi ngày một lần | `systemd-tmpfiles-clean.timer` | Xoá file quá hạn theo cột Age |
+| Khi ta chạy tay | - | `sudo systemd-tmpfiles --create /etc/tmpfiles.d/myapp.conf` |
+
+Vì chạy trước các service thường, khi `myapp.service` start thì thư mục của nó đã sẵn sàng.
+
+#### 3.11.4. Cú pháp
+
+Mỗi dòng có 7 cột cách nhau bằng dấu cách. Cột nào không cần thì ghi `-`, các cột thừa ở cuối có thể bỏ:
+
+```
+d   /var/cache/myapp   0750   myapp   myapp   7d   -
+|          |            |       |       |      |   |
+|          |            |       |       |      |   +-- Argument: tham số thêm (ở đây không dùng)
+|          |            |       |       |      +------ Age: file cũ hơn 7 ngày sẽ bị xoá
+|          |            |       |       +------------- Group: group sở hữu
+|          |            |       +--------------------- User: user sở hữu
+|          |            +----------------------------- Mode: quyền 0750
+|          +------------------------------------------ Path: đường dẫn
++----------------------------------------------------- Type: hành động (d = tạo thư mục)
+```
+
+> Hiểu là: Đảm bảo có thư mục `/var/cache/myapp`, quyền `0750`, thuộc `myapp:myapp`. File bên trong cũ hơn 7 ngày thì xoá.
+
+Ý nghĩa của `-` ở từng cột:
+
+| Cột | Khi ghi `-` |
+| --- | --- |
+| Mode | Thư mục `0755`, file `0644`. Riêng type `z`/`Z` thì giữ nguyên quyền hiện tại |
+| User, Group | `root`. Riêng type `z`/`Z` thì giữ nguyên owner hiện tại |
+| Age | Không bao giờ tự xoá |
+| Argument | Không có tham số |
+
+#### 3.11.5. Các Type
+
+**Nhóm 1 - Tạo mới nếu chưa có**
+
+| Type | Ví dụ | Kết quả |
+| --- | --- | --- |
+| `d` | `d /run/myapp 0755 myapp myapp -` | Tạo thư mục. Nếu đã có thì sửa lại mode/owner cho đúng (chỉ thư mục đó, không đụng file bên trong) |
+| `f` | `f /var/lib/myapp/settings.ini 0644 myapp myapp - volume=5` | Tạo file với nội dung `volume=5`. Nếu file đã có thì giữ nguyên nội dung |
+| `L` | `L /etc/myapp.ini - - - - /var/lib/myapp/settings.ini` | Tạo symlink `/etc/myapp.ini -> /var/lib/myapp/settings.ini` |
+
+`f` hay dùng để tạo file cấu hình mặc định lần đầu tiên. User sửa `volume=9` thì các lần boot sau vẫn giữ `volume=9`.
+
+**Nhóm 2 - Ghi đè nội dung**
+
+| Type | Ví dụ | Kết quả |
+| --- | --- | --- |
+| `F` | `F /var/lib/myapp/settings.ini 0644 myapp myapp - volume=5` | Tạo hoặc ghi đè file thành `volume=5` mỗi lần chạy |
+| `w` | `w /sys/class/leds/led0/brightness - - - - 1` | Ghi `1` vào file đã có sẵn (không tạo mới). Hay dùng để đặt giá trị trong `/sys`, `/proc` lúc boot |
+
+So sánh `f` và `F` với cùng một file mà user đã sửa thành `volume=9`:
+
+```
+f ... volume=5   ->  file giữ nguyên: volume=9
+F ... volume=5   ->  file bị ghi đè:  volume=5
+```
+
+**Nhóm 3 - Chỉnh quyền cho file/thư mục có sẵn**
+
+| Type | Ví dụ | Kết quả |
+| --- | --- | --- |
+| `z` | `z /var/lib/myapp/settings.ini 0640 - - -` | Đổi quyền thành `0640`, owner giữ nguyên (cột `-`) |
+| `Z` | `Z /var/lib/myapp - myapp myapp -` | Đổi owner của thư mục và mọi thứ bên trong (đệ quy) thành `myapp`, quyền giữ nguyên (cột `-`) |
+
+`Z` hữu ích khi dữ liệu được copy vào bởi root (ví dụ khi update firmware), làm app chạy bằng user thường không ghi được nữa:
+
+```
+Trước                                     Sau  Z /var/lib/myapp - myapp myapp -
+/var/lib/myapp          root   0755       /var/lib/myapp          myapp  0755
+/var/lib/myapp/data.db  root   0600       /var/lib/myapp/data.db  myapp  0600
+```
+
+**Nhóm 4 - Xoá**
+
+| Type | Ví dụ | Kết quả |
+| --- | --- | --- |
+| `r` | `r /var/lib/myapp/app.lock` | Xoá file (hoặc thư mục rỗng) mỗi lần boot |
+| `R` | `R /var/lib/myapp/tmp` | Xoá cả thư mục và toàn bộ nội dung |
+| `D` | `D /run/myapp 0755 myapp myapp -` | Giống `d` nhưng xoá sạch nội dung bên trong mỗi lần boot |
+
+Ví dụ `r`: app tạo file `app.lock` khi chạy và xoá khi thoát. Nếu mất điện, file lock còn sót lại làm app tưởng đang có instance khác chạy. Thêm dòng `r` để file lock luôn bị xoá lúc boot.
+
+**Cột Age - dọn dẹp định kỳ**
+
+```
+d /var/cache/myapp 0750 myapp myapp 7d
+```
+
+Mỗi ngày, `systemd-tmpfiles-clean.timer` quét `/var/cache/myapp`, file nào không được đọc/sửa quá 7 ngày thì bị xoá. Đơn vị: `s`, `m`, `h`, `d`, `w`.
+
+#### 3.11.6. Ví dụ hoàn chỉnh
+
+Quay lại `myapp` ở mục 3.11.1:
+
+```
+# /etc/tmpfiles.d/myapp.conf
+# Type Path                          Mode  User   Group  Age  Argument
+d      /run/myapp                    0755  myapp  myapp  -    -
+d      /var/lib/myapp                0750  myapp  myapp  -    -
+Z      /var/lib/myapp                -     myapp  myapp  -    -
+f      /var/lib/myapp/settings.ini   0644  myapp  myapp  -    volume=5
+r      /var/lib/myapp/app.lock
+d      /var/cache/myapp              0750  myapp  myapp  7d   -
+```
+
+| Dòng | Mục đích |
+| --- | --- |
+| `d /run/myapp` | `/run` mất sau mỗi reboot, tạo lại thư mục chứa socket |
+| `d /var/lib/myapp` + `Z` | Thư mục dữ liệu tồn tại, và mọi file bên trong thuộc `myapp` |
+| `f .../settings.ini` | Lần đầu có file cấu hình mặc định, các lần sau giữ cấu hình user đã sửa |
+| `r .../app.lock` | Xoá file lock sót lại nếu lần trước mất điện |
+| `d /var/cache/myapp ... 7d` | Cache tự dọn sau 7 ngày |
+
+Áp dụng ngay, không cần reboot:
+
+```bash
+sudo systemd-tmpfiles --create --remove /etc/tmpfiles.d/myapp.conf
+ls -ld /run/myapp /var/lib/myapp /var/cache/myapp
+# drwxr-xr-x 2 myapp myapp ... /run/myapp
+# drwxr-x--- 2 myapp myapp ... /var/lib/myapp
+# drwxr-x--- 2 myapp myapp ... /var/cache/myapp
+```
+
+Một số lệnh hữu ích:
+
+```bash
+# Xem toàn bộ cấu hình tmpfiles đang có hiệu lực (đã gộp mọi file)
+systemd-tmpfiles --cat-config
+
+# Chạy dọn dẹp theo Age ngay lập tức
+sudo systemd-tmpfiles --clean
+```
+
+#### 3.11.7. So sánh và lưu ý
+
+**tmpfiles hay `StateDirectory=`?** (mục 3.2.2)
+
+| | `RuntimeDirectory=`, `StateDirectory=`... | tmpfiles |
+| --- | --- | --- |
+| Đường dẫn | Chỉ trong `/run`, `/var/lib`, `/var/cache`, `/var/log`, `/etc` | Bất kỳ đâu (ví dụ `/data` trên partition riêng của embedded) |
+| Khi nào tạo | Khi service start | Lúc boot, không gắn với service nào |
+| Làm được | Tạo thư mục | Tạo thư mục, file, symlink, ghi `/sys`, xoá, dọn theo Age |
+
+Nếu chỉ cần thư mục cho một service trong các đường dẫn chuẩn, dùng `StateDirectory=` cho gọn. Các trường hợp còn lại dùng tmpfiles.
+
+:::warning Lưu ý
+- `Z` duyệt mọi file mỗi lần boot. Thư mục chứa hàng chục nghìn file sẽ làm boot chậm, khi đó chỉ nên dùng `d` hoặc `z` cho các thư mục cần thiết.
+- tmpfiles chạy sau `local-fs.target`. Nếu một partition (ví dụ `/data`) được mount muộn hơn, tmpfiles có thể chạy trước khi mount và tạo thư mục trên rootfs. Khi đó gọi `systemd-tmpfiles --create` trong `ExecStartPre=+` của service.
+- User trong cột User/Group phải tồn tại lúc boot, nếu không dòng đó báo lỗi và bị bỏ qua.
+:::
+
 ## 4. Systemctl
 
 `systemctl` là giao diện dòng lệnh chính để tương tác với systemd. Mọi thao tác quản lý unit đều đi qua đây.
@@ -1875,3 +2564,254 @@ Cách tự gửi này đủ cho log ngắn. Còn giá trị chứa ký tự xu�
 - **Đặt `PRIORITY` đúng mức**: log debug để `LOG_DEBUG`, khi cần thì lọc bằng `-p`.
 - **Rate limit**: service ghi log quá nhanh sẽ bị journald bỏ bớt, kèm log `Suppressed N messages from myapp.service`. Có thể nới giới hạn cho riêng service bằng `LogRateLimitIntervalSec=` và `LogRateLimitBurst=` trong `[Service]`.
 - **Buffer stdout**: nếu ghi log bằng `printf`, nhớ tắt buffer hoặc `fflush()`, nếu không log sẽ xuất hiện trễ hoặc mất khi app crash.
+
+## 6. Phân tích và tối ưu thời gian boot với systemd-analyze
+
+`systemd-analyze` đọc các mốc thời gian mà systemd ghi lại trong lúc boot, từ đó cho biết boot mất bao lâu, unit nào tốn thời gian và unit nào thực sự làm chậm boot.
+
+Quy trình tối ưu luôn là: **đo -> tìm điểm nghẽn -> sửa -> đo lại**.
+
+### 6.1. Tổng thời gian boot
+
+```bash
+systemd-analyze
+```
+
+Output thật trên một máy Ubuntu:
+
+```
+Startup finished in 4.970s (kernel) + 7.656s (userspace) = 12.626s
+graphical.target reached after 7.630s in userspace
+```
+
+```
+kernel start       systemd (PID 1) start        default target đạt
+     |-------- kernel --------|------- userspace -------|
+     |        4.970s          |        7.656s           |
+```
+
+| Mốc | Ý nghĩa |
+| --- | --- |
+| `kernel` | Từ lúc kernel bắt đầu chạy đến lúc systemd (PID 1) được start |
+| `initrd` | Thời gian chạy trong initramfs (nếu có) |
+| `userspace` | Từ lúc systemd start đến lúc đạt default target |
+
+`systemd-analyze` chỉ phân tích chi tiết được phần userspace. Nếu báo `Bootup is not yet finished` thì vẫn còn job đang chạy, chờ một lúc rồi chạy lại.
+
+### 6.2. blame - unit nào tốn thời gian start
+
+```bash
+systemd-analyze blame
+```
+
+```
+4.888s plymouth-quit-wait.service
+4.317s apt-daily-upgrade.service
+2.635s docker.service
+2.495s snapd.seeded.service
+2.384s snapd.service
+ 829ms containerd.service
+ 594ms NetworkManager-wait-online.service
+...
+```
+
+Mỗi dòng là thời gian unit đó cần để start xong (từ lúc bắt đầu đến khi `active`), sắp xếp giảm dần.
+
+:::warning blame dễ gây hiểu nhầm
+Các unit start song song nên unit tốn nhiều thời gian chưa chắc làm chậm boot. Ví dụ `apt-daily-upgrade` mất 4.3s nhưng không ai chờ nó nên tắt nó đi boot cũng không nhanh hơn. Muốn biết unit nào thực sự làm chậm boot, phải dùng `critical-chain`.
+:::
+
+```
+time (s)             0    1    2    3    4    5    6    7    8
+docker.service                 [=========]                         2.6s, không ai chờ
+plymouth-quit-wait                  [===================]          4.9s, multi-user.target chờ nó
+multi-user.target                                         X        đạt ở 7.6s
+```
+
+### 6.3. critical-chain - chuỗi unit thực sự làm chậm boot
+
+```bash
+systemd-analyze critical-chain
+```
+
+```
+graphical.target @7.630s
+└─multi-user.target @7.630s
+  └─plymouth-quit-wait.service @2.742s +4.888s
+    └─systemd-user-sessions.service @2.693s +24ms
+      └─network.target @2.626s
+        └─wpa_supplicant.service @2.507s +118ms
+          └─dbus.service @2.450s
+            └─basic.target @2.436s
+              ...
+```
+
+Cách đọc:
+- Đọc từ dưới lên: unit ở dưới phải xong thì unit ở trên mới start được.
+- `@2.742s`: thời điểm unit được start (tính từ lúc userspace bắt đầu).
+- `+4.888s`: thời gian unit đó cần để start xong. Unit không có `+` là target hoặc unit start gần như tức thì.
+- Chỉ in ra một chuỗi: chuỗi unit mà target phải chờ lâu nhất.
+
+Trong ví dụ, `plymouth-quit-wait.service` (+4.888s) chiếm gần 2/3 thời gian userspace nên đây là điểm nghẽn cần xem xét đầu tiên. Còn `docker`, `apt-daily-upgrade` dù đứng đầu `blame` nhưng không nằm trong chuỗi này.
+
+Xem chuỗi của một unit cụ thể để biết vì sao service của ta start muộn:
+
+```bash
+systemd-analyze critical-chain myapp.service
+```
+
+### 6.4. plot - xem toàn cảnh
+
+```bash
+systemd-analyze plot > boot.svg
+```
+
+Mở `boot.svg` bằng trình duyệt sẽ thấy biểu đồ thời gian: mỗi unit là một thanh ngang, phần màu đỏ là lúc unit đang start. Biểu đồ giúp thấy rõ unit nào chạy song song và khoảng nào hệ thống đang chờ.
+
+Các lệnh khác:
+
+| Lệnh | Tác dụng |
+| --- | --- |
+| `systemd-analyze dot myapp.service \| dot -Tsvg > dep.svg` | Vẽ đồ thị dependency của unit (cần gói `graphviz`) |
+| `systemd-analyze verify myapp.service` | Kiểm tra lỗi cú pháp unit file |
+| `systemd-analyze security myapp.service` | Chấm điểm sandbox (mục 3.2.2) |
+
+### 6.5. Các cách tối ưu
+
+Chỉ tối ưu những unit nằm trên critical chain. Các cách thường gặp:
+
+**1. Tắt service không cần**
+
+```bash
+systemctl disable --now cups.service     # không tự start khi boot nữa
+systemctl mask cups.service              # chặn hẳn, kể cả khi unit khác kéo vào
+```
+
+Với thiết bị không có màn hình, đổi default target để không kéo các unit đồ hoạ vào:
+
+```bash
+systemctl set-default multi-user.target
+```
+
+**2. Bỏ phụ thuộc không cần thiết vào `network-online.target`**
+
+`network-online.target` chỉ đạt khi mạng đã có IP. Việc này có thể mất vài giây hoặc tới 90s nếu không cắm dây mạng. Nhiều service khai báo chờ nó dù không thực sự cần:
+
+```ini
+# Trước: chờ đến khi có IP mới start
+[Unit]
+Wants=network-online.target
+After=network-online.target
+
+# Sau: nếu app tự kết nối lại được khi mạng lên sau
+[Unit]
+After=network.target
+```
+
+**3. Không dùng `sleep` để chờ**
+
+```ini
+# Không nên: luôn mất 5s, kể cả khi app sẵn sàng sau 0.2s
+ExecStartPre=/bin/sleep 5
+```
+
+Dùng `Type=notify` để app báo đúng lúc nó sẵn sàng. Còn nếu phải chờ một thiết bị hay một mount, khai báo dependency (`After=`, `BindsTo=`, `RequiresMountsFor=`) thay vì đoán thời gian.
+
+**4. Đẩy service không gấp ra sau khi boot xong**
+
+Service gửi báo cáo, đồng bộ dữ liệu... không cần chạy ngay lúc boot. Bỏ `WantedBy=` khỏi service rồi dùng timer để start sau 30s:
+
+```ini
+# /etc/systemd/system/report.timer
+[Timer]
+OnBootSec=30s
+Unit=report.service
+
+[Install]
+WantedBy=timers.target
+```
+
+**5. Mount không bắt buộc hoặc chậm**
+
+Trong `/etc/fstab`, thêm các option sau:
+
+```
+/dev/sdb1  /mnt/usb  vfat  nofail,x-systemd.device-timeout=5s  0 0
+/dev/sdc1  /mnt/log  ext4  x-systemd.automount                 0 0
+```
+
+- `nofail`: không có thiết bị thì boot vẫn tiếp tục, không bị chặn.
+- `x-systemd.device-timeout=5s`: chỉ chờ thiết bị tối đa 5s (mặc định 90s).
+- `x-systemd.automount`: không mount lúc boot, chỉ mount khi có process truy cập lần đầu.
+
+**6. Phần kernel**
+
+`systemd-analyze` không phân tích chi tiết phần kernel. Một vài hướng:
+- Xem mốc thời gian trong `dmesg` để biết driver nào khởi tạo lâu.
+- Thêm `initcall_debug` vào kernel cmdline để in thời gian của từng hàm khởi tạo.
+- Thêm `quiet` vào cmdline để giảm thời gian in ra console (đáng kể trên serial console chậm).
+
+### 6.6. Ví dụ: tìm vì sao myapp start chậm
+
+Service `myapp` mất hơn 9 giây sau boot mới sẵn sàng:
+
+```ini
+# /etc/systemd/system/myapp.service
+[Unit]
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+ExecStartPre=/bin/sleep 3
+ExecStart=/usr/local/bin/myapp
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Bước 1 - Đo:**
+
+```bash
+systemd-analyze critical-chain myapp.service
+```
+
+```
+myapp.service @6.103s +3.012s
+└─network-online.target @6.100s
+  └─NetworkManager-wait-online.service @1.050s +5.050s
+    └─NetworkManager.service @0.900s +140ms
+      └─dbus.service @0.880s
+```
+
+**Bước 2 - Tìm điểm nghẽn:**
+- `NetworkManager-wait-online.service` +5.050s: myapp phải chờ mạng có IP.
+- `myapp.service` +3.012s: chính là `sleep 3` trong `ExecStartPre`.
+
+**Bước 3 - Sửa:** app tự kết nối lại khi có mạng, nên không cần chờ `network-online.target`, và chuyển sang `Type=notify` thay cho `sleep`:
+
+```ini
+[Unit]
+After=network.target
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/myapp
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**Bước 4 - Reboot và đo lại:**
+
+```
+myapp.service @1.060s +210ms
+└─network.target @1.050s
+  └─NetworkManager.service @0.900s +140ms
+    └─dbus.service @0.880s
+```
+
+myapp sẵn sàng sau khoảng 1.3s thay vì 9.1s.
+
+:::tip Đo nhiều lần
+Thời gian boot dao động giữa các lần (cache disk, thời gian DHCP...). Nên reboot và đo vài lần trước và sau khi sửa để so sánh cho chính xác.
+:::
